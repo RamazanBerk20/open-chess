@@ -1,13 +1,13 @@
 #!/usr/bin/env fish
 # Publish / update an AUR package using your EXISTING ~/.ssh/aur key.
-# Usage:  fish aur/publish-aur.fish [chess-bin|chess|chess-git]   (default: chess-bin)
+# Usage: fish aur/publish-aur.fish [open-chess-bin|open-chess|open-chess-git]
 set -l pkg $argv[1]
-test -z "$pkg"; and set pkg chess-bin
+test -z "$pkg"; and set pkg open-chess-bin
 set -l repo (realpath (dirname (status filename))/..)
 set -l work ~/aur-$pkg
 
 if not test -f "$repo/aur/$pkg/PKGBUILD"
-    echo "!! unknown package '$pkg' (expected: chess-bin, chess, chess-git)"
+    echo "!! unknown package '$pkg' (expected: open-chess-bin, open-chess, open-chess-git)"
     exit 1
 end
 

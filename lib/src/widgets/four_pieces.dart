@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'package:chess/src/rust/api/four.dart';
+import 'package:open_chess/src/rust/api/four.dart';
 
 const _glyphs = {
   FourPieceKind.king: '♚',
@@ -37,7 +37,9 @@ class FourPieceGlyph extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fill = dead ? const Color(0xFF8A8A8A) : (fourColors[player] ?? Colors.white);
+    final fill = dead
+        ? const Color(0xFF8A8A8A)
+        : (fourColors[player] ?? Colors.white);
     final glyph = _glyphs[kind]!;
     final fontSize = size * 0.82;
     return SizedBox(

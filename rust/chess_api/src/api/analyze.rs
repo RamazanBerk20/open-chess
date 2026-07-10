@@ -11,8 +11,10 @@
 
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use chess_ai::{Engine, SearchInfo, SearchLimits, MATE, MATE_THRESHOLD};
-use chess_core::{parse_fen, Color, Move, Piece, Position};
+use chess_ai::{
+    book_moves, lookup_opening, Engine, OpeningInfo, SearchInfo, SearchLimits, MATE, MATE_THRESHOLD,
+};
+use chess_core::{parse_fen, to_fen, Color, Move, Piece, Position, START_FEN};
 use flutter_rust_bridge::frb;
 
 use crate::frb_generated::StreamSink;
@@ -41,6 +43,74 @@ pub struct AnalysisUpdate {
     pub done: bool,
     pub white_accuracy: f32,
     pub black_accuracy: f32,
+    /// Populated only on the final update for canonical Standard games.
+    pub opening: Option<AnalysisOpening>,
+    /// Populated only on the final update for canonical Standard games.
+    pub white_elo: Option<EloEstimate>,
+    pub black_elo: Option<EloEstimate>,
+}
+
+/// Complete context for an analysis request.
+///
+/// FEN alone does not retain the selected game rules, so callers using a
+/// saved/variant game must provide its [`GameVariant`](crate::api::game::GameVariant).
+/// The legacy `analyze_game` bridge endpoint remains as a Standard wrapper for
+/// existing callers.
+#[derive(Clone, Debug)]
+pub struct AnalyzeGameRequest {
+    pub start_fen: String,
+    pub moves: Vec<String>,
+    pub depth: u32,
+    pub variant: crate::api::game::GameVariant,
+}
+
+/// Named-opening details attached to a completed Standard-start analysis.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct AnalysisOpening {
+    pub eco: String,
+    pub name: String,
+    pub opening: String,
+    pub gambit: Option<String>,
+    pub variation: Option<String>,
+}
+
+impl From<OpeningInfo> for AnalysisOpening {
+    fn from(value: OpeningInfo) -> Self {
+        Self {
+            eco: value.eco,
+            name: value.name,
+            opening: value.opening,
+            gambit: value.gambit,
+            variation: value.variation,
+        }
+    }
+}
+
+/// Confidence increases with the number of non-book moves used by an estimate.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum EloConfidence {
+    Low,
+    Medium,
+    High,
+}
+
+/// A local, post-game Elo estimate based on non-book average centipawn loss.
+#[derive(Clone, Debug, PartialEq)]
+pub struct EloEstimate {
+    pub elo: u32,
+    pub confidence: EloConfidence,
+    pub analyzed_moves: u32,
+    pub average_cp_loss: f32,
+}
+
+/// Metadata computed at the end of analysis and attached to the final stream
+/// update. It stays a separate internal value so normal per-move updates avoid
+/// repeatedly cloning the same summary.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct AnalysisSummary {
+    pub opening: Option<AnalysisOpening>,
+    pub white_elo: Option<EloEstimate>,
+    pub black_elo: Option<EloEstimate>,
 }
 
 /// Only one analysis runs at a time; this cancels it.
@@ -114,9 +184,10 @@ fn mate_white(score: i32, stm: Color) -> i32 {
 }
 
 // Classification tuning (win-percent points lost, unless noted). Local + tunable.
-const BOOK_PLIES: usize = 10;
-const BOOK_TOL: f64 = 2.0;
 const BEST_TOL: f64 = 1.0; // <= this many win% points lost still counts as "best"
+/// A corpus move only earns the Book label when it remains close to the engine
+/// choice. ECO data includes named traps and objectively losing gambits.
+const BOOK_TOL: f64 = 3.0;
 const MISS_TOL: f64 = 10.0;
 const GOOD_TOL: f64 = 5.0;
 const INACCURACY_TOL: f64 = 10.0;
@@ -135,14 +206,14 @@ const BRILLIANT_MAX_BEFORE_WP: f64 = 0.93;
 #[allow(clippy::too_many_arguments)]
 fn classify(
     stm: Color,
-    ply: usize,
     mv: Move,
     best_mv: Option<Move>,
     best_score: i32,
     played_score: i32,
     wpl: f64, // win% points lost (>= 0)
+    is_book: bool,
     before_mat: i32,
-    child: &Position,    // position after the played move
+    child: &Position,         // position after the played move
     reply_best: Option<Move>, // opponent's best reply from the search
 ) -> &'static str {
     let best_wp = win_stm(best_score, stm);
@@ -151,8 +222,10 @@ fn classify(
     let winning_after = played_wp >= WINNING_WP || played_score >= MATE_THRESHOLD;
     let played_is_best = best_mv == Some(mv) || wpl <= BEST_TOL;
 
-    // Opening: near-perfect early moves read as "book" (no book table shipped).
-    if ply < BOOK_PLIES && wpl <= BOOK_TOL {
+    // Only corpus-backed moves that remain sound count as Book. The opening
+    // corpus intentionally records named traps (including Fool's Mate), so
+    // corpus membership must never suppress a real blunder classification.
+    if is_book && wpl <= BOOK_TOL {
         return "book";
     }
 
@@ -192,18 +265,46 @@ fn classify(
     }
 }
 
-/// Analyze `moves` played from `start_fen`. `depth` is the fixed search depth
-/// per position. Streams an [`AnalysisUpdate`] per ply, then a `done` update.
+/// Legacy Standard-chess bridge endpoint.
+///
+/// Keep this exact signature until checked-in FRB bindings are regenerated.
+/// New callers should use [`analyze_game_request`] so variant games replay with
+/// their actual rules.
 pub fn analyze_game(
     start_fen: String,
     moves: Vec<String>,
     depth: u32,
     sink: StreamSink<AnalysisUpdate>,
 ) -> Result<(), String> {
+    analyze_game_request(
+        AnalyzeGameRequest {
+            start_fen,
+            moves,
+            depth,
+            variant: crate::api::game::GameVariant::Standard,
+        },
+        sink,
+    )
+}
+
+/// Analyze a game with full start-position and variant context.
+///
+/// Streams an [`AnalysisUpdate`] per ply and attaches opening/Elo metadata to
+/// the final update.
+pub fn analyze_game_request(
+    request: AnalyzeGameRequest,
+    sink: StreamSink<AnalysisUpdate>,
+) -> Result<(), String> {
     CANCEL.store(false, Ordering::Relaxed);
-    let mut pos = parse_fen(&start_fen).map_err(|e| e.to_string())?;
-    let total = moves.len() as u32;
-    let depth = depth.clamp(1, 64) as u8;
+    let mut pos = parse_fen(&request.start_fen).map_err(|e| e.to_string())?;
+    let standard_start = is_standard_start(&pos, request.variant);
+    // FEN has no portable variant field. Apply the caller's actual rules and
+    // rebuild its hash before engine use, just as the AI endpoint does.
+    pos.variant = crate::api::game::to_variant(request.variant);
+    pos.hash = pos.compute_hash();
+
+    let total = request.moves.len() as u32;
+    let depth = request.depth.clamp(1, 64) as u8;
     let mut eng = Engine::new(18);
     let cancel = || CANCEL.load(Ordering::Relaxed);
 
@@ -220,8 +321,11 @@ pub fn analyze_game(
 
     let mut acc_sum = [0.0f64; 2];
     let mut acc_cnt = [0u32; 2];
+    let mut loss_sum = [0i64; 2];
+    let mut loss_cnt = [0u32; 2];
+    let mut opening = None;
 
-    for (i, uci) in moves.iter().enumerate() {
+    for (i, uci) in request.moves.iter().enumerate() {
         if cancel() {
             break;
         }
@@ -231,6 +335,7 @@ pub fn analyze_game(
             Err(_) => break, // corrupt move list — stop cleanly
         };
         let san = pos.san_of(mv);
+        let is_book = standard_start && book_moves(&pos).iter().any(|candidate| candidate == uci);
 
         // Best move + eval of the position before the move (stm POV).
         let best = eng.search(&pos, best_limits, &cancel, |_: &SearchInfo| {});
@@ -248,7 +353,11 @@ pub fn analyze_game(
         // If the move ended the game the child is terminal — `search` returns 0
         // for a no-legal-move root, which would mis-score a *checkmating* move as
         // a thrown-away win. Score terminal children directly instead.
-        let (played_score, reply_best) = if child.generate_legal().is_empty() {
+        let (played_score, reply_best) = if child.variant_terminal().is_some() {
+            // Three-check, King of the Hill, Atomic, and Fog can terminate with
+            // legal moves still present. The mover created this terminal child.
+            (MATE - 1, None)
+        } else if child.generate_legal().is_empty() {
             if child.in_check(child.side) {
                 (MATE - 1, None) // the move delivered checkmate → mover wins
             } else {
@@ -276,18 +385,27 @@ pub fn analyze_game(
 
         let classification = classify(
             stm,
-            i,
             mv,
             best_mv,
             best_score,
             played_score,
             drop,
+            is_book,
             before_mat,
             &child,
             reply_best,
         );
 
+        if standard_start && classification != "book" {
+            loss_sum[side] += i64::from(cp_loss);
+            loss_cnt[side] += 1;
+        }
         pos.make_move(mv);
+        if standard_start {
+            if let Some(info) = lookup_opening(&pos) {
+                opening = Some(info.into());
+            }
+        }
 
         if sink
             .add(AnalysisUpdate {
@@ -307,6 +425,9 @@ pub fn analyze_game(
                 done: false,
                 white_accuracy: 0.0,
                 black_accuracy: 0.0,
+                opening: None,
+                white_elo: None,
+                black_elo: None,
             })
             .is_err()
         {
@@ -315,6 +436,15 @@ pub fn analyze_game(
     }
 
     let avg = |s: f64, n: u32| if n > 0 { (s / n as f64) as f32 } else { 100.0 };
+    let summary = AnalysisSummary {
+        opening: standard_start.then_some(opening).flatten(),
+        white_elo: standard_start
+            .then(|| estimate_elo(loss_sum[0], loss_cnt[0]))
+            .flatten(),
+        black_elo: standard_start
+            .then(|| estimate_elo(loss_sum[1], loss_cnt[1]))
+            .flatten(),
+    };
     let _ = sink.add(AnalysisUpdate {
         ply: 0,
         uci: String::new(),
@@ -332,8 +462,59 @@ pub fn analyze_game(
         done: true,
         white_accuracy: avg(acc_sum[0], acc_cnt[0]),
         black_accuracy: avg(acc_sum[1], acc_cnt[1]),
+        opening: summary.opening,
+        white_elo: summary.white_elo,
+        black_elo: summary.black_elo,
     });
     Ok(())
+}
+
+/// Convert a side's non-book average centipawn loss into a conservative local
+/// Elo estimate. A short game cannot establish a rating: clean opening tactics
+/// (such as Scholar's Mate) used to map to an implausibly high result because
+/// the raw average could be zero after only a few moves. We therefore require
+/// a useful sample and shrink it toward a broad club-player prior before using
+/// the ACPL curve.
+///
+/// This remains a gameplay estimate, not an official rating or a replacement
+/// for a rated-server calculation.
+fn estimate_elo(loss_sum: i64, moves: u32) -> Option<EloEstimate> {
+    const MIN_SAMPLE_MOVES: u32 = 8;
+    const PRIOR_MOVES: f64 = 24.0;
+    const PRIOR_ACPL: f64 = 180.0;
+
+    if moves < MIN_SAMPLE_MOVES {
+        return None;
+    }
+
+    let average_cp_loss = loss_sum as f64 / f64::from(moves);
+    let adjusted_cp_loss =
+        (loss_sum as f64 + PRIOR_MOVES * PRIOR_ACPL) / (f64::from(moves) + PRIOR_MOVES);
+    let confidence = match moves {
+        8..=19 => EloConfidence::Low,
+        20..=39 => EloConfidence::Medium,
+        _ => EloConfidence::High,
+    };
+    // Short samples must remain conservative even when every move was engine
+    // perfect. The caps relax as the analysis has more original moves.
+    let confidence_cap = match confidence {
+        EloConfidence::Low => 1450.0,
+        EloConfidence::Medium => 2100.0,
+        EloConfidence::High => 2500.0,
+    };
+    let elo = (5480.0 - 850.0 * adjusted_cp_loss.max(10.0).ln())
+        .clamp(400.0, confidence_cap)
+        .round() as u32;
+    Some(EloEstimate {
+        elo,
+        confidence,
+        analyzed_moves: moves,
+        average_cp_loss: average_cp_loss as f32,
+    })
+}
+
+fn is_standard_start(position: &Position, variant: crate::api::game::GameVariant) -> bool {
+    variant == crate::api::game::GameVariant::Standard && to_fen(position) == START_FEN
 }
 
 /// Cancel the running analysis.
@@ -352,19 +533,25 @@ mod tests {
     }
 
     // Classify a White move from synthetic best/played scores (stm POV).
-    fn classify_white(ply: usize, played: Move, best: Move, best_s: i32, played_s: i32) -> &'static str {
+    fn classify_white(
+        is_book: bool,
+        played: Move,
+        best: Move,
+        best_s: i32,
+        played_s: i32,
+    ) -> &'static str {
         let pos = Position::startpos();
         let child = pos.clone();
-        let wpl = ((win_stm(best_s, Color::White) - win_stm(played_s, Color::White)) * 100.0)
-            .max(0.0);
+        let wpl =
+            ((win_stm(best_s, Color::White) - win_stm(played_s, Color::White)) * 100.0).max(0.0);
         classify(
             Color::White,
-            ply,
             played,
             Some(best),
             best_s,
             played_s,
             wpl,
+            is_book,
             material(&pos, Color::White),
             &child,
             None,
@@ -376,17 +563,18 @@ mod tests {
         let a = mv("e2e4");
         let b = mv("d2d4");
         // Played == best, non-winning → "best" (not "brilliant": no sacrifice).
-        assert_eq!(classify_white(20, a, a, 30, 30), "best");
-        // Early near-perfect move → "book".
-        assert_eq!(classify_white(2, b, a, 0, -10), "book");
+        assert_eq!(classify_white(false, a, a, 30, 30), "best");
+        // Corpus membership cannot hide a losing named trap.
+        assert_eq!(classify_white(true, b, a, 0, -500), "blunder");
+        assert_eq!(classify_white(true, a, a, 0, 0), "book");
         // Small win% loss → "good".
-        assert_eq!(classify_white(20, b, a, 0, -33), "good");
+        assert_eq!(classify_white(false, b, a, 0, -33), "good");
         // Big win% loss from an equal position → "blunder".
-        assert_eq!(classify_white(20, b, a, 0, -500), "blunder");
+        assert_eq!(classify_white(false, b, a, 0, -500), "blunder");
         // A winning position thrown away → "miss" (not a plain mistake/blunder).
-        assert_eq!(classify_white(20, b, a, 400, 0), "miss");
+        assert_eq!(classify_white(false, b, a, 400, 0), "miss");
         // Clearly winning best move stays "best".
-        assert_eq!(classify_white(20, a, a, 600, 600), "best");
+        assert_eq!(classify_white(false, a, a, 600, 600), "best");
     }
 
     #[test]
@@ -394,17 +582,38 @@ mod tests {
         // "After the sac" the mover is a knight down: child = startpos minus the
         // b1 knight (material 36), before_mat = full startpos material (39).
         let before_mat = material(&Position::startpos(), Color::White);
-        let child =
-            parse_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/R1BQKBNR w KQkq - 0 1").unwrap();
+        let child = parse_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/R1BQKBNR w KQkq - 0 1").unwrap();
         let m = mv("e2e4");
         // Winning but not yet decided (+600) → a sound sacrifice is "brilliant".
         assert_eq!(
-            classify(Color::White, 20, m, Some(m), 600, 600, 0.0, before_mat, &child, None),
+            classify(
+                Color::White,
+                m,
+                Some(m),
+                600,
+                600,
+                0.0,
+                false,
+                before_mat,
+                &child,
+                None,
+            ),
             "brilliant",
         );
         // Already crushing (+2500) → the same sacrifice is merely "best".
         assert_eq!(
-            classify(Color::White, 20, m, Some(m), 2500, 2500, 0.0, before_mat, &child, None),
+            classify(
+                Color::White,
+                m,
+                Some(m),
+                2500,
+                2500,
+                0.0,
+                false,
+                before_mat,
+                &child,
+                None,
+            ),
             "best",
         );
     }
@@ -419,5 +628,50 @@ mod tests {
         // Mate-distance signs to White's POV.
         assert!(mate_white(MATE - 3, Color::White) > 0);
         assert!(mate_white(MATE - 3, Color::Black) < 0);
+    }
+
+    #[test]
+    fn elo_estimate_requires_a_real_sample_and_shrinks_short_games() {
+        // A short, clean tactical game such as Scholar's Mate is not enough
+        // evidence to call either player a master.
+        assert!(estimate_elo(0, 0).is_none());
+        assert!(estimate_elo(0, 7).is_none());
+
+        let short_perfect = estimate_elo(0, 8).unwrap();
+        assert_eq!(short_perfect.confidence, EloConfidence::Low);
+        assert!(short_perfect.elo <= 1450);
+
+        let expected = estimate_elo(1000, 10).unwrap(); // raw ACPL = 100
+        assert_eq!(expected.confidence, EloConfidence::Low);
+        assert_eq!(expected.average_cp_loss, 100.0);
+        assert!(expected.elo < 1450);
+
+        assert_eq!(
+            estimate_elo(3000, 20).unwrap().confidence,
+            EloConfidence::Medium
+        );
+        assert_eq!(
+            estimate_elo(6000, 40).unwrap().confidence,
+            EloConfidence::High
+        );
+        assert_eq!(estimate_elo(1_000_000, 8).unwrap().elo, 400);
+    }
+
+    #[test]
+    fn only_canonical_standard_starts_receive_opening_or_elo_metadata() {
+        let start = Position::startpos();
+        assert!(is_standard_start(
+            &start,
+            crate::api::game::GameVariant::Standard
+        ));
+        assert!(!is_standard_start(
+            &start,
+            crate::api::game::GameVariant::Atomic
+        ));
+        let custom = parse_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 7 3").unwrap();
+        assert!(!is_standard_start(
+            &custom,
+            crate::api::game::GameVariant::Standard
+        ));
     }
 }

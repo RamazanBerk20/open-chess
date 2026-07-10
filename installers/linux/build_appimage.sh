@@ -12,14 +12,14 @@ mkdir -p "$APPDIR/usr/bin"
 # Flutter resolves data/ and lib/ next to the executable, so keep the whole
 # bundle together under usr/bin.
 cp -r "$BUNDLE"/. "$APPDIR/usr/bin/"
-cp installers/linux/chess.desktop "$APPDIR/chess.desktop"
-cp assets/icon/chess.png "$APPDIR/chess.png"
+cp installers/linux/open-chess.desktop "$APPDIR/open-chess.desktop"
+cp assets/icon/open-chess.png "$APPDIR/open-chess.png"
 
 cat > "$APPDIR/AppRun" <<'EOF'
 #!/bin/sh
 HERE="$(dirname "$(readlink -f "$0")")"
 export LD_LIBRARY_PATH="$HERE/usr/bin/lib:${LD_LIBRARY_PATH:-}"
-exec "$HERE/usr/bin/chess" "$@"
+exec "$HERE/usr/bin/open-chess" "$@"
 EOF
 chmod +x "$APPDIR/AppRun"
 
@@ -29,5 +29,5 @@ if [ ! -x ./appimagetool ]; then
 fi
 
 # No FUSE on CI runners → extract-and-run.
-ARCH=x86_64 ./appimagetool --appimage-extract-and-run "$APPDIR" "Chess-${VERSION}-x86_64.AppImage"
-echo "Built Chess-${VERSION}-x86_64.AppImage"
+ARCH=x86_64 ./appimagetool --appimage-extract-and-run "$APPDIR" "open-chess-${VERSION}-x86_64.AppImage"
+echo "Built open-chess-${VERSION}-x86_64.AppImage"

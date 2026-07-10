@@ -9,7 +9,7 @@ class AppLocalizationsEs extends AppLocalizations {
   AppLocalizationsEs([String locale = 'es']) : super(locale);
 
   @override
-  String get appTitle => 'Ajedrez';
+  String get appTitle => 'Open Chess';
 
   @override
   String get menuSinglePlayer => 'Un jugador';
@@ -180,6 +180,33 @@ class AppLocalizationsEs extends AppLocalizations {
   String get analysis => 'Análisis';
 
   @override
+  String get opening => 'Apertura';
+
+  @override
+  String get openingGambit => 'Gambito';
+
+  @override
+  String get openingVariation => 'Variante';
+
+  @override
+  String get openingNone => 'Sin apertura conocida';
+
+  @override
+  String get ratingEstimate => 'Puntuación estimada';
+
+  @override
+  String get ratingConfidenceLow => 'Confianza baja';
+
+  @override
+  String get ratingConfidenceMedium => 'Confianza media';
+
+  @override
+  String get ratingConfidenceHigh => 'Confianza alta';
+
+  @override
+  String get ratingUnavailable => 'Estimación de puntuación no disponible';
+
+  @override
   String get white => 'Blancas';
 
   @override
@@ -260,6 +287,27 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get settings => 'Ajustes';
+
+  @override
+  String get profile => 'Perfil';
+
+  @override
+  String get profileUsername => 'Nombre de usuario';
+
+  @override
+  String get profileUsernameHint => 'Elige un nombre de usuario';
+
+  @override
+  String get profileAvatar => 'Avatar';
+
+  @override
+  String get profileChangeAvatar => 'Cambiar avatar';
+
+  @override
+  String get profileRemoveAvatar => 'Quitar avatar';
+
+  @override
+  String get profileImageError => 'No se pudo usar esa imagen.';
 
   @override
   String get appearance => 'Apariencia';
@@ -355,6 +403,12 @@ class AppLocalizationsEs extends AppLocalizations {
   String get lanGame => 'Partida en LAN';
 
   @override
+  String get lanAllowSpectators => 'Permitir espectadores';
+
+  @override
+  String get lanSpectate => 'Ver partida';
+
+  @override
   String get chat => 'Chat';
 
   @override
@@ -440,16 +494,28 @@ class AppLocalizationsEs extends AppLocalizations {
   String get diffBeginner => 'Principiante';
 
   @override
+  String get diffVeryEasy => 'Muy fácil';
+
+  @override
   String get diffEasy => 'Fácil';
 
   @override
   String get diffMedium => 'Intermedio';
 
   @override
+  String get diffNormal => 'Normal';
+
+  @override
   String get diffHard => 'Difícil';
 
   @override
   String get diffExpert => 'Experto';
+
+  @override
+  String get diffVeryHard => 'Muy difícil';
+
+  @override
+  String get diffImpossible => 'Imposible';
 
   @override
   String get baseMinutes => 'Minutos base';
@@ -474,6 +540,12 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get evalNoise => 'Ruido de evaluación (cp)';
+
+  @override
+  String get maxEvalLoss => 'Pérdida máxima de evaluación (cp)';
+
+  @override
+  String get moveVariety => 'Variedad de jugadas';
 
   @override
   String puzzlesSolved(Object solved, Object total) {
@@ -614,6 +686,12 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get fourVsBots => 'Contra bots';
+
+  @override
+  String get fourSeatAi => 'IA';
+
+  @override
+  String get fourPerspective => 'Perspectiva';
 
   @override
   String get fourYourSeats => 'Tus asientos';

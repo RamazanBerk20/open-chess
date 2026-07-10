@@ -1,4 +1,4 @@
-# Dev container for the Chess app: Flutter + Rust + flutter_rust_bridge +
+# Dev container for Open Chess: Flutter + Rust + flutter_rust_bridge +
 # Android SDK/NDK + Linux-desktop deps. Versions pinned to match the project.
 FROM ubuntu:24.04
 

@@ -34,7 +34,10 @@ impl Position {
         }
         let from = parse_square(&s[0..2]).ok_or_else(|| ChessError::InvalidMove(s.to_string()))?;
         let to = parse_square(&s[2..4]).ok_or_else(|| ChessError::InvalidMove(s.to_string()))?;
-        let promo = s.as_bytes().get(4).and_then(|&b| Piece::from_char(b as char));
+        let promo = s
+            .as_bytes()
+            .get(4)
+            .and_then(|&b| Piece::from_char(b as char));
 
         let legal = self.generate_legal();
         for i in 0..legal.len() {

@@ -1,19 +1,19 @@
 import 'package:flutter/material.dart';
 
-import 'package:chess/l10n/app_localizations.dart';
-import 'package:chess/src/theme/spacing.dart';
+import 'package:open_chess/l10n/app_localizations.dart';
+import 'package:open_chess/src/theme/spacing.dart';
 
 /// Consistent end-of-game actions: Analyze · Play Again · Main Menu · Export.
 /// Each action is a callback so the same panel serves the standard, bughouse,
 /// and four-player screens; pass null to hide an action a screen doesn't offer.
 class GameResultPanel extends StatelessWidget {
   final VoidCallback? onAnalyze;
-  final VoidCallback onPlayAgain;
+  final VoidCallback? onPlayAgain;
   final VoidCallback onMainMenu;
   final VoidCallback? onExportPgn;
   const GameResultPanel({
     super.key,
-    required this.onPlayAgain,
+    this.onPlayAgain,
     required this.onMainMenu,
     this.onAnalyze,
     this.onExportPgn,
@@ -34,11 +34,12 @@ class GameResultPanel extends StatelessWidget {
               icon: const Icon(Icons.analytics_outlined),
               label: Text(t.analyzeGame),
             ),
-          OutlinedButton.icon(
-            onPressed: onPlayAgain,
-            icon: const Icon(Icons.replay),
-            label: Text(t.playAgain),
-          ),
+          if (onPlayAgain != null)
+            OutlinedButton.icon(
+              onPressed: onPlayAgain,
+              icon: const Icon(Icons.replay),
+              label: Text(t.playAgain),
+            ),
           OutlinedButton.icon(
             onPressed: onMainMenu,
             icon: const Icon(Icons.home_outlined),

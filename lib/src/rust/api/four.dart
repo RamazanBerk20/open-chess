@@ -12,8 +12,10 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
 // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<FourGame>>
 abstract class FourGame implements RustOpaqueInterface {
-  /// The greedy bot's move (UCI form) for the side to move, or None if none.
-  String? botMove({required BigInt seed});
+  /// The requested-difficulty bot move (UCI form) for the side to move, or
+  /// None if none. Unknown codes deliberately fall back to Normal so a stale
+  /// local setting can never make the four-player bot unavailable.
+  String? botMove({required BigInt seed, required int difficultyCode});
 
   /// Destination squares (row*14+col) of every legal move from `from`.
   Uint32List legalTargets({required int from});

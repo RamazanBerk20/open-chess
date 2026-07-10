@@ -18,10 +18,20 @@ pub struct Move4 {
 
 impl Move4 {
     pub fn plain(from: Coord, to: Coord) -> Move4 {
-        Move4 { from, to, promo: None, castle: false }
+        Move4 {
+            from,
+            to,
+            promo: None,
+            castle: false,
+        }
     }
     pub fn castling(from: Coord, to: Coord) -> Move4 {
-        Move4 { from, to, promo: None, castle: true }
+        Move4 {
+            from,
+            to,
+            promo: None,
+            castle: true,
+        }
     }
 }
 
@@ -81,7 +91,13 @@ fn is_foe(board: &Board, c: Coord, allies: &Allies) -> bool {
     matches!(board.get(c.col, c.row), Some((p, _)) if !allies[p.index()])
 }
 
-fn gen_steps(board: &Board, from: Coord, allies: &Allies, offsets: &[(i8, i8)], out: &mut Vec<Move4>) {
+fn gen_steps(
+    board: &Board,
+    from: Coord,
+    allies: &Allies,
+    offsets: &[(i8, i8)],
+    out: &mut Vec<Move4>,
+) {
     for &(dc, dr) in offsets {
         let to = Coord::new(from.col + dc, from.row + dr);
         if !in_bounds(to.col, to.row) {
@@ -95,7 +111,13 @@ fn gen_steps(board: &Board, from: Coord, allies: &Allies, offsets: &[(i8, i8)], 
     }
 }
 
-fn gen_slider(board: &Board, from: Coord, allies: &Allies, dirs: &[(i8, i8)], out: &mut Vec<Move4>) {
+fn gen_slider(
+    board: &Board,
+    from: Coord,
+    allies: &Allies,
+    dirs: &[(i8, i8)],
+    out: &mut Vec<Move4>,
+) {
     for &(dc, dr) in dirs {
         let (mut c, mut r) = (from.col + dc, from.row + dr);
         while in_bounds(c, r) {
@@ -126,7 +148,12 @@ fn pawn_start(player: Player, from: Coord) -> bool {
 fn push_pawn(player: Player, from: Coord, to: Coord, out: &mut Vec<Move4>) {
     if is_promo_square(player, to) {
         for pr in PROMOS {
-            out.push(Move4 { from, to, promo: Some(pr), castle: false });
+            out.push(Move4 {
+                from,
+                to,
+                promo: Some(pr),
+                castle: false,
+            });
         }
     } else {
         out.push(Move4::plain(from, to));

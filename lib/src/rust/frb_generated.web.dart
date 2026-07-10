@@ -105,16 +105,37 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   AiConfigDto dco_decode_ai_config_dto(dynamic raw);
 
   @protected
+  AiSearchRequest dco_decode_ai_search_request(dynamic raw);
+
+  @protected
   AiUpdate dco_decode_ai_update(dynamic raw);
+
+  @protected
+  AnalysisOpening dco_decode_analysis_opening(dynamic raw);
+
+  @protected
+  AnalysisSummary dco_decode_analysis_summary(dynamic raw);
 
   @protected
   AnalysisUpdate dco_decode_analysis_update(dynamic raw);
 
   @protected
+  AnalyzeGameRequest dco_decode_analyze_game_request(dynamic raw);
+
+  @protected
   bool dco_decode_bool(dynamic raw);
 
   @protected
-  AiConfigDto dco_decode_box_autoadd_ai_config_dto(dynamic raw);
+  AiSearchRequest dco_decode_box_autoadd_ai_search_request(dynamic raw);
+
+  @protected
+  AnalysisOpening dco_decode_box_autoadd_analysis_opening(dynamic raw);
+
+  @protected
+  AnalyzeGameRequest dco_decode_box_autoadd_analyze_game_request(dynamic raw);
+
+  @protected
+  EloEstimate dco_decode_box_autoadd_elo_estimate(dynamic raw);
 
   @protected
   FourPieceKind dco_decode_box_autoadd_four_piece_kind(dynamic raw);
@@ -124,6 +145,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   PieceKind dco_decode_box_autoadd_piece_kind(dynamic raw);
+
+  @protected
+  PlayerProfileWire dco_decode_box_autoadd_player_profile_wire(dynamic raw);
 
   @protected
   SquarePiece dco_decode_box_autoadd_square_piece(dynamic raw);
@@ -136,6 +160,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   ClockSnapshot dco_decode_clock_snapshot(dynamic raw);
+
+  @protected
+  EloConfidence dco_decode_elo_confidence(dynamic raw);
+
+  @protected
+  EloEstimate dco_decode_elo_estimate(dynamic raw);
 
   @protected
   double dco_decode_f_32(dynamic raw);
@@ -197,6 +227,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<PieceKind> dco_decode_list_piece_kind(dynamic raw);
 
   @protected
+  List<PlayerProfileWire> dco_decode_list_player_profile_wire(dynamic raw);
+
+  @protected
   List<int> dco_decode_list_prim_i_32_loose(dynamic raw);
 
   @protected
@@ -230,6 +263,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   String? dco_decode_opt_String(dynamic raw);
 
   @protected
+  AnalysisOpening? dco_decode_opt_box_autoadd_analysis_opening(dynamic raw);
+
+  @protected
+  EloEstimate? dco_decode_opt_box_autoadd_elo_estimate(dynamic raw);
+
+  @protected
   FourPieceKind? dco_decode_opt_box_autoadd_four_piece_kind(dynamic raw);
 
   @protected
@@ -252,6 +291,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   PieceKind dco_decode_piece_kind(dynamic raw);
+
+  @protected
+  PlayerProfileWire dco_decode_player_profile_wire(dynamic raw);
 
   @protected
   SquarePiece dco_decode_square_piece(dynamic raw);
@@ -349,18 +391,45 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   AiConfigDto sse_decode_ai_config_dto(SseDeserializer deserializer);
 
   @protected
+  AiSearchRequest sse_decode_ai_search_request(SseDeserializer deserializer);
+
+  @protected
   AiUpdate sse_decode_ai_update(SseDeserializer deserializer);
+
+  @protected
+  AnalysisOpening sse_decode_analysis_opening(SseDeserializer deserializer);
+
+  @protected
+  AnalysisSummary sse_decode_analysis_summary(SseDeserializer deserializer);
 
   @protected
   AnalysisUpdate sse_decode_analysis_update(SseDeserializer deserializer);
 
   @protected
+  AnalyzeGameRequest sse_decode_analyze_game_request(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   bool sse_decode_bool(SseDeserializer deserializer);
 
   @protected
-  AiConfigDto sse_decode_box_autoadd_ai_config_dto(
+  AiSearchRequest sse_decode_box_autoadd_ai_search_request(
     SseDeserializer deserializer,
   );
+
+  @protected
+  AnalysisOpening sse_decode_box_autoadd_analysis_opening(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  AnalyzeGameRequest sse_decode_box_autoadd_analyze_game_request(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  EloEstimate sse_decode_box_autoadd_elo_estimate(SseDeserializer deserializer);
 
   @protected
   FourPieceKind sse_decode_box_autoadd_four_piece_kind(
@@ -376,6 +445,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   PieceKind sse_decode_box_autoadd_piece_kind(SseDeserializer deserializer);
 
   @protected
+  PlayerProfileWire sse_decode_box_autoadd_player_profile_wire(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   SquarePiece sse_decode_box_autoadd_square_piece(SseDeserializer deserializer);
 
   @protected
@@ -386,6 +460,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   ClockSnapshot sse_decode_clock_snapshot(SseDeserializer deserializer);
+
+  @protected
+  EloConfidence sse_decode_elo_confidence(SseDeserializer deserializer);
+
+  @protected
+  EloEstimate sse_decode_elo_estimate(SseDeserializer deserializer);
 
   @protected
   double sse_decode_f_32(SseDeserializer deserializer);
@@ -451,6 +531,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<PieceKind> sse_decode_list_piece_kind(SseDeserializer deserializer);
 
   @protected
+  List<PlayerProfileWire> sse_decode_list_player_profile_wire(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   List<int> sse_decode_list_prim_i_32_loose(SseDeserializer deserializer);
 
   @protected
@@ -484,6 +569,16 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   String? sse_decode_opt_String(SseDeserializer deserializer);
 
   @protected
+  AnalysisOpening? sse_decode_opt_box_autoadd_analysis_opening(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  EloEstimate? sse_decode_opt_box_autoadd_elo_estimate(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   FourPieceKind? sse_decode_opt_box_autoadd_four_piece_kind(
     SseDeserializer deserializer,
   );
@@ -514,6 +609,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   PieceKind sse_decode_piece_kind(SseDeserializer deserializer);
+
+  @protected
+  PlayerProfileWire sse_decode_player_profile_wire(
+    SseDeserializer deserializer,
+  );
 
   @protected
   SquarePiece sse_decode_square_piece(SseDeserializer deserializer);
@@ -626,7 +726,25 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_ai_config_dto(AiConfigDto self, SseSerializer serializer);
 
   @protected
+  void sse_encode_ai_search_request(
+    AiSearchRequest self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_ai_update(AiUpdate self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_analysis_opening(
+    AnalysisOpening self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_analysis_summary(
+    AnalysisSummary self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_analysis_update(
@@ -635,11 +753,35 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_analyze_game_request(
+    AnalyzeGameRequest self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_bool(bool self, SseSerializer serializer);
 
   @protected
-  void sse_encode_box_autoadd_ai_config_dto(
-    AiConfigDto self,
+  void sse_encode_box_autoadd_ai_search_request(
+    AiSearchRequest self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_analysis_opening(
+    AnalysisOpening self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_analyze_game_request(
+    AnalyzeGameRequest self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_elo_estimate(
+    EloEstimate self,
     SseSerializer serializer,
   );
 
@@ -662,6 +804,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_box_autoadd_player_profile_wire(
+    PlayerProfileWire self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_box_autoadd_square_piece(
     SquarePiece self,
     SseSerializer serializer,
@@ -675,6 +823,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_clock_snapshot(ClockSnapshot self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_elo_confidence(EloConfidence self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_elo_estimate(EloEstimate self, SseSerializer serializer);
 
   @protected
   void sse_encode_f_32(double self, SseSerializer serializer);
@@ -755,6 +909,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_list_player_profile_wire(
+    List<PlayerProfileWire> self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_list_prim_i_32_loose(
     List<int> self,
     SseSerializer serializer,
@@ -806,6 +966,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_opt_String(String? self, SseSerializer serializer);
 
   @protected
+  void sse_encode_opt_box_autoadd_analysis_opening(
+    AnalysisOpening? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_opt_box_autoadd_elo_estimate(
+    EloEstimate? self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_opt_box_autoadd_four_piece_kind(
     FourPieceKind? self,
     SseSerializer serializer,
@@ -840,6 +1012,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_piece_kind(PieceKind self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_player_profile_wire(
+    PlayerProfileWire self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_square_piece(SquarePiece self, SseSerializer serializer);

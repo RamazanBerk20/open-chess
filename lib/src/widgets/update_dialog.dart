@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import 'package:chess/l10n/app_localizations.dart';
-import 'package:chess/src/state/update_service.dart';
+import 'package:open_chess/l10n/app_localizations.dart';
+import 'package:open_chess/src/state/update_service.dart';
 
 /// Show the result of an update check. `info == null` → "up to date" (suppressed
 /// when [silent], e.g. an automatic startup check). Otherwise offer to download.

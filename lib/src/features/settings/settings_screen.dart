@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:chess/l10n/app_localizations.dart';
-import 'package:chess/src/state/difficulty.dart';
-import 'package:chess/src/state/settings.dart';
-import 'package:chess/src/state/time_control.dart';
-import 'package:chess/src/state/update_service.dart';
-import 'package:chess/src/widgets/update_dialog.dart';
+import 'package:open_chess/l10n/app_localizations.dart';
+import 'package:open_chess/src/state/difficulty.dart';
+import 'package:open_chess/src/state/player_profile.dart';
+import 'package:open_chess/src/state/profile_avatar_service.dart';
+import 'package:open_chess/src/state/settings.dart';
+import 'package:open_chess/src/state/time_control.dart';
+import 'package:open_chess/src/state/update_service.dart';
+import 'package:open_chess/src/widgets/player_avatar.dart';
+import 'package:open_chess/src/widgets/update_dialog.dart';
 
 /// Locale code → native display name (null = follow the system).
 const _localeNames = <String?, String>{
@@ -36,6 +39,8 @@ class SettingsScreen extends ConsumerWidget {
       appBar: AppBar(title: Text(t.settings)),
       body: ListView(
         children: [
+          _Header(t.profile),
+          _ProfileSettingsTile(profile: s.playerProfile, controller: c),
           _Header(t.appearance),
           ListTile(
             title: Text(t.theme),
@@ -72,9 +77,9 @@ class SettingsScreen extends ConsumerWidget {
                 for (final entry in _localeNames.entries)
                   DropdownMenuItem(
                     value: entry.key,
-                    child: Text(entry.key == null
-                        ? t.languageSystem
-                        : entry.value),
+                    child: Text(
+                      entry.key == null ? t.languageSystem : entry.value,
+                    ),
                   ),
               ],
             ),
@@ -163,10 +168,12 @@ class SettingsScreen extends ConsumerWidget {
             title: Text(t.checkForUpdates),
             onTap: () async {
               final messenger = ScaffoldMessenger.of(context);
-              messenger.showSnackBar(SnackBar(
-                content: Text(t.checkingForUpdates),
-                duration: const Duration(seconds: 1),
-              ));
+              messenger.showSnackBar(
+                SnackBar(
+                  content: Text(t.checkingForUpdates),
+                  duration: const Duration(seconds: 1),
+                ),
+              );
               final info = await checkForUpdate();
               if (!context.mounted) return;
               await showUpdateResult(context, info);
@@ -188,6 +195,165 @@ class SettingsScreen extends ConsumerWidget {
   }
 }
 
+class _ProfileSettingsTile extends StatelessWidget {
+  final PlayerProfile profile;
+  final SettingsController controller;
+
+  const _ProfileSettingsTile({required this.profile, required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
+    return ListTile(
+      leading: PlayerAvatar(profile: profile),
+      title: Text(t.profileUsername),
+      subtitle: Text(
+        profile.username,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: () => showDialog<void>(
+        context: context,
+        builder: (_) => _ProfileEditorDialog(
+          initialProfile: profile,
+          controller: controller,
+        ),
+      ),
+    );
+  }
+}
+
+class _ProfileEditorDialog extends StatefulWidget {
+  final PlayerProfile initialProfile;
+  final SettingsController controller;
+
+  const _ProfileEditorDialog({
+    required this.initialProfile,
+    required this.controller,
+  });
+
+  @override
+  State<_ProfileEditorDialog> createState() => _ProfileEditorDialogState();
+}
+
+class _ProfileEditorDialogState extends State<_ProfileEditorDialog> {
+  late final TextEditingController _usernameController;
+  late PlayerProfile _draft;
+  var _selectingAvatar = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _draft = widget.initialProfile;
+    _usernameController = TextEditingController(text: _draft.username);
+  }
+
+  @override
+  void dispose() {
+    _usernameController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _selectAvatar() async {
+    if (_selectingAvatar) return;
+    setState(() => _selectingAvatar = true);
+    try {
+      final avatar = await pickProfileAvatar();
+      if (!mounted || avatar == null) return;
+      setState(() => _draft = _draft.copyWith(avatarBytes: avatar));
+    } on ProfileAvatarException {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AppLocalizations.of(context).profileImageError)),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AppLocalizations.of(context).profileImageError)),
+      );
+    } finally {
+      if (mounted) setState(() => _selectingAvatar = false);
+    }
+  }
+
+  void _removeAvatar() {
+    setState(() => _draft = _draft.copyWith(clearAvatar: true));
+  }
+
+  void _save() {
+    widget.controller.setPlayerProfile(
+      _draft.copyWith(username: _usernameController.text),
+    );
+    Navigator.of(context).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
+    return AlertDialog(
+      title: Text(t.profile),
+      content: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 360),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  PlayerAvatar(profile: _draft, radius: 34),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Text(
+                      t.profileAvatar,
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: t.profileChangeAvatar,
+                    onPressed: _selectingAvatar ? null : _selectAvatar,
+                    icon: _selectingAvatar
+                        ? const SizedBox.square(
+                            dimension: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.photo_library_outlined),
+                  ),
+                  if (_draft.hasCustomAvatar)
+                    IconButton(
+                      tooltip: t.profileRemoveAvatar,
+                      onPressed: _removeAvatar,
+                      icon: const Icon(Icons.delete_outline),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              TextField(
+                controller: _usernameController,
+                maxLength: PlayerProfile.maxUsernameLength,
+                textInputAction: TextInputAction.done,
+                onSubmitted: (_) => _save(),
+                decoration: InputDecoration(
+                  labelText: t.profileUsername,
+                  hintText: t.profileUsernameHint,
+                  border: const OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(t.cancel),
+        ),
+        FilledButton(onPressed: _save, child: Text(t.save)),
+      ],
+    );
+  }
+}
+
 class _Header extends StatelessWidget {
   final String text;
   const _Header(this.text);
@@ -199,8 +365,8 @@ class _Header extends StatelessWidget {
       child: Text(
         text,
         style: Theme.of(context).textTheme.titleSmall?.copyWith(
-              color: Theme.of(context).colorScheme.primary,
-            ),
+          color: Theme.of(context).colorScheme.primary,
+        ),
       ),
     );
   }

@@ -3,15 +3,17 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:chess/l10n/app_localizations.dart';
-import 'package:chess/src/features/four/four_lobby_screen.dart';
-import 'package:chess/src/features/four/four_player_screen.dart';
-import 'package:chess/src/rust/api/four.dart';
-import 'package:chess/src/rust/api/net.dart';
-import 'package:chess/src/state/four_lan_controller.dart';
-import 'package:chess/src/state/four_player_controller.dart';
-
-const _fourPrefix = '[4P] ';
+import 'package:open_chess/l10n/app_localizations.dart';
+import 'package:open_chess/src/features/four/four_lobby_screen.dart';
+import 'package:open_chess/src/features/four/four_player_screen.dart';
+import 'package:open_chess/src/rust/api/four.dart';
+import 'package:open_chess/src/rust/api/net.dart';
+import 'package:open_chess/src/state/difficulty.dart';
+import 'package:open_chess/src/state/four_lan_controller.dart';
+import 'package:open_chess/src/state/four_player_controller.dart';
+import 'package:open_chess/src/state/l10n_labels.dart';
+import 'package:open_chess/src/state/settings.dart';
+import 'package:open_chess/src/widgets/player_avatar.dart';
 
 class FourSetupScreen extends ConsumerStatefulWidget {
   const FourSetupScreen({super.key});
@@ -22,9 +24,10 @@ class FourSetupScreen extends ConsumerStatefulWidget {
 
 class _FourSetupScreenState extends ConsumerState<FourSetupScreen> {
   FourFormat _format = FourFormat.freeForAll;
-  FourMode _mode = FourMode.hotSeat;
-  final Set<FourPlayer> _humans = {FourPlayer.red};
-  final _nameCtl = TextEditingController(text: 'Player');
+  FourMode _mode = FourMode.vsBots;
+  FourPlayer _seat = FourPlayer.red;
+  int _aiDifficultyCode = defaultFourAiDifficultyCode;
+  bool _allowSpectators = false;
   final List<NetHost> _hosts = [];
   StreamSubscription<NetHost>? _browse;
 
@@ -32,7 +35,6 @@ class _FourSetupScreenState extends ConsumerState<FourSetupScreen> {
   void dispose() {
     _browse?.cancel();
     netStopBrowse();
-    _nameCtl.dispose();
     super.dispose();
   }
 
@@ -40,9 +42,16 @@ class _FourSetupScreenState extends ConsumerState<FourSetupScreen> {
     if (_browse != null) return;
     _hosts.clear();
     _browse = netBrowse().listen((h) {
-      if (!h.name.startsWith(_fourPrefix)) return;
-      if (_hosts.any((e) => e.addr == h.addr)) return;
-      setState(() => _hosts.add(h));
+      if (h.mode != 'four_player') return;
+      if (!mounted) return;
+      setState(() {
+        final index = _hosts.indexWhere((existing) => existing.addr == h.addr);
+        if (index < 0) {
+          _hosts.add(h);
+        } else {
+          _hosts[index] = h;
+        }
+      });
     });
   }
 
@@ -59,38 +68,56 @@ class _FourSetupScreenState extends ConsumerState<FourSetupScreen> {
     final config = FourConfig(
       mode: _mode,
       format: _format,
-      humanSeats: _mode == FourMode.hotSeat
-          ? FourPlayer.values.toSet()
-          : (_humans.isEmpty ? {FourPlayer.red} : _humans),
+      humanSeats: {_seat},
+      aiDifficultyCode: _aiDifficultyCode,
     );
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => FourPlayerScreen(config: config)),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => FourPlayerScreen(config: config)));
   }
 
   void _hostLan() {
-    ref.read(fourLanProvider.notifier).host(_nameCtl.text.trim(), _formatCode);
+    ref
+        .read(fourLanProvider.notifier)
+        .host(
+          ref.read(settingsProvider).playerProfile,
+          _formatCode,
+          allowSpectators: _allowSpectators,
+        );
     _stopBrowse();
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const FourLobbyScreen()),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const FourLobbyScreen()));
   }
 
   void _joinLan(NetHost h) {
-    ref.read(fourLanProvider.notifier).join(h.addr, _nameCtl.text.trim());
+    ref
+        .read(fourLanProvider.notifier)
+        .join(h.addr, ref.read(settingsProvider).playerProfile);
     _stopBrowse();
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const FourLobbyScreen()),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const FourLobbyScreen()));
+  }
+
+  void _spectateLan(NetHost h) {
+    ref
+        .read(fourLanProvider.notifier)
+        .spectate(h.addr, ref.read(settingsProvider).playerProfile);
+    _stopBrowse();
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const FourLobbyScreen()));
   }
 
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
+    final profile = ref.watch(settingsProvider).playerProfile;
     Widget heading(String s) => Padding(
-          padding: const EdgeInsets.only(top: 18, bottom: 8),
-          child: Text(s, style: Theme.of(context).textTheme.titleMedium),
-        );
+      padding: const EdgeInsets.only(top: 18, bottom: 8),
+      child: Text(s, style: Theme.of(context).textTheme.titleMedium),
+    );
 
     return Scaffold(
       appBar: AppBar(title: Text(t.menuFourPlayer)),
@@ -101,7 +128,9 @@ class _FourSetupScreenState extends ConsumerState<FourSetupScreen> {
           SegmentedButton<FourFormat>(
             segments: [
               ButtonSegment(
-                  value: FourFormat.freeForAll, label: Text(t.fourFFA)),
+                value: FourFormat.freeForAll,
+                label: Text(t.fourFFA),
+              ),
               ButtonSegment(value: FourFormat.teams, label: Text(t.fourTeams)),
             ],
             selected: {_format},
@@ -110,7 +139,6 @@ class _FourSetupScreenState extends ConsumerState<FourSetupScreen> {
           heading(t.bugMode),
           SegmentedButton<FourMode>(
             segments: [
-              ButtonSegment(value: FourMode.hotSeat, label: Text(t.bugHotSeat)),
               ButtonSegment(value: FourMode.vsBots, label: Text(t.fourVsBots)),
               ButtonSegment(value: FourMode.lan, label: Text(t.bugLan)),
             ],
@@ -131,59 +159,130 @@ class _FourSetupScreenState extends ConsumerState<FourSetupScreen> {
               runSpacing: 8,
               children: [
                 for (final p in FourPlayer.values)
-                  FilterChip(
+                  ChoiceChip(
                     label: Text(localizedFourColor(t, p)),
-                    selected: _humans.contains(p),
-                    onSelected: (sel) => setState(() {
-                      if (sel) {
-                        _humans.add(p);
-                      } else {
-                        _humans.remove(p);
-                      }
-                    }),
+                    selected: _seat == p,
+                    onSelected: (_) => setState(() => _seat = p),
                   ),
               ],
+            ),
+            heading(t.difficulty),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: SizedBox(
+                width: 240,
+                child: DropdownButtonFormField<int>(
+                  initialValue: _aiDifficultyCode,
+                  isExpanded: true,
+                  decoration: const InputDecoration(isDense: true),
+                  items: [
+                    for (var code = 0; code < Difficulty.presets.length; code++)
+                      DropdownMenuItem(
+                        value: code,
+                        child: Text(
+                          localizedDifficulty(t, Difficulty.presets[code].name),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) {
+                      setState(() => _aiDifficultyCode = value);
+                    }
+                  },
+                ),
+              ),
             ),
           ],
           if (_mode == FourMode.lan) ...[
             heading(t.yourName),
-            TextField(
-              controller: _nameCtl,
-              decoration: const InputDecoration(border: OutlineInputBorder()),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: PlayerAvatar(profile: profile, radius: 20),
+              title: Text(profile.username),
+            ),
+            SwitchListTile.adaptive(
+              contentPadding: EdgeInsets.zero,
+              title: Text(t.lanAllowSpectators),
+              value: _allowSpectators,
+              onChanged: (value) => setState(() => _allowSpectators = value),
             ),
             const SizedBox(height: 16),
-            FilledButton.icon(
-              icon: const Icon(Icons.wifi_tethering),
-              label: Text(t.bugHostMatch),
-              onPressed: _hostLan,
+            Align(
+              alignment: Alignment.centerLeft,
+              child: FilledButton.icon(
+                icon: const Icon(Icons.wifi_tethering),
+                label: Text(t.bugHostMatch),
+                onPressed: _hostLan,
+              ),
             ),
             const SizedBox(height: 8),
             Text(t.bugJoinMatch, style: Theme.of(context).textTheme.titleSmall),
             if (_hosts.isEmpty)
               const Padding(
                 padding: EdgeInsets.all(12),
-                child: SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2)),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: SizedBox.square(
+                    dimension: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                ),
               ),
             for (final h in _hosts)
               ListTile(
                 leading: const Icon(Icons.grid_4x4),
-                title: Text(h.name.replaceFirst(_fourPrefix, '')),
-                subtitle: Text(h.addr),
-                onTap: () => _joinLan(h),
+                title: Text(h.name),
+                subtitle: Text(
+                  '${h.variant == 'teams' ? t.fourTeams : t.fourFFA}  ·  ${h.timeControl}',
+                ),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _PlayerCount(host: h),
+                    if (h.spectatorsEnabled)
+                      IconButton(
+                        tooltip: t.lanSpectate,
+                        icon: const Icon(Icons.visibility_outlined),
+                        onPressed: () => _spectateLan(h),
+                      ),
+                  ],
+                ),
+                onTap: h.playerCount < h.maxPlayers
+                    ? () => _joinLan(h)
+                    : h.spectatorsEnabled
+                    ? () => _spectateLan(h)
+                    : null,
               ),
-          ] else ...[
+          ] else if (_mode == FourMode.vsBots) ...[
             const SizedBox(height: 28),
-            FilledButton.icon(
-              icon: const Icon(Icons.play_arrow),
-              label: Text(t.bugStart),
-              onPressed: _startLocal,
+            Align(
+              alignment: Alignment.centerLeft,
+              child: FilledButton.icon(
+                icon: const Icon(Icons.play_arrow),
+                label: Text(t.bugStart),
+                onPressed: _startLocal,
+              ),
             ),
           ],
         ],
       ),
     );
   }
+}
+
+class _PlayerCount extends StatelessWidget {
+  final NetHost host;
+  const _PlayerCount({required this.host});
+
+  @override
+  Widget build(BuildContext context) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      const Icon(Icons.people_outline, size: 18),
+      const SizedBox(width: 4),
+      Text('${host.playerCount}/${host.maxPlayers}'),
+    ],
+  );
 }

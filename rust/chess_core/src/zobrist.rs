@@ -16,6 +16,9 @@ pub struct Zobrist {
     castle: [u64; 16],
     /// Indexed by the file of the en-passant square.
     ep_file: [u64; 8],
+    /// Crazyhouse/Bughouse squares occupied by promoted pawns. They must be
+    /// distinct from native pieces because captures return them as pawns.
+    promoted: [u64; 64],
 }
 
 impl Zobrist {
@@ -38,11 +41,16 @@ impl Zobrist {
         for e in ep_file.iter_mut() {
             *e = rng.next_u64();
         }
+        let mut promoted = [0u64; 64];
+        for key in promoted.iter_mut() {
+            *key = rng.next_u64();
+        }
         Zobrist {
             piece,
             side,
             castle,
             ep_file,
+            promoted,
         }
     }
 
@@ -61,6 +69,10 @@ impl Zobrist {
     #[inline]
     pub fn ep_file(&self, file: u8) -> u64 {
         self.ep_file[file as usize]
+    }
+    #[inline]
+    pub fn promoted(&self, sq: Square) -> u64 {
+        self.promoted[sq as usize]
     }
 }
 

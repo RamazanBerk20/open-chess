@@ -6,7 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 /// Project + funding links (single source of truth).
 const String kRepoOwner = 'RamazanBerk20';
-const String kRepoName = 'chess';
+const String kRepoName = 'open-chess';
 const String repoUrl = 'https://github.com/$kRepoOwner/$kRepoName';
 const String sponsorUrl = 'https://github.com/sponsors/$kRepoOwner';
 const String _latestReleaseApi =
@@ -39,7 +39,7 @@ Future<UpdateInfo?> checkForUpdate() async {
     final client = HttpClient()..connectionTimeout = const Duration(seconds: 8);
     final req = await client.getUrl(Uri.parse(_latestReleaseApi));
     req.headers.set(HttpHeaders.acceptHeader, 'application/vnd.github+json');
-    req.headers.set(HttpHeaders.userAgentHeader, 'chess-app');
+    req.headers.set(HttpHeaders.userAgentHeader, 'open-chess-app');
     final resp = await req.close();
     if (resp.statusCode != 200) {
       client.close();

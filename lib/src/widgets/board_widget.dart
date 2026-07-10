@@ -1,8 +1,8 @@
 import 'package:flutter/foundation.dart' show setEquals;
 import 'package:flutter/material.dart';
 
-import 'package:chess/src/rust/api/game.dart';
-import 'package:chess/src/widgets/pieces.dart';
+import 'package:open_chess/src/rust/api/game.dart';
+import 'package:open_chess/src/widgets/pieces.dart';
 
 /// Display row/column (0 = top/left) for a board square, honouring flip.
 (int, int) squareToRowCol(int sq, bool flipped) {
@@ -28,7 +28,9 @@ int? uciSquare(String s) {
 /// The board after the queued premoves are applied as raw relocations, so a
 /// premove chain is rendered with each piece on its post-premove square.
 List<SquarePiece?> _previewBoard(
-    List<SquarePiece?> board, List<(int, int)> premoves) {
+  List<SquarePiece?> board,
+  List<(int, int)> premoves,
+) {
   if (premoves.isEmpty) return board;
   final b = List<SquarePiece?>.of(board);
   for (final (f, t) in premoves) {
@@ -62,8 +64,11 @@ class MoveBadge {
   final int square;
   final String symbol;
   final Color color;
-  const MoveBadge(
-      {required this.square, required this.symbol, required this.color});
+  const MoveBadge({
+    required this.square,
+    required this.symbol,
+    required this.color,
+  });
 
   @override
   bool operator ==(Object other) =>
@@ -212,13 +217,15 @@ class BoardWidget extends StatelessWidget {
                       children: List.generate(8, (col) {
                         final sq = rowColToSquare(row, col, flipped);
                         // The color whose pieces sit along the top edge.
-                        final topColor =
-                            flipped ? PieceColor.white : PieceColor.black;
+                        final topColor = flipped
+                            ? PieceColor.white
+                            : PieceColor.black;
                         // Fog of War: conceal pieces on unseen squares.
                         final fogged =
                             fogMask != null && !fogMask!.contains(sq);
                         final piece = fogged ? null : renderBoard[sq];
-                        final upsideDown = faceToFace &&
+                        final upsideDown =
+                            faceToFace &&
                             piece != null &&
                             piece.color == topColor;
                         return _Cell(
@@ -265,8 +272,10 @@ class BoardWidget extends StatelessWidget {
           tween: Tween(begin: 0, end: 1),
           duration: Duration(milliseconds: animMs * 3),
           curve: Curves.easeOut,
-          builder: (_, t, _) =>
-              CustomPaint(painter: _ExplosionPainter(t), size: Size(size, size)),
+          builder: (_, t, _) => CustomPaint(
+            painter: _ExplosionPainter(t),
+            size: Size(size, size),
+          ),
         ),
       ),
     );
@@ -349,7 +358,11 @@ class _Cell extends StatelessWidget {
   Widget build(BuildContext context) {
     Widget? child;
     if (piece != null) {
-      Widget glyph = PieceGlyph(piece: piece!, size: size, upsideDown: upsideDown);
+      Widget glyph = PieceGlyph(
+        piece: piece!,
+        size: size,
+        upsideDown: upsideDown,
+      );
 
       // Slide the just-moved piece in from its origin square (not on undo).
       if (animate && isLastTo && lastFrom != null) {
@@ -375,7 +388,10 @@ class _Cell extends StatelessWidget {
         feedback: Material(
           color: Colors.transparent,
           child: PieceGlyph(
-              piece: piece!, size: size * 1.1, upsideDown: upsideDown),
+            piece: piece!,
+            size: size * 1.1,
+            upsideDown: upsideDown,
+          ),
         ),
         childWhenDragging: const SizedBox.shrink(),
         child: glyph,
@@ -528,16 +544,21 @@ class _BoardPainter extends CustomPainter {
 
         // Edge coordinate labels.
         if (col == 0) {
-          _label(canvas, '${rank + 1}', Offset(rect.left + 2, rect.top + 1),
-              isLight ? labelStyleDark : labelStyleLight);
+          _label(
+            canvas,
+            '${rank + 1}',
+            Offset(rect.left + 2, rect.top + 1),
+            isLight ? labelStyleDark : labelStyleLight,
+          );
         }
         if (row == 7) {
           final fileChar = String.fromCharCode('a'.codeUnitAt(0) + file);
           _label(
-              canvas,
-              fileChar,
-              Offset(rect.right - 9, rect.bottom - 12),
-              isLight ? labelStyleDark : labelStyleLight);
+            canvas,
+            fileChar,
+            Offset(rect.right - 9, rect.bottom - 12),
+            isLight ? labelStyleDark : labelStyleLight,
+          );
         }
       }
     }
@@ -581,10 +602,11 @@ class _BoardPainter extends CustomPainter {
       ..lineTo(base.dx - perp.dx, base.dy - perp.dy)
       ..close();
     canvas.drawPath(
-        path,
-        Paint()
-          ..color = a.color
-          ..style = PaintingStyle.fill);
+      path,
+      Paint()
+        ..color = a.color
+        ..style = PaintingStyle.fill,
+    );
   }
 
   void _label(Canvas canvas, String text, Offset at, TextStyle style) {

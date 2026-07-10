@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:chess/src/rust/api/game.dart';
-import 'package:chess/src/widgets/board_widget.dart';
-import 'package:chess/src/widgets/captured_tray.dart';
-import 'package:chess/src/widgets/clock_widget.dart';
-import 'package:chess/src/widgets/move_list.dart';
+import 'package:open_chess/src/rust/api/game.dart';
+import 'package:open_chess/src/widgets/board_widget.dart';
+import 'package:open_chess/src/widgets/captured_tray.dart';
+import 'package:open_chess/src/widgets/clock_widget.dart';
+import 'package:open_chess/src/widgets/move_list.dart';
 
 void main() {
   group('board coordinate mapping', () {
@@ -48,9 +48,11 @@ void main() {
   });
 
   testWidgets('MoveList renders numbered SAN pairs', (tester) async {
-    await tester.pumpWidget(const MaterialApp(
-      home: Scaffold(body: MoveList(sanMoves: ['e4', 'e5', 'Nf3'])),
-    ));
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(body: MoveList(sanMoves: ['e4', 'e5', 'Nf3'])),
+      ),
+    );
     expect(find.text('1.'), findsOneWidget);
     expect(find.text('e4'), findsOneWidget);
     expect(find.text('e5'), findsOneWidget);

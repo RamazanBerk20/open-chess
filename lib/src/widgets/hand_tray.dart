@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import 'package:chess/src/rust/api/game.dart';
-import 'package:chess/src/widgets/pieces.dart';
+import 'package:open_chess/src/rust/api/game.dart';
+import 'package:open_chess/src/widgets/pieces.dart';
 
 /// Reserve-piece order matching the Rust hand index (Pawn..Queen).
 const handKinds = [
@@ -38,37 +38,40 @@ class HandTray extends StatelessWidget {
       final n = i < counts.length ? counts[i] : 0;
       if (n == 0) continue;
       final isSel = interactive && selected == i;
-      chips.add(GestureDetector(
-        onTap: interactive ? () => onTap(i) : null,
-        child: Container(
-          margin: const EdgeInsets.symmetric(horizontal: 3),
-          padding: const EdgeInsets.symmetric(horizontal: 3),
-          decoration: BoxDecoration(
-            color: isSel
-                ? Colors.amber.withValues(alpha: 0.55)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              PieceGlyph(
-                piece: SquarePiece(color: owner, kind: handKinds[i]),
-                size: 34,
-                upsideDown: upsideDown,
-              ),
-              if (n > 1)
-                Text('×$n',
+      chips.add(
+        GestureDetector(
+          onTap: interactive ? () => onTap(i) : null,
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 3),
+            padding: const EdgeInsets.symmetric(horizontal: 3),
+            decoration: BoxDecoration(
+              color: isSel
+                  ? Colors.amber.withValues(alpha: 0.55)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                PieceGlyph(
+                  piece: SquarePiece(color: owner, kind: handKinds[i]),
+                  size: 34,
+                  upsideDown: upsideDown,
+                ),
+                if (n > 1)
+                  Text(
+                    '×$n',
                     style: const TextStyle(
-                        fontSize: 13, fontWeight: FontWeight.bold)),
-            ],
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+              ],
+            ),
           ),
         ),
-      ));
+      );
     }
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: chips,
-    );
+    return Row(mainAxisAlignment: MainAxisAlignment.center, children: chips);
   }
 }

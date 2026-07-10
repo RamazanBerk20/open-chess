@@ -22,13 +22,13 @@ class Puzzle {
   });
 
   factory Puzzle.fromJson(Map<String, dynamic> j) => Puzzle(
-        id: j['id'] as String,
-        fen: j['fen'] as String,
-        solution: (j['solution'] as List).cast<String>(),
-        themes: (j['themes'] as List).cast<String>(),
-        rating: j['rating'] as int,
-        sideToMove: j['side_to_move'] as String,
-      );
+    id: j['id'] as String,
+    fen: j['fen'] as String,
+    solution: (j['solution'] as List).cast<String>(),
+    themes: (j['themes'] as List).cast<String>(),
+    rating: j['rating'] as int,
+    sideToMove: j['side_to_move'] as String,
+  );
 }
 
 /// Load the bundled 100-puzzle set (ordered easy → hard).

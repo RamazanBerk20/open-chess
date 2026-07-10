@@ -9,33 +9,12 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
 // These functions are ignored because they are not marked as `pub`: `reg`, `registry`
 // These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `RegistryGuard`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `drop`, `fmt`, `fmt`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `drop`, `fmt`, `fmt`, `fmt`
 
 /// Run a search for `fen`, streaming progress. `search_id` identifies it for
 /// cancellation. Runs off the UI thread (StreamSink param).
-Stream<AiUpdate> aiSearch({
-  required BigInt searchId,
-  required String fen,
-  required AiConfigDto config,
-  required Uint64List history,
-  required GameVariant variant,
-  required int whiteChecks,
-  required int blackChecks,
-  required List<int> whiteHand,
-  required List<int> blackHand,
-  required BigInt promoted,
-}) => RustLib.instance.api.crateApiAiAiSearch(
-  searchId: searchId,
-  fen: fen,
-  config: config,
-  history: history,
-  variant: variant,
-  whiteChecks: whiteChecks,
-  blackChecks: blackChecks,
-  whiteHand: whiteHand,
-  blackHand: blackHand,
-  promoted: promoted,
-);
+Stream<AiUpdate> aiSearch({required AiSearchRequest request}) =>
+    RustLib.instance.api.crateApiAiAiSearch(request: request);
 
 /// Request cancellation of the search with `search_id`.
 void aiCancel({required BigInt searchId}) =>
@@ -45,18 +24,18 @@ void aiCancel({required BigInt searchId}) =>
 class AiConfigDto {
   final int maxDepth;
   final BigInt? moveTimeMs;
-  final int evalNoise;
-  final double blunderChance;
-  final int topNRandom;
+  final int maxEvalLossCp;
+  final double randomMoveChance;
+  final int candidateDepth;
   final int contempt;
   final BigInt seed;
 
   const AiConfigDto({
     required this.maxDepth,
     this.moveTimeMs,
-    required this.evalNoise,
-    required this.blunderChance,
-    required this.topNRandom,
+    required this.maxEvalLossCp,
+    required this.randomMoveChance,
+    required this.candidateDepth,
     required this.contempt,
     required this.seed,
   });
@@ -65,9 +44,9 @@ class AiConfigDto {
   int get hashCode =>
       maxDepth.hashCode ^
       moveTimeMs.hashCode ^
-      evalNoise.hashCode ^
-      blunderChance.hashCode ^
-      topNRandom.hashCode ^
+      maxEvalLossCp.hashCode ^
+      randomMoveChance.hashCode ^
+      candidateDepth.hashCode ^
       contempt.hashCode ^
       seed.hashCode;
 
@@ -78,11 +57,69 @@ class AiConfigDto {
           runtimeType == other.runtimeType &&
           maxDepth == other.maxDepth &&
           moveTimeMs == other.moveTimeMs &&
-          evalNoise == other.evalNoise &&
-          blunderChance == other.blunderChance &&
-          topNRandom == other.topNRandom &&
+          maxEvalLossCp == other.maxEvalLossCp &&
+          randomMoveChance == other.randomMoveChance &&
+          candidateDepth == other.candidateDepth &&
           contempt == other.contempt &&
           seed == other.seed;
+}
+
+/// Complete AI-search input. Grouping the board state makes the bridge stable
+/// as variants gain more state and avoids an error-prone positional argument
+/// list on the Dart boundary.
+class AiSearchRequest {
+  final BigInt searchId;
+  final String fen;
+  final AiConfigDto config;
+  final Uint64List history;
+  final GameVariant variant;
+  final int whiteChecks;
+  final int blackChecks;
+  final Uint32List whiteHand;
+  final Uint32List blackHand;
+  final BigInt promoted;
+
+  const AiSearchRequest({
+    required this.searchId,
+    required this.fen,
+    required this.config,
+    required this.history,
+    required this.variant,
+    required this.whiteChecks,
+    required this.blackChecks,
+    required this.whiteHand,
+    required this.blackHand,
+    required this.promoted,
+  });
+
+  @override
+  int get hashCode =>
+      searchId.hashCode ^
+      fen.hashCode ^
+      config.hashCode ^
+      history.hashCode ^
+      variant.hashCode ^
+      whiteChecks.hashCode ^
+      blackChecks.hashCode ^
+      whiteHand.hashCode ^
+      blackHand.hashCode ^
+      promoted.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is AiSearchRequest &&
+          runtimeType == other.runtimeType &&
+          searchId == other.searchId &&
+          fen == other.fen &&
+          config == other.config &&
+          history == other.history &&
+          variant == other.variant &&
+          whiteChecks == other.whiteChecks &&
+          blackChecks == other.blackChecks &&
+          whiteHand == other.whiteHand &&
+          blackHand == other.blackHand &&
+          promoted == other.promoted;
 }
 
 /// One progress update from the search.

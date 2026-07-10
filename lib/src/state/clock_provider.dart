@@ -1,16 +1,19 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:chess/src/rust/api/game.dart';
-import 'package:chess/src/state/game_providers.dart';
-import 'package:chess/src/state/time_control.dart';
+import 'package:open_chess/src/rust/api/game.dart';
+import 'package:open_chess/src/state/game_mode.dart';
+import 'package:open_chess/src/state/game_providers.dart';
+import 'package:open_chess/src/state/time_control.dart';
 
 /// Drives the clock countdown on a 100ms timer, decoupled from the board so
 /// ticks don't rebuild the board (which could interrupt an in-progress drag).
 /// Null state means there is no clock (Infinite time control).
-final clockProvider =
-    NotifierProvider<ClockNotifier, ClockSnapshot?>(ClockNotifier.new);
+final clockProvider = NotifierProvider<ClockNotifier, ClockSnapshot?>(
+  ClockNotifier.new,
+);
 
 class ClockNotifier extends Notifier<ClockSnapshot?> {
   Timer? _timer;
@@ -29,7 +32,10 @@ class ClockNotifier extends Notifier<ClockSnapshot?> {
     _sw
       ..reset()
       ..start();
-    _timer = Timer.periodic(const Duration(milliseconds: 100), (_) => _onTick());
+    _timer = Timer.periodic(
+      const Duration(milliseconds: 100),
+      (_) => _onTick(),
+    );
     return snap;
   }
 
@@ -38,7 +44,27 @@ class ClockNotifier extends Notifier<ClockSnapshot?> {
     _sw
       ..reset()
       ..start();
-    final snap = ref.read(gameControllerProvider.notifier).tickClock(ms);
+    // LAN clients render an extrapolated host snapshot. Charging a local game
+    // clock would let network latency flag a side before the host has ruled on
+    // it, so only the host's Timeout message may produce a terminal result.
+    final lanDisplayOnly = ref.read(gameModeProvider).lan;
+    final game = ref.read(gameControllerProvider.notifier);
+    final previous = state;
+    final snap = lanDisplayOnly && previous != null
+        ? ClockSnapshot(
+            infinite: previous.infinite,
+            whiteMs: previous.running == PieceColor.white
+                ? max(0, previous.whiteMs - ms)
+                : previous.whiteMs,
+            blackMs: previous.running == PieceColor.black
+                ? max(0, previous.blackMs - ms)
+                : previous.blackMs,
+            running: previous.running,
+            over: previous.over,
+          )
+        : lanDisplayOnly
+        ? game.clockSnapshotNow()
+        : game.tickClock(ms);
     state = snap;
     if (snap.over) _timer?.cancel();
   }
@@ -52,7 +78,14 @@ class ClockNotifier extends Notifier<ClockSnapshot?> {
     _sw
       ..reset()
       ..start();
-    state = ref.read(gameControllerProvider.notifier).tickClock(ms);
+    final game = ref.read(gameControllerProvider.notifier);
+    if (ref.read(gameModeProvider).lan) {
+      final projected = state ?? game.clockSnapshotNow();
+      game.lanSetProjectedClock(projected);
+      state = projected;
+      return;
+    }
+    state = game.tickClock(ms);
   }
 
   /// Push the current authoritative clock snapshot immediately (so the running

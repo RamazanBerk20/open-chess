@@ -6,6 +6,7 @@ version.workspace = true
 # LAN discovery + protocol — NO flutter_rust_bridge / Flutter dependency.
 # Validates every incoming move against chess_core.
 [dependencies]
+base64 = "0.22"
 chess_core = { path = "../chess_core" }
 serde = { workspace = true }
 serde_json = { workspace = true }

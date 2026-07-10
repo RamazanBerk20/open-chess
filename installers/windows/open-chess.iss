@@ -1,15 +1,15 @@
 ; Inno Setup script for the Windows installer.
-; Built in CI: ISCC.exe /DMyAppVersion=<version> installers\windows\chess.iss
+; Built in CI: ISCC.exe /DMyAppVersion=<version> installers\windows\open-chess.iss
 #ifndef MyAppVersion
   #define MyAppVersion "0.0.0"
 #endif
-#define MyAppName "Satranc"
-#define MyAppExeName "chess.exe"
+#define MyAppName "Open Chess"
+#define MyAppExeName "open-chess.exe"
 #define MyAppPublisher "Ramazan Berk Sirin"
-#define MyAppURL "https://github.com/RamazanBerk20/chess"
+#define MyAppURL "https://github.com/RamazanBerk20/open-chess"
 
 [Setup]
-AppId={{B7C3F0E2-2C2A-4E3B-9B1A-CHESS0000001}}
+AppId={{0C4E5C10-6A15-4C4E-9B1A-0C4E5C100001}}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
@@ -18,7 +18,7 @@ DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
 OutputDir=Output
-OutputBaseFilename=chess-{#MyAppVersion}-windows-setup
+OutputBaseFilename=open-chess-{#MyAppVersion}-windows-setup
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern

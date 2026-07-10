@@ -4,8 +4,9 @@ version: 0.0.1
 publish_to: none
 
 environment:
-  sdk: '>=3.3.0 <4.0.0'
-  flutter: '>=3.3.0'
+  # This local FFI plugin uses AGP 9's built-in Kotlin integration.
+  sdk: '>=3.12.0 <4.0.0'
+  flutter: '>=3.44.0'
 
 dependencies:
   flutter:

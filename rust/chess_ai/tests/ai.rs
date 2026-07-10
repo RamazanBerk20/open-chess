@@ -133,7 +133,11 @@ fn single_prior_occurrence_is_not_a_draw() {
     let mv = probe.parse_uci("h1h2").unwrap();
     probe.make_move(mv);
     let info = search_with_hist(&p0, &[probe.hash], 5);
-    assert!(info.score_cp > 300, "winning, not a false draw: {}", info.score_cp);
+    assert!(
+        info.score_cp > 300,
+        "winning, not a false draw: {}",
+        info.score_cp
+    );
 }
 
 #[test]
@@ -152,14 +156,14 @@ fn best_with_config(pos: &Position, cfg: AiConfig) -> String {
 }
 
 #[test]
-fn weakening_is_reproducible_for_a_fixed_seed() {
+fn bounded_variation_is_reproducible_for_a_fixed_seed() {
     let pos = Position::startpos();
     let cfg = AiConfig {
         max_depth: 4,
         move_time_ms: None,
-        eval_noise: 60,
-        blunder_chance: 0.3,
-        top_n_random: 4,
+        max_eval_loss_cp: 120,
+        random_move_chance: 1.0,
+        candidate_depth: 3,
         contempt: 0,
         seed: 12345,
     };
@@ -178,13 +182,14 @@ fn contempt_sign_is_draw_averse_at_root() {
         let cfg = AiConfig {
             max_depth: 3,
             move_time_ms: None,
-            eval_noise: 0,
-            blunder_chance: 0.0,
-            top_n_random: 1,
+            max_eval_loss_cp: 0,
+            random_move_chance: 0.0,
+            candidate_depth: 3,
             contempt,
             seed: 0,
         };
-        eng.search_with_config(&pos, cfg, cancel, |_: &SearchInfo| {}).score_cp
+        eng.search_with_config(&pos, cfg, cancel, |_: &SearchInfo| {})
+            .score_cp
     };
     assert_eq!(run(100), -100);
     assert_eq!(run(-50), 50);
@@ -196,14 +201,17 @@ fn full_strength_config_matches_plain_search() {
     let cfg = AiConfig {
         max_depth: 5,
         move_time_ms: None,
-        eval_noise: 0,
-        blunder_chance: 0.0,
-        top_n_random: 1,
+        max_eval_loss_cp: 0,
+        random_move_chance: 0.0,
+        candidate_depth: 3,
         contempt: 0,
         seed: 0,
     };
     let weak = best_with_config(&pos, cfg);
-    let plain = search_fen(&chess_core::to_fen(&pos), 5).best.unwrap().to_uci();
+    let plain = search_fen(&chess_core::to_fen(&pos), 5)
+        .best
+        .unwrap()
+        .to_uci();
     assert_eq!(weak, plain);
 }
 
@@ -217,7 +225,10 @@ fn fog_of_war_search_does_not_panic() {
     let cancel: &dyn Fn() -> bool = &no_cancel;
     let info = eng.search(
         &pos,
-        SearchLimits { max_depth: 6, move_time_ms: None },
+        SearchLimits {
+            max_depth: 4,
+            move_time_ms: Some(500),
+        },
         cancel,
         |_: &SearchInfo| {},
     );

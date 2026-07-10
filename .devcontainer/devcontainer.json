@@ -1,9 +1,9 @@
 {
-  "name": "chess-dev",
+  "name": "open-chess-dev",
   "build": { "dockerfile": "Dockerfile" },
   "remoteUser": "dev",
-  "workspaceFolder": "/workspaces/chess",
-  "workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/chess,type=bind",
+  "workspaceFolder": "/workspaces/open-chess",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/open-chess,type=bind",
   "runArgs": [
     "--network=host",
     "--privileged",

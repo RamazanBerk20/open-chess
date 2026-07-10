@@ -9,7 +9,7 @@ use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 
-use chess_ai::{AiConfig, Engine, SearchInfo};
+use chess_ai::{warm_opening_book, AiConfig, Engine, SearchInfo};
 use chess_core::parse_fen;
 use flutter_rust_bridge::frb;
 
@@ -31,11 +31,28 @@ pub struct AiUpdate {
 pub struct AiConfigDto {
     pub max_depth: u32,
     pub move_time_ms: Option<u64>,
-    pub eval_noise: i32,
-    pub blunder_chance: f32,
-    pub top_n_random: u32,
+    pub max_eval_loss_cp: i32,
+    pub random_move_chance: f32,
+    pub candidate_depth: u32,
     pub contempt: i32,
     pub seed: u64,
+}
+
+/// Complete AI-search input. Grouping the board state makes the bridge stable
+/// as variants gain more state and avoids an error-prone positional argument
+/// list on the Dart boundary.
+#[derive(Clone, Debug)]
+pub struct AiSearchRequest {
+    pub search_id: u64,
+    pub fen: String,
+    pub config: AiConfigDto,
+    pub history: Vec<u64>,
+    pub variant: crate::api::game::GameVariant,
+    pub white_checks: u32,
+    pub black_checks: u32,
+    pub white_hand: Vec<u32>,
+    pub black_hand: Vec<u32>,
+    pub promoted: u64,
 }
 
 fn registry() -> &'static Mutex<HashMap<u64, Arc<AtomicBool>>> {
@@ -64,47 +81,44 @@ impl Drop for RegistryGuard {
 
 /// Run a search for `fen`, streaming progress. `search_id` identifies it for
 /// cancellation. Runs off the UI thread (StreamSink param).
-pub fn ai_search(
-    search_id: u64,
-    fen: String,
-    config: AiConfigDto,
-    history: Vec<u64>,
-    variant: crate::api::game::GameVariant,
-    white_checks: u32,
-    black_checks: u32,
-    white_hand: Vec<u32>,
-    black_hand: Vec<u32>,
-    promoted: u64,
-    sink: StreamSink<AiUpdate>,
-) -> Result<(), String> {
-    let mut pos = parse_fen(&fen).map_err(|e| e.to_string())?;
+pub fn ai_search(request: AiSearchRequest, sink: StreamSink<AiUpdate>) -> Result<(), String> {
+    // The full corpus parses in a background thread. Search-side lookup skips
+    // it until ready, keeping a first AI move inside its configured deadline.
+    warm_opening_book();
+    let mut pos = parse_fen(&request.fen).map_err(|e| e.to_string())?;
     // The FEN carries no variant/reserve info; restore it so the engine plays by
     // the variant's rules (three-check counts, Crazyhouse hand + promoted mask).
-    pos.variant = crate::api::game::to_variant(variant);
-    pos.checks = [white_checks as u8, black_checks as u8];
-    if white_hand.len() == 5 && black_hand.len() == 5 {
+    pos.variant = crate::api::game::to_variant(request.variant);
+    pos.checks = [request.white_checks as u8, request.black_checks as u8];
+    if request.white_hand.len() == 5 && request.black_hand.len() == 5 {
         for i in 0..5 {
-            pos.hand[0][i] = white_hand[i] as u8;
-            pos.hand[1][i] = black_hand[i] as u8;
+            pos.hand[0][i] = request.white_hand[i] as u8;
+            pos.hand[1][i] = request.black_hand[i] as u8;
         }
     }
-    pos.promoted = promoted;
+    pos.promoted = request.promoted;
     // Re-derive the hash so it matches the game's (includes check/hand keys) —
     // keeps transposition + repetition detection consistent with the history.
     pos.hash = pos.compute_hash();
 
     let flag = Arc::new(AtomicBool::new(false));
-    reg().insert(search_id, flag.clone());
-    let _guard = RegistryGuard { id: search_id };
+    reg().insert(request.search_id, flag.clone());
+    let _guard = RegistryGuard {
+        id: request.search_id,
+    };
 
-    let mut eng = Engine::new(19);
-    eng.set_game_history(&history);
+    let mut eng = Engine::new(if request.config.max_depth >= 11 {
+        21
+    } else {
+        19
+    });
+    eng.set_game_history(&request.history);
     // Fog of War searches pseudo-legal moves (no king-safety filter), so the
     // branching factor is much larger — cap depth/time so moves stay snappy.
     let is_fog = pos.variant == chess_core::Variant::FogOfWar;
     let cfg = AiConfig {
         max_depth: {
-            let d = config.max_depth.clamp(1, 255) as u8;
+            let d = request.config.max_depth.clamp(1, 255) as u8;
             if is_fog {
                 d.min(4)
             } else {
@@ -112,15 +126,15 @@ pub fn ai_search(
             }
         },
         move_time_ms: if is_fog {
-            Some(config.move_time_ms.unwrap_or(800).min(500))
+            Some(request.config.move_time_ms.unwrap_or(800).min(500))
         } else {
-            config.move_time_ms
+            request.config.move_time_ms
         },
-        eval_noise: config.eval_noise.max(0),
-        blunder_chance: config.blunder_chance.clamp(0.0, 1.0),
-        top_n_random: config.top_n_random.clamp(1, 255) as u8,
-        contempt: config.contempt,
-        seed: config.seed,
+        max_eval_loss_cp: request.config.max_eval_loss_cp.max(0),
+        random_move_chance: request.config.random_move_chance.clamp(0.0, 1.0),
+        candidate_depth: request.config.candidate_depth.clamp(1, 255) as u8,
+        contempt: request.config.contempt,
+        seed: request.config.seed,
     };
 
     let cancel_flag = flag.clone();

@@ -83,6 +83,65 @@ fn bot_takes_a_hanging_queen() {
 }
 
 #[test]
+fn difficulty_bot_codes_are_stable_and_always_choose_legal_moves() {
+    let game = FourGame::new(Format::FreeForAll);
+    for code in 0..=5 {
+        let difficulty = chess4::bot::BotDifficulty::from_code(code).unwrap();
+        assert_eq!(difficulty.code(), code);
+        let selected = chess4::bot::move_for_difficulty(&game, difficulty, 17).unwrap();
+        assert!(game.legal_moves().contains(&selected));
+    }
+    assert_eq!(chess4::bot::BotDifficulty::VeryEasy.target_elo(), Some(500));
+    assert_eq!(
+        chess4::bot::BotDifficulty::VeryHard.target_elo(),
+        Some(2000)
+    );
+    assert_eq!(chess4::bot::BotDifficulty::Impossible.target_elo(), None);
+    assert!(chess4::bot::BotDifficulty::from_code(6).is_none());
+}
+
+#[test]
+fn normal_and_stronger_bots_notice_a_hanging_queen() {
+    let mut game = FourGame::new(Format::FreeForAll);
+    game.board.put(4, 2, Player::Blue, Piece::Queen);
+    for difficulty in [
+        chess4::bot::BotDifficulty::Normal,
+        chess4::bot::BotDifficulty::Hard,
+        chess4::bot::BotDifficulty::VeryHard,
+        chess4::bot::BotDifficulty::Impossible,
+    ] {
+        let selected = chess4::bot::move_for_difficulty(&game, difficulty, 29).unwrap();
+        assert_eq!(
+            (selected.to.col, selected.to.row),
+            (4, 2),
+            "{difficulty:?} missed the free queen",
+        );
+    }
+}
+
+#[test]
+fn normal_bot_considers_a_quiet_queen_escape_before_a_small_capture() {
+    let mut game = FourGame::new(Format::FreeForAll);
+    game.board = Board::empty();
+    // Keep all four kings present and legal, then give Red a tempting pawn
+    // capture while Blue's knight is about to take Red's queen. The queen must
+    // move quietly; a capture-only root prefilter used to miss this class.
+    game.board.put(6, 0, Player::Red, Piece::King);
+    game.board.put(0, 7, Player::Blue, Piece::King);
+    game.board.put(7, 13, Player::Yellow, Piece::King);
+    game.board.put(13, 7, Player::Green, Piece::King);
+    game.board.put(7, 4, Player::Red, Piece::Queen);
+    game.board.put(3, 1, Player::Red, Piece::Pawn);
+    game.board.put(4, 2, Player::Blue, Piece::Pawn);
+    game.board.put(5, 5, Player::Blue, Piece::Knight); // attacks (7,4)
+
+    let selected =
+        chess4::bot::move_for_difficulty(&game, chess4::bot::BotDifficulty::Normal, 73).unwrap();
+    assert_eq!(selected.from, Coord::new(7, 4));
+    assert_ne!(selected.to, Coord::new(7, 4));
+}
+
+#[test]
 fn slider_stops_at_a_cut_corner() {
     // A rook in the left arm sliding up the a-file must stop before the cut
     // top-left corner (rows 11..13 at col 0 are invalid).
@@ -95,12 +154,8 @@ fn slider_stops_at_a_cut_corner() {
     let moves = g.legal_moves_for(Player::Red);
     // Rook at (0,5) going up the col-0 file: (0,6)..(0,10) valid, (0,11) is a cut
     // corner → not reachable.
-    assert!(moves
-        .iter()
-        .any(|m| (m.to.col, m.to.row) == (0, 10)));
-    assert!(!moves
-        .iter()
-        .any(|m| (m.to.col, m.to.row) == (0, 11)));
+    assert!(moves.iter().any(|m| (m.to.col, m.to.row) == (0, 10)));
+    assert!(!moves.iter().any(|m| (m.to.col, m.to.row) == (0, 11)));
 }
 
 #[test]
@@ -132,6 +187,90 @@ fn red_castles_kingside() {
     g.make_move(cm.unwrap());
     assert_eq!(at(&g, 9, 0), Some((Player::Red, Piece::King)));
     assert_eq!(at(&g, 8, 0), Some((Player::Red, Piece::Rook)));
+}
+
+#[test]
+fn every_army_can_castle_toward_its_high_coordinate_rook() {
+    // The four armies have different home-edge orientations. Exercise their
+    // actual UCI-facing king/rook geometry rather than assuming Red's row
+    // layout applies to the lateral armies too.
+    let cases = [
+        (
+            Player::Red,
+            Coord::new(7, 0),
+            Coord::new(9, 0),
+            Coord::new(8, 0),
+            &[(8, 0), (9, 0)][..],
+        ),
+        (
+            Player::Blue,
+            Coord::new(0, 7),
+            Coord::new(0, 9),
+            Coord::new(0, 8),
+            &[(0, 8), (0, 9)][..],
+        ),
+        (
+            Player::Yellow,
+            Coord::new(6, 13),
+            Coord::new(8, 13),
+            Coord::new(7, 13),
+            &[(7, 13), (8, 13), (9, 13)][..],
+        ),
+        (
+            Player::Green,
+            Coord::new(13, 6),
+            Coord::new(13, 8),
+            Coord::new(13, 7),
+            &[(13, 7), (13, 8), (13, 9)][..],
+        ),
+    ];
+
+    for (player, king_from, king_to, rook_to, clear) in cases {
+        let mut game = FourGame::new(Format::FreeForAll);
+        game.turn = player;
+        for &(col, row) in clear {
+            game.board.clear(col, row);
+        }
+        let castle = game
+            .legal_moves()
+            .into_iter()
+            .find(|m| m.castle && m.from == king_from && m.to == king_to)
+            .unwrap_or_else(|| panic!("{player:?} should be able to castle"));
+        assert!(game.make_move(castle));
+        assert_eq!(
+            at(&game, king_to.col, king_to.row),
+            Some((player, Piece::King))
+        );
+        assert_eq!(
+            at(&game, rook_to.col, rook_to.row),
+            Some((player, Piece::Rook))
+        );
+    }
+}
+
+#[test]
+fn blue_can_queue_a_castle_before_red_moves() {
+    let mut game = FourGame::new(Format::FreeForAll);
+    game.board.clear(0, 8); // Blue bishop
+    game.board.clear(0, 9); // Blue knight
+
+    // The game begins with Red to move. Blue should still be able to queue
+    // the castle geometrically; it is fully revalidated when Blue's turn
+    // arrives after Red moves.
+    let blue_king = Coord::new(0, 7);
+    let blue_castle_to = Coord::new(0, 9);
+    assert!(game.premove_targets(blue_king).contains(&blue_castle_to));
+
+    assert!(game.make_move(Move4::plain(Coord::new(3, 1), Coord::new(3, 2))));
+    assert_eq!(game.turn, Player::Blue);
+    let castle = game
+        .legal_moves()
+        .into_iter()
+        .find(|m| m.castle && m.from == blue_king && m.to == blue_castle_to)
+        .expect("Blue's queued castle must remain legal on its turn");
+    assert!(game.make_move(castle));
+    assert_eq!(at(&game, 0, 9), Some((Player::Blue, Piece::King)));
+    assert_eq!(at(&game, 0, 8), Some((Player::Blue, Piece::Rook)));
 }
 
 #[test]

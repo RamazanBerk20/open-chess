@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
-import 'package:chess/l10n/app_localizations.dart';
-import 'package:chess/src/state/l10n_labels.dart';
-import 'package:chess/src/state/time_control.dart';
-import 'package:chess/src/theme/spacing.dart';
+import 'package:open_chess/l10n/app_localizations.dart';
+import 'package:open_chess/src/state/l10n_labels.dart';
+import 'package:open_chess/src/state/time_control.dart';
+import 'package:open_chess/src/theme/spacing.dart';
 
 /// Time-control selector: preset chips + a Custom option (base minutes /
 /// increment steppers). Emits the chosen [TimeControlOption] and whether it is
@@ -84,8 +84,10 @@ class _TimeControlPickerState extends State<TimeControlPicker> {
           if (!_valid)
             Padding(
               padding: const EdgeInsets.only(top: AppSpacing.sm),
-              child: Text(t.baseTimeError,
-                  style: TextStyle(color: Theme.of(context).colorScheme.error)),
+              child: Text(
+                t.baseTimeError,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
             ),
         ],
       ],
@@ -93,7 +95,12 @@ class _TimeControlPickerState extends State<TimeControlPicker> {
   }
 
   Widget _stepper(
-      String label, int value, int min, int max, ValueChanged<int> onChanged) {
+    String label,
+    int value,
+    int min,
+    int max,
+    ValueChanged<int> onChanged,
+  ) {
     return Row(
       children: [
         Expanded(child: Text('$label: $value')),

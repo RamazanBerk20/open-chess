@@ -1,64 +1,86 @@
-import 'package:chess/l10n/app_localizations.dart';
-import 'package:chess/src/rust/api/game.dart';
+import 'package:open_chess/l10n/app_localizations.dart';
+import 'package:open_chess/src/rust/api/game.dart';
 
-/// All supported variants.
-const playableVariants = <GameVariant>[
+/// Variants that can be played against the on-device engine.
+const computerVariants = <GameVariant>[
   GameVariant.standard,
   GameVariant.threeCheck,
   GameVariant.kingOfTheHill,
   GameVariant.chess960,
   GameVariant.atomic,
   GameVariant.crazyhouse,
+];
+
+/// Variants available to a two-player LAN match. Fog of War depends on each
+/// player having a private board view and is intentionally online-only.
+const lanVariants = <GameVariant>[...computerVariants, GameVariant.fogOfWar];
+
+/// Variants that retain fair information and practical turn-taking when two
+/// people share one device.
+const sameDeviceVariants = <GameVariant>[
+  GameVariant.standard,
+  GameVariant.threeCheck,
+  GameVariant.kingOfTheHill,
+  GameVariant.chess960,
+  GameVariant.atomic,
+  GameVariant.crazyhouse,
+];
+
+/// These modes require separate devices and are never resumed as an offline
+/// saved game. Bughouse uses four seats; Fog of War needs private information.
+const onlineOnlyVariants = <GameVariant>[
+  GameVariant.bughouse,
   GameVariant.fogOfWar,
 ];
 
 /// Stable wire code for a variant (matches the Rust `variant_from_code`), used
 /// in the LAN Start message.
 String variantCode(GameVariant v) => switch (v) {
-      GameVariant.standard => 'standard',
-      GameVariant.threeCheck => 'three_check',
-      GameVariant.kingOfTheHill => 'king_of_the_hill',
-      GameVariant.chess960 => 'chess960',
-      GameVariant.atomic => 'atomic',
-      GameVariant.crazyhouse => 'crazyhouse',
-      GameVariant.bughouse => 'bughouse',
-      GameVariant.fogOfWar => 'fog_of_war',
-    };
+  GameVariant.standard => 'standard',
+  GameVariant.threeCheck => 'three_check',
+  GameVariant.kingOfTheHill => 'king_of_the_hill',
+  GameVariant.chess960 => 'chess960',
+  GameVariant.atomic => 'atomic',
+  GameVariant.crazyhouse => 'crazyhouse',
+  GameVariant.bughouse => 'bughouse',
+  GameVariant.fogOfWar => 'fog_of_war',
+};
 
 GameVariant variantFromCode(String s) => switch (s) {
-      'three_check' => GameVariant.threeCheck,
-      'king_of_the_hill' => GameVariant.kingOfTheHill,
-      'chess960' => GameVariant.chess960,
-      'atomic' => GameVariant.atomic,
-      'crazyhouse' => GameVariant.crazyhouse,
-      'bughouse' => GameVariant.bughouse,
-      'fog_of_war' => GameVariant.fogOfWar,
-      _ => GameVariant.standard,
-    };
+  'three_check' => GameVariant.threeCheck,
+  'king_of_the_hill' => GameVariant.kingOfTheHill,
+  'chess960' => GameVariant.chess960,
+  'atomic' => GameVariant.atomic,
+  'crazyhouse' => GameVariant.crazyhouse,
+  'bughouse' => GameVariant.bughouse,
+  'fog_of_war' => GameVariant.fogOfWar,
+  _ => GameVariant.standard,
+};
 
 /// Localised variant name.
 String localizedVariant(AppLocalizations t, GameVariant v) => switch (v) {
-      GameVariant.standard => t.vStandard,
-      GameVariant.threeCheck => t.vThreeCheck,
-      GameVariant.kingOfTheHill => t.vKingOfTheHill,
-      GameVariant.chess960 => t.vChess960,
-      GameVariant.atomic => t.vAtomic,
-      GameVariant.crazyhouse => t.vCrazyhouse,
-      GameVariant.bughouse => t.menuBughouse,
-      GameVariant.fogOfWar => t.vFogOfWar,
-    };
+  GameVariant.standard => t.vStandard,
+  GameVariant.threeCheck => t.vThreeCheck,
+  GameVariant.kingOfTheHill => t.vKingOfTheHill,
+  GameVariant.chess960 => t.vChess960,
+  GameVariant.atomic => t.vAtomic,
+  GameVariant.crazyhouse => t.vCrazyhouse,
+  GameVariant.bughouse => t.menuBughouse,
+  GameVariant.fogOfWar => t.vFogOfWar,
+};
 
 /// Localised label for a difficulty preset name (the preset list itself stays
 /// in English internally; this maps it for display).
 String localizedDifficulty(AppLocalizations t, String name) => switch (name) {
-      'Beginner' => t.diffBeginner,
-      'Easy' => t.diffEasy,
-      'Medium' => t.diffMedium,
-      'Hard' => t.diffHard,
-      'Expert' => t.diffExpert,
-      'Custom' => t.custom,
-      _ => name,
-    };
+  'Very Easy' => t.diffVeryEasy,
+  'Easy' => t.diffEasy,
+  'Normal' => t.diffNormal,
+  'Hard' => t.diffHard,
+  'Very Hard' => t.diffVeryHard,
+  'Impossible' => t.diffImpossible,
+  'Custom' => t.custom,
+  _ => name,
+};
 
 /// Localised label for a time-control preset ("Infinite" is translated; the
 /// numeric "base+inc" labels stay as-is).
@@ -73,15 +95,27 @@ class LanResultCode {
   static const drawAgreed = 'drawAgreed';
   static const opponentDisconnected = 'opponentDisconnected';
   static const boardDesync = 'boardDesync';
+  static const gameWhiteWins = 'game_over:white_wins';
+  static const gameBlackWins = 'game_over:black_wins';
+  static const gameStalemate = 'game_over:stalemate';
+  static const gameDrawFifty = 'game_over:draw_fifty';
+  static const gameDrawThreefold = 'game_over:draw_threefold';
+  static const gameDrawInsufficient = 'game_over:draw_insufficient';
 }
 
 /// Localise a result code; unknown values (e.g. a custom disconnect message
 /// sent by the peer) are shown verbatim.
 String localizeLanResult(AppLocalizations t, String code) => switch (code) {
-      LanResultCode.youResigned => t.youResigned,
-      LanResultCode.opponentResigned => t.opponentResigned,
-      LanResultCode.drawAgreed => t.drawAgreed,
-      LanResultCode.opponentDisconnected => t.opponentDisconnected,
-      LanResultCode.boardDesync => t.boardDesync,
-      _ => code,
-    };
+  LanResultCode.youResigned => t.youResigned,
+  LanResultCode.opponentResigned => t.opponentResigned,
+  LanResultCode.drawAgreed => t.drawAgreed,
+  LanResultCode.opponentDisconnected => t.opponentDisconnected,
+  LanResultCode.boardDesync => t.boardDesync,
+  LanResultCode.gameWhiteWins => t.checkmateWhiteWins,
+  LanResultCode.gameBlackWins => t.checkmateBlackWins,
+  LanResultCode.gameStalemate => t.drawStalemate,
+  LanResultCode.gameDrawFifty => t.drawFiftyMove,
+  LanResultCode.gameDrawThreefold => t.drawThreefold,
+  LanResultCode.gameDrawInsufficient => t.drawInsufficient,
+  _ => code,
+};

@@ -1,15 +1,16 @@
 # Maintainer: Ramazan Berk Şirin <ramazanberksirin@protonmail.com>
-pkgname=chess-git
-pkgver=1.0.1.r3.g385d16d
+pkgname=open-chess-git
+pkgver=1.1.0.r0.g0000000
 pkgrel=1
-pkgdesc="Chess with variants (Fog of War, Bughouse, 4-player, Crazyhouse, Atomic…), AI, LAN and puzzles — Flutter + Rust (latest git)"
+pkgdesc="Open Chess with variants, AI, LAN multiplayer and puzzles (Flutter + Rust, latest git)"
 arch=('x86_64')
-url="https://github.com/RamazanBerk20/chess"
+url="https://github.com/RamazanBerk20/open-chess"
 license=('MIT')
 depends=('gtk3')
 makedepends=('flutter' 'rust' 'clang' 'cmake' 'ninja' 'pkgconf' 'git')
-provides=('chess')
-conflicts=('chess' 'chess-bin')
+provides=('open-chess' 'chess')
+conflicts=('open-chess' 'open-chess-bin' 'chess' 'chess-bin' 'chess-git')
+replaces=('chess-git')
 options=('!strip' '!debug')
 source=("$pkgname::git+$url.git")
 sha256sums=('SKIP')
@@ -32,14 +33,14 @@ build() {
 package() {
   cd "$srcdir/$pkgname"
   local bundle="build/linux/x64/release/bundle"
-  install -dm755 "$pkgdir/opt/chess"
-  cp -dr --no-preserve=ownership "$bundle"/. "$pkgdir/opt/chess/"
-  chmod 755 "$pkgdir/opt/chess/chess"
+  install -dm755 "$pkgdir/opt/open-chess"
+  cp -dr --no-preserve=ownership "$bundle"/. "$pkgdir/opt/open-chess/"
+  chmod 755 "$pkgdir/opt/open-chess/open-chess"
   install -dm755 "$pkgdir/usr/bin"
-  ln -s /opt/chess/chess "$pkgdir/usr/bin/chess"
-  install -Dm644 assets/icon/chess.png \
-    "$pkgdir/usr/share/icons/hicolor/512x512/apps/chess.png"
-  install -Dm644 installers/linux/chess.desktop \
-    "$pkgdir/usr/share/applications/chess.desktop"
+  ln -s /opt/open-chess/open-chess "$pkgdir/usr/bin/open-chess"
+  install -Dm644 assets/icon/open-chess.png \
+    "$pkgdir/usr/share/icons/hicolor/512x512/apps/open-chess.png"
+  install -Dm644 installers/linux/open-chess.desktop \
+    "$pkgdir/usr/share/applications/open-chess.desktop"
   install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
 }

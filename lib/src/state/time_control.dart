@@ -30,7 +30,8 @@ class TimeControlOption {
 /// game and clock controllers read it.
 final selectedTimeControlProvider =
     NotifierProvider<SelectedTimeControl, TimeControlOption>(
-        SelectedTimeControl.new);
+      SelectedTimeControl.new,
+    );
 
 class SelectedTimeControl extends Notifier<TimeControlOption> {
   @override

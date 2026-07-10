@@ -150,10 +150,8 @@ const EG_KING: [i32; 64] = [
     -53, -34, -21, -11, -28, -14, -24, -43,
 ];
 
-const MG_PST: [[i32; 64]; 6] =
-    [MG_PAWN, MG_KNIGHT, MG_BISHOP, MG_ROOK, MG_QUEEN, MG_KING];
-const EG_PST: [[i32; 64]; 6] =
-    [EG_PAWN, EG_KNIGHT, EG_BISHOP, EG_ROOK, EG_QUEEN, EG_KING];
+const MG_PST: [[i32; 64]; 6] = [MG_PAWN, MG_KNIGHT, MG_BISHOP, MG_ROOK, MG_QUEEN, MG_KING];
+const EG_PST: [[i32; 64]; 6] = [EG_PAWN, EG_KNIGHT, EG_BISHOP, EG_ROOK, EG_QUEEN, EG_KING];
 
 #[inline]
 fn file_mask(file: u8) -> Bitboard {

@@ -9,7 +9,7 @@ class AppLocalizationsRu extends AppLocalizations {
   AppLocalizationsRu([String locale = 'ru']) : super(locale);
 
   @override
-  String get appTitle => 'Шахматы';
+  String get appTitle => 'Open Chess';
 
   @override
   String get menuSinglePlayer => 'Одиночная игра';
@@ -180,6 +180,33 @@ class AppLocalizationsRu extends AppLocalizations {
   String get analysis => 'Анализ';
 
   @override
+  String get opening => 'Дебют';
+
+  @override
+  String get openingGambit => 'Гамбит';
+
+  @override
+  String get openingVariation => 'Вариант';
+
+  @override
+  String get openingNone => 'Нет названного дебюта';
+
+  @override
+  String get ratingEstimate => 'Оценочный рейтинг';
+
+  @override
+  String get ratingConfidenceLow => 'Низкая достоверность';
+
+  @override
+  String get ratingConfidenceMedium => 'Средняя достоверность';
+
+  @override
+  String get ratingConfidenceHigh => 'Высокая достоверность';
+
+  @override
+  String get ratingUnavailable => 'Оценка рейтинга недоступна';
+
+  @override
   String get white => 'Белые';
 
   @override
@@ -260,6 +287,27 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get settings => 'Настройки';
+
+  @override
+  String get profile => 'Профиль';
+
+  @override
+  String get profileUsername => 'Имя пользователя';
+
+  @override
+  String get profileUsernameHint => 'Выберите имя пользователя';
+
+  @override
+  String get profileAvatar => 'Аватар';
+
+  @override
+  String get profileChangeAvatar => 'Изменить аватар';
+
+  @override
+  String get profileRemoveAvatar => 'Удалить аватар';
+
+  @override
+  String get profileImageError => 'Не удалось использовать это изображение.';
 
   @override
   String get appearance => 'Внешний вид';
@@ -355,6 +403,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get lanGame => 'Игра по локальной сети';
 
   @override
+  String get lanAllowSpectators => 'Разрешить зрителей';
+
+  @override
+  String get lanSpectate => 'Смотреть партию';
+
+  @override
   String get chat => 'Чат';
 
   @override
@@ -440,16 +494,28 @@ class AppLocalizationsRu extends AppLocalizations {
   String get diffBeginner => 'Новичок';
 
   @override
+  String get diffVeryEasy => 'Очень лёгкий';
+
+  @override
   String get diffEasy => 'Лёгкий';
 
   @override
   String get diffMedium => 'Средний';
 
   @override
+  String get diffNormal => 'Обычный';
+
+  @override
   String get diffHard => 'Сложный';
 
   @override
   String get diffExpert => 'Эксперт';
+
+  @override
+  String get diffVeryHard => 'Очень сложный';
+
+  @override
+  String get diffImpossible => 'Невозможный';
 
   @override
   String get baseMinutes => 'Основное время (минуты)';
@@ -474,6 +540,12 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get evalNoise => 'Шум оценки (сантипешки)';
+
+  @override
+  String get maxEvalLoss => 'Максимальная потеря оценки (сантипешки)';
+
+  @override
+  String get moveVariety => 'Разнообразие ходов';
 
   @override
   String puzzlesSolved(Object solved, Object total) {
@@ -613,6 +685,12 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get fourVsBots => 'Против ботов';
+
+  @override
+  String get fourSeatAi => 'ИИ';
+
+  @override
+  String get fourPerspective => 'Перспектива';
 
   @override
   String get fourYourSeats => 'Ваши места';

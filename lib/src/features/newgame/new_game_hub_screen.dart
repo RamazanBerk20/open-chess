@@ -3,25 +3,26 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:chess/l10n/app_localizations.dart';
-import 'package:chess/src/features/setup/bughouse_setup_screen.dart' as bh;
-import 'package:chess/src/features/four/four_setup_screen.dart';
-import 'package:chess/src/features/game/game_screen.dart';
-import 'package:chess/src/features/setup/lan_setup_screen.dart';
-import 'package:chess/src/rust/api/game.dart';
-import 'package:chess/src/state/clock_provider.dart';
-import 'package:chess/src/state/difficulty.dart';
-import 'package:chess/src/state/game_mode.dart';
-import 'package:chess/src/state/game_providers.dart';
-import 'package:chess/src/state/l10n_labels.dart';
-import 'package:chess/src/state/settings.dart';
-import 'package:chess/src/state/time_control.dart';
-import 'package:chess/src/theme/spacing.dart';
-import 'package:chess/src/widgets/setup/choice_chip_row.dart';
-import 'package:chess/src/widgets/setup/difficulty_picker.dart';
-import 'package:chess/src/widgets/setup/mode_card.dart';
-import 'package:chess/src/widgets/setup/setup_section.dart';
-import 'package:chess/src/widgets/setup/time_control_picker.dart';
+import 'package:open_chess/l10n/app_localizations.dart';
+import 'package:open_chess/src/features/setup/bughouse_setup_screen.dart' as bh;
+import 'package:open_chess/src/features/four/four_setup_screen.dart';
+import 'package:open_chess/src/features/game/game_screen.dart';
+import 'package:open_chess/src/features/setup/lan_setup_screen.dart';
+import 'package:open_chess/src/rust/api/game.dart';
+import 'package:open_chess/src/state/clock_provider.dart';
+import 'package:open_chess/src/state/difficulty.dart';
+import 'package:open_chess/src/state/game_mode.dart';
+import 'package:open_chess/src/state/game_providers.dart';
+import 'package:open_chess/src/state/lan_controller.dart';
+import 'package:open_chess/src/state/l10n_labels.dart';
+import 'package:open_chess/src/state/settings.dart';
+import 'package:open_chess/src/state/time_control.dart';
+import 'package:open_chess/src/theme/spacing.dart';
+import 'package:open_chess/src/widgets/setup/choice_chip_row.dart';
+import 'package:open_chess/src/widgets/setup/difficulty_picker.dart';
+import 'package:open_chess/src/widgets/setup/mode_card.dart';
+import 'package:open_chess/src/widgets/setup/setup_section.dart';
+import 'package:open_chess/src/widgets/setup/time_control_picker.dart';
 
 const _standardFen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
@@ -45,7 +46,7 @@ class _NewGameHubScreenState extends ConsumerState<NewGameHubScreen> {
   HubMode _mode = HubMode.computer;
   GameVariant _variant = GameVariant.standard;
   _Side _side = _Side.white;
-  Difficulty _difficulty = Difficulty.medium;
+  Difficulty _difficulty = Difficulty.normal;
   TimeControlOption _tc = TimeControlOption.infinite;
   bool _tcValid = true;
   final _fenCtl = TextEditingController();
@@ -61,7 +62,7 @@ class _NewGameHubScreenState extends ConsumerState<NewGameHubScreen> {
     );
     _difficulty = Difficulty.presets.firstWhere(
       (d) => d.name == s.defaultDifficulty,
-      orElse: () => Difficulty.medium,
+      orElse: () => Difficulty.normal,
     );
   }
 
@@ -71,37 +72,61 @@ class _NewGameHubScreenState extends ConsumerState<NewGameHubScreen> {
     super.dispose();
   }
 
-  void _push(Widget screen) => Navigator.of(context)
-      .push(MaterialPageRoute(builder: (_) => screen));
+  void _push(Widget screen) =>
+      Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
 
-  void _toGame() => Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const GameScreen()),
-      );
+  void _toGame() => Navigator.of(
+    context,
+  ).pushReplacement(MaterialPageRoute(builder: (_) => const GameScreen()));
+
+  void _leaveLanBeforeLocalGame() {
+    if (hasActiveLanSession(ref.read(lanProvider))) {
+      ref.read(lanProvider.notifier).leave();
+    }
+  }
 
   void _startComputer() {
     final aiColor = switch (_side) {
       _Side.white => PieceColor.black,
       _Side.black => PieceColor.white,
-      _Side.random =>
-        Random().nextBool() ? PieceColor.white : PieceColor.black,
+      _Side.random => Random().nextBool() ? PieceColor.white : PieceColor.black,
     };
+    // Defend against a stale selection from another mode: private-information
+    // variants are LAN-only and never start an on-device engine game.
+    final variant = computerVariants.contains(_variant)
+        ? _variant
+        : GameVariant.standard;
+    _leaveLanBeforeLocalGame();
     ref.read(gameModeProvider.notifier).setVsAi(aiColor, _difficulty);
     ref.read(selectedTimeControlProvider.notifier).set(_tc);
     ref.read(customStartFenProvider.notifier).set(null);
-    ref.read(selectedVariantProvider.notifier).set(_variant);
+    ref.read(selectedVariantProvider.notifier).set(variant);
     ref.invalidate(gameControllerProvider);
     ref.invalidate(clockProvider);
     _toGame();
   }
 
   void _startTwoPlayer() {
+    final variant = sameDeviceVariants.contains(_variant)
+        ? _variant
+        : GameVariant.standard;
+    _leaveLanBeforeLocalGame();
     ref.read(gameModeProvider.notifier).setTwoPlayer();
     ref.read(selectedTimeControlProvider.notifier).set(_tc);
     ref.read(customStartFenProvider.notifier).set(null);
-    ref.read(selectedVariantProvider.notifier).set(_variant);
+    ref.read(selectedVariantProvider.notifier).set(variant);
     ref.invalidate(gameControllerProvider);
     ref.invalidate(clockProvider);
     _toGame();
+  }
+
+  void _selectMode(HubMode mode) {
+    setState(() {
+      _mode = mode;
+      if (mode == HubMode.twoPlayer && !sameDeviceVariants.contains(_variant)) {
+        _variant = GameVariant.standard;
+      }
+    });
   }
 
   bool _isValidFen(String fen) {
@@ -119,8 +144,11 @@ class _NewGameHubScreenState extends ConsumerState<NewGameHubScreen> {
       setState(() => _fenError = t.invalidFen);
       return;
     }
+    _leaveLanBeforeLocalGame();
     ref.read(gameModeProvider.notifier).setTwoPlayer();
-    ref.read(selectedTimeControlProvider.notifier).set(TimeControlOption.infinite);
+    ref
+        .read(selectedTimeControlProvider.notifier)
+        .set(TimeControlOption.infinite);
     ref.read(customStartFenProvider.notifier).set(fen);
     ref.read(selectedVariantProvider.notifier).set(GameVariant.standard);
     ref.invalidate(gameControllerProvider);
@@ -174,30 +202,49 @@ class _NewGameHubScreenState extends ConsumerState<NewGameHubScreen> {
   }
 
   Widget _modeList(AppLocalizations t) {
-    Widget card(HubMode m, IconData icon, String label,
-            {bool chevron = false, VoidCallback? onTap}) =>
-        Padding(
-          padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-          child: ModeCard(
-            icon: icon,
-            label: label,
-            selected: !chevron && _mode == m,
-            chevron: chevron,
-            onTap: onTap ?? () => setState(() => _mode = m),
-          ),
-        );
+    Widget card(
+      HubMode m,
+      IconData icon,
+      String label, {
+      bool chevron = false,
+      VoidCallback? onTap,
+    }) => Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: ModeCard(
+        icon: icon,
+        label: label,
+        selected: !chevron && _mode == m,
+        chevron: chevron,
+        onTap: onTap ?? () => _selectMode(m),
+      ),
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         card(HubMode.computer, Icons.smart_toy, t.menuSinglePlayer),
         card(HubMode.twoPlayer, Icons.people, t.menuTwoPlayers),
         card(HubMode.custom, Icons.dashboard_customize, t.menuPlayFromPosition),
-        card(HubMode.lan, Icons.wifi, t.menuLan,
-            chevron: true, onTap: () => _push(const LanSetupScreen())),
-        card(HubMode.bughouse, Icons.swap_horiz, t.menuBughouse,
-            chevron: true, onTap: () => _push(const bh.BughouseSetupScreen())),
-        card(HubMode.fourPlayer, Icons.grid_4x4, t.menuFourPlayer,
-            chevron: true, onTap: () => _push(const FourSetupScreen())),
+        card(
+          HubMode.lan,
+          Icons.wifi,
+          t.menuLan,
+          chevron: true,
+          onTap: () => _push(const LanSetupScreen()),
+        ),
+        card(
+          HubMode.bughouse,
+          Icons.swap_horiz,
+          t.menuBughouse,
+          chevron: true,
+          onTap: () => _push(const bh.BughouseSetupScreen()),
+        ),
+        card(
+          HubMode.fourPlayer,
+          Icons.grid_4x4,
+          t.menuFourPlayer,
+          chevron: true,
+          onTap: () => _push(const FourSetupScreen()),
+        ),
       ],
     );
   }
@@ -211,7 +258,7 @@ class _NewGameHubScreenState extends ConsumerState<NewGameHubScreen> {
             SetupSection(
               title: t.variant,
               child: ChoiceChipRow<GameVariant>(
-                items: playableVariants,
+                items: computerVariants,
                 selected: _variant,
                 labelOf: (v) => localizedVariant(t, v),
                 onSelected: (v) => setState(() => _variant = v),
@@ -224,7 +271,9 @@ class _NewGameHubScreenState extends ConsumerState<NewGameHubScreen> {
                   ButtonSegment(value: _Side.white, label: Text(t.colourWhite)),
                   ButtonSegment(value: _Side.black, label: Text(t.colourBlack)),
                   ButtonSegment(
-                      value: _Side.random, label: Text(t.colourRandom)),
+                    value: _Side.random,
+                    label: Text(t.colourRandom),
+                  ),
                 ],
                 selected: {_side},
                 onSelectionChanged: (s) => setState(() => _side = s.first),
@@ -257,7 +306,7 @@ class _NewGameHubScreenState extends ConsumerState<NewGameHubScreen> {
             SetupSection(
               title: t.variant,
               child: ChoiceChipRow<GameVariant>(
-                items: playableVariants,
+                items: sameDeviceVariants,
                 selected: _variant,
                 labelOf: (v) => localizedVariant(t, v),
                 onSelected: (v) => setState(() => _variant = v),
@@ -321,11 +370,11 @@ class _NewGameHubScreenState extends ConsumerState<NewGameHubScreen> {
   }
 
   Widget _startButton(String label, VoidCallback? onPressed) => Padding(
-        padding: const EdgeInsets.only(top: AppSpacing.sm),
-        child: FilledButton.icon(
-          onPressed: onPressed,
-          icon: const Icon(Icons.play_arrow),
-          label: Text(label),
-        ),
-      );
+    padding: const EdgeInsets.only(top: AppSpacing.sm),
+    child: FilledButton.icon(
+      onPressed: onPressed,
+      icon: const Icon(Icons.play_arrow),
+      label: Text(label),
+    ),
+  );
 }

@@ -58,7 +58,11 @@ fn main() {
         };
         pos.make_move(m0);
         let start_fen = to_fen(&pos);
-        let side = if start_fen.contains(" w ") { "white" } else { "black" };
+        let side = if start_fen.contains(" w ") {
+            "white"
+        } else {
+            "black"
+        };
 
         let solution: Vec<String> = moves[1..].iter().map(|s| s.to_string()).collect();
         if !solution_is_legal(&start_fen, &solution) {

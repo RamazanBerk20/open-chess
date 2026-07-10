@@ -117,7 +117,7 @@ abstract class AppLocalizations {
   /// No description provided for @appTitle.
   ///
   /// In en, this message translates to:
-  /// **'Chess'**
+  /// **'Open Chess'**
   String get appTitle;
 
   /// No description provided for @menuSinglePlayer.
@@ -456,6 +456,60 @@ abstract class AppLocalizations {
   /// **'Analysis'**
   String get analysis;
 
+  /// No description provided for @opening.
+  ///
+  /// In en, this message translates to:
+  /// **'Opening'**
+  String get opening;
+
+  /// No description provided for @openingGambit.
+  ///
+  /// In en, this message translates to:
+  /// **'Gambit'**
+  String get openingGambit;
+
+  /// No description provided for @openingVariation.
+  ///
+  /// In en, this message translates to:
+  /// **'Variation'**
+  String get openingVariation;
+
+  /// No description provided for @openingNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No named opening'**
+  String get openingNone;
+
+  /// No description provided for @ratingEstimate.
+  ///
+  /// In en, this message translates to:
+  /// **'Estimated rating'**
+  String get ratingEstimate;
+
+  /// No description provided for @ratingConfidenceLow.
+  ///
+  /// In en, this message translates to:
+  /// **'Low confidence'**
+  String get ratingConfidenceLow;
+
+  /// No description provided for @ratingConfidenceMedium.
+  ///
+  /// In en, this message translates to:
+  /// **'Medium confidence'**
+  String get ratingConfidenceMedium;
+
+  /// No description provided for @ratingConfidenceHigh.
+  ///
+  /// In en, this message translates to:
+  /// **'High confidence'**
+  String get ratingConfidenceHigh;
+
+  /// No description provided for @ratingUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Rating estimate unavailable'**
+  String get ratingUnavailable;
+
   /// No description provided for @white.
   ///
   /// In en, this message translates to:
@@ -599,6 +653,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Settings'**
   String get settings;
+
+  /// No description provided for @profile.
+  ///
+  /// In en, this message translates to:
+  /// **'Profile'**
+  String get profile;
+
+  /// No description provided for @profileUsername.
+  ///
+  /// In en, this message translates to:
+  /// **'Username'**
+  String get profileUsername;
+
+  /// No description provided for @profileUsernameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a username'**
+  String get profileUsernameHint;
+
+  /// No description provided for @profileAvatar.
+  ///
+  /// In en, this message translates to:
+  /// **'Avatar'**
+  String get profileAvatar;
+
+  /// No description provided for @profileChangeAvatar.
+  ///
+  /// In en, this message translates to:
+  /// **'Change avatar'**
+  String get profileChangeAvatar;
+
+  /// No description provided for @profileRemoveAvatar.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove avatar'**
+  String get profileRemoveAvatar;
+
+  /// No description provided for @profileImageError.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t use that image.'**
+  String get profileImageError;
 
   /// No description provided for @appearance.
   ///
@@ -786,6 +882,18 @@ abstract class AppLocalizations {
   /// **'LAN game'**
   String get lanGame;
 
+  /// No description provided for @lanAllowSpectators.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow spectators'**
+  String get lanAllowSpectators;
+
+  /// No description provided for @lanSpectate.
+  ///
+  /// In en, this message translates to:
+  /// **'Watch game'**
+  String get lanSpectate;
+
   /// No description provided for @chat.
   ///
   /// In en, this message translates to:
@@ -954,6 +1062,12 @@ abstract class AppLocalizations {
   /// **'Beginner'**
   String get diffBeginner;
 
+  /// No description provided for @diffVeryEasy.
+  ///
+  /// In en, this message translates to:
+  /// **'Very easy'**
+  String get diffVeryEasy;
+
   /// No description provided for @diffEasy.
   ///
   /// In en, this message translates to:
@@ -966,6 +1080,12 @@ abstract class AppLocalizations {
   /// **'Medium'**
   String get diffMedium;
 
+  /// No description provided for @diffNormal.
+  ///
+  /// In en, this message translates to:
+  /// **'Normal'**
+  String get diffNormal;
+
   /// No description provided for @diffHard.
   ///
   /// In en, this message translates to:
@@ -977,6 +1097,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Expert'**
   String get diffExpert;
+
+  /// No description provided for @diffVeryHard.
+  ///
+  /// In en, this message translates to:
+  /// **'Very hard'**
+  String get diffVeryHard;
+
+  /// No description provided for @diffImpossible.
+  ///
+  /// In en, this message translates to:
+  /// **'Impossible'**
+  String get diffImpossible;
 
   /// No description provided for @baseMinutes.
   ///
@@ -1025,6 +1157,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Eval noise (cp)'**
   String get evalNoise;
+
+  /// No description provided for @maxEvalLoss.
+  ///
+  /// In en, this message translates to:
+  /// **'Maximum evaluation loss (cp)'**
+  String get maxEvalLoss;
+
+  /// No description provided for @moveVariety.
+  ///
+  /// In en, this message translates to:
+  /// **'Move variety'**
+  String get moveVariety;
 
   /// No description provided for @puzzlesSolved.
   ///
@@ -1283,6 +1427,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'vs Bots'**
   String get fourVsBots;
+
+  /// No description provided for @fourSeatAi.
+  ///
+  /// In en, this message translates to:
+  /// **'AI'**
+  String get fourSeatAi;
+
+  /// No description provided for @fourPerspective.
+  ///
+  /// In en, this message translates to:
+  /// **'Perspective'**
+  String get fourPerspective;
 
   /// No description provided for @fourYourSeats.
   ///

@@ -3,18 +3,32 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:chess/l10n/app_localizations.dart';
-import 'package:chess/src/rust/api/game.dart';
-import 'package:chess/src/state/analysis_provider.dart';
-import 'package:chess/src/state/settings.dart';
-import 'package:chess/src/widgets/board_widget.dart';
-import 'package:chess/src/widgets/eval_bar.dart';
-import 'package:chess/src/widgets/eval_graph.dart';
-import 'package:chess/src/widgets/move_class.dart';
+import 'package:open_chess/l10n/app_localizations.dart';
+import 'package:open_chess/src/rust/api/analyze.dart';
+import 'package:open_chess/src/rust/api/game.dart';
+import 'package:open_chess/src/state/analysis_provider.dart';
+import 'package:open_chess/src/state/l10n_labels.dart';
+import 'package:open_chess/src/state/settings.dart';
+import 'package:open_chess/src/widgets/board_widget.dart';
+import 'package:open_chess/src/widgets/eval_bar.dart';
+import 'package:open_chess/src/widgets/eval_graph.dart';
+import 'package:open_chess/src/widgets/move_class.dart';
 
 class AnalysisScreen extends ConsumerStatefulWidget {
   final List<String> moves;
-  const AnalysisScreen({super.key, required this.moves});
+  final String startFen;
+  final GameVariant variant;
+  final int? knownWhiteElo;
+  final int? knownBlackElo;
+
+  const AnalysisScreen({
+    super.key,
+    required this.moves,
+    this.startFen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+    this.variant = GameVariant.standard,
+    this.knownWhiteElo,
+    this.knownBlackElo,
+  });
 
   @override
   ConsumerState<AnalysisScreen> createState() => _AnalysisScreenState();
@@ -23,22 +37,44 @@ class AnalysisScreen extends ConsumerStatefulWidget {
 class _AnalysisScreenState extends ConsumerState<AnalysisScreen> {
   int _viewPly = 0; // number of moves played from the start
   late ChessGame _nav;
+  late final AnalysisController _analysis;
   bool _animate = false; // slide pieces only when stepping one move at a time
   bool _flipped = false; // view from Black's side
 
   @override
   void initState() {
     super.initState();
-    _nav = ChessGame.newGame();
+    _analysis = ref.read(analysisProvider.notifier);
+    _nav = _newNavigator();
     _viewPly = 0;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(analysisProvider.notifier).run(widget.moves);
+      if (!mounted) return;
+      _analysis.run(
+        widget.moves,
+        startFen: widget.startFen,
+        variant: widget.variant,
+        knownWhiteElo: widget.knownWhiteElo,
+        knownBlackElo: widget.knownBlackElo,
+      );
     });
   }
 
+  @override
+  void dispose() {
+    _analysis.cancel();
+    super.dispose();
+  }
+
+  ChessGame _newNavigator() => ChessGame.fromFenVariant(
+    fen: widget.startFen,
+    variant: widget.variant,
+    baseMinutes: 0,
+    incrementSeconds: 0,
+  );
+
   void _goto(int ply, {bool animate = false}) {
     final clamped = ply.clamp(0, widget.moves.length);
-    final g = ChessGame.newGame();
+    final g = _newNavigator();
     for (var i = 0; i < clamped; i++) {
       g.playUci(uci: widget.moves[i]);
     }
@@ -81,10 +117,7 @@ class _AnalysisScreenState extends ConsumerState<AnalysisScreen> {
       final pf = uciSquare(m.uci);
       final pt = m.uci.length >= 4 ? uciSquare(m.uci.substring(2, 4)) : null;
       final col = cs.color.withValues(alpha: 0.55);
-      tints = {
-        ?pf: col,
-        ?pt: col,
-      };
+      tints = {?pf: col, ?pt: col};
       if (pt != null && cs.sym.isNotEmpty) {
         badge = MoveBadge(square: pt, symbol: cs.sym, color: cs.color);
       }
@@ -117,34 +150,35 @@ class _AnalysisScreenState extends ConsumerState<AnalysisScreen> {
 
     // Eval bar + a square board at an explicit `side`.
     Widget boardOf(double side) => Row(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            EvalBar(
-                evalCp: evalCp,
-                mateIn: mateIn,
-                height: side,
-                flipped: _flipped),
-            const SizedBox(width: 8),
-            SizedBox(
-              width: side,
-              height: side,
-              child: BoardWidget(
-                view: view,
-                flipped: _flipped,
-                light: settings.theme.light,
-                dark: settings.theme.dark,
-                showHints: false,
-                animate: _animate,
-                tints: tints,
-                arrow: arrow,
-                badge: badge,
-                onTap: (_) {},
-                onDrop: (_, _) {},
-              ),
-            ),
-          ],
-        );
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        EvalBar(
+          evalCp: evalCp,
+          mateIn: mateIn,
+          height: side,
+          flipped: _flipped,
+        ),
+        const SizedBox(width: 8),
+        SizedBox(
+          width: side,
+          height: side,
+          child: BoardWidget(
+            view: view,
+            flipped: _flipped,
+            light: settings.theme.light,
+            dark: settings.theme.dark,
+            showHints: false,
+            animate: _animate,
+            tints: tints,
+            arrow: arrow,
+            badge: badge,
+            onTap: (_) {},
+            onDrop: (_, _) {},
+          ),
+        ),
+      ],
+    );
 
     final evalGraph = st.moves.isEmpty
         ? const SizedBox.shrink()
@@ -168,8 +202,12 @@ class _AnalysisScreenState extends ConsumerState<AnalysisScreen> {
       onLast: () => _goto(widget.moves.length),
     );
 
-    final moveList =
-        _MoveList(st: st, viewPly: _viewPly, onTap: _goto, colorblind: cb);
+    final moveList = _MoveList(
+      st: st,
+      viewPly: _viewPly,
+      onTap: _goto,
+      colorblind: cb,
+    );
 
     // Summary + move list share one scroll viewport (used below the board on
     // narrow/portrait layouts so the board itself stays large).
@@ -179,6 +217,8 @@ class _AnalysisScreenState extends ConsumerState<AnalysisScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (st.done) ...[
+            _OpeningPanel(st: st, variant: widget.variant),
+            const SizedBox(height: 8),
             _SummaryPanel(st: st),
             const SizedBox(height: 8),
           ],
@@ -200,9 +240,10 @@ class _AnalysisScreenState extends ConsumerState<AnalysisScreen> {
             const Padding(
               padding: EdgeInsets.all(14),
               child: SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2)),
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
             ),
         ],
       ),
@@ -219,10 +260,10 @@ class _AnalysisScreenState extends ConsumerState<AnalysisScreen> {
                 // centred) on the right. Narrow/portrait: board on top filling
                 // the width, summary + moves scroll below it.
                 if (constraints.maxWidth > 720) {
-                  final side = min(constraints.maxHeight - 16,
-                          constraints.maxWidth - 360.0)
-                      .clamp(160.0, 900.0)
-                      .toDouble();
+                  final side = min(
+                    constraints.maxHeight - 16,
+                    constraints.maxWidth - 360.0,
+                  ).clamp(160.0, 900.0).toDouble();
                   return Row(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
@@ -235,13 +276,18 @@ class _AnalysisScreenState extends ConsumerState<AnalysisScreen> {
                           child: SingleChildScrollView(
                             padding: const EdgeInsets.all(8),
                             child: ConstrainedBox(
-                              constraints:
-                                  const BoxConstraints(maxWidth: 360),
+                              constraints: const BoxConstraints(maxWidth: 360),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: [
                                   _AccuracyHeader(st: st),
-                                  if (st.done) _SummaryPanel(st: st, colorblind: cb),
+                                  if (st.done)
+                                    _OpeningPanel(
+                                      st: st,
+                                      variant: widget.variant,
+                                    ),
+                                  if (st.done)
+                                    _SummaryPanel(st: st, colorblind: cb),
                                   evalGraph,
                                   coachCard,
                                   navBar,
@@ -266,9 +312,10 @@ class _AnalysisScreenState extends ConsumerState<AnalysisScreen> {
                         padding: const EdgeInsets.all(8),
                         child: LayoutBuilder(
                           builder: (context, c) {
-                            final side = min(c.maxWidth - 46, c.maxHeight)
-                                .clamp(120.0, 900.0)
-                                .toDouble();
+                            final side = min(
+                              c.maxWidth - 46,
+                              c.maxHeight,
+                            ).clamp(120.0, 900.0).toDouble();
                             return Center(child: boardOf(side));
                           },
                         ),
@@ -300,26 +347,98 @@ class _AccuracyHeader extends StatelessWidget {
     if (!st.done) {
       return Padding(
         padding: const EdgeInsets.all(8),
-        child: Text(st.running
-            ? t.analyzingProgress(st.progress, st.total)
-            : t.preparingAnalysis),
+        child: Text(
+          st.running
+              ? t.analyzingProgress(st.progress, st.total)
+              : t.preparingAnalysis,
+        ),
       );
     }
-    Widget chip(String who, double acc, Color c) => Column(
-          children: [
-            Text(who, style: const TextStyle(fontWeight: FontWeight.bold)),
-            Text('${acc.toStringAsFixed(1)}%',
-                style: TextStyle(color: c, fontSize: 18)),
-            Text(t.accuracy, style: const TextStyle(fontSize: 11)),
-          ],
-        );
+    String confidence(EloConfidence confidence) => switch (confidence) {
+      EloConfidence.low => t.ratingConfidenceLow,
+      EloConfidence.medium => t.ratingConfidenceMedium,
+      EloConfidence.high => t.ratingConfidenceHigh,
+    };
+    Widget chip(String who, double acc, EloEstimate? elo, Color c) => Column(
+      children: [
+        Text(who, style: const TextStyle(fontWeight: FontWeight.bold)),
+        Text(
+          '${acc.toStringAsFixed(1)}%',
+          style: TextStyle(color: c, fontSize: 18),
+        ),
+        Text(t.accuracy, style: const TextStyle(fontSize: 11)),
+        const SizedBox(height: 4),
+        Text(
+          elo == null ? t.ratingUnavailable : '${t.ratingEstimate} ${elo.elo}',
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 11),
+        ),
+        if (elo != null)
+          Text(
+            confidence(elo.confidence),
+            style: const TextStyle(fontSize: 10, color: Colors.white60),
+          ),
+      ],
+    );
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          chip(t.white, st.whiteAccuracy, const Color(0xFF6FA84B)),
-          chip(t.black, st.blackAccuracy, const Color(0xFF6FA84B)),
+          Expanded(
+            child: chip(
+              t.white,
+              st.whiteAccuracy,
+              st.whiteElo,
+              const Color(0xFF6FA84B),
+            ),
+          ),
+          Expanded(
+            child: chip(
+              t.black,
+              st.blackAccuracy,
+              st.blackElo,
+              const Color(0xFF6FA84B),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _OpeningPanel extends StatelessWidget {
+  final AnalysisState st;
+  final GameVariant variant;
+  const _OpeningPanel({required this.st, required this.variant});
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
+    final opening = st.opening;
+    final detail = opening == null
+        ? t.openingNone
+        : '${opening.name} (${opening.eco})';
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '${t.variant}: ${localizedVariant(t, variant)}',
+            style: const TextStyle(fontSize: 13),
+          ),
+          Text('${t.opening}: $detail', style: const TextStyle(fontSize: 13)),
+          if (opening?.gambit case final gambit?)
+            Text(
+              '${t.openingGambit}: $gambit',
+              style: const TextStyle(fontSize: 13),
+            ),
+          if (opening?.variation case final variation?)
+            Text(
+              '${t.openingVariation}: $variation',
+              style: const TextStyle(fontSize: 13),
+            ),
         ],
       ),
     );
@@ -347,14 +466,19 @@ class _SummaryPanel extends StatelessWidget {
     if (rows.isEmpty) return const SizedBox.shrink();
 
     Widget num(int n) => Expanded(
-          child: Text('$n',
-              textAlign: TextAlign.center, style: const TextStyle(fontSize: 13)),
-        );
+      child: Text(
+        '$n',
+        textAlign: TextAlign.center,
+        style: const TextStyle(fontSize: 13),
+      ),
+    );
     Widget head(String s) => Expanded(
-          child: Text(s,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontWeight: FontWeight.bold)),
-        );
+      child: Text(
+        s,
+        textAlign: TextAlign.center,
+        style: const TextStyle(fontWeight: FontWeight.bold),
+      ),
+    );
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -376,19 +500,26 @@ class _SummaryPanel extends StatelessWidget {
                     flex: 2,
                     child: Row(
                       children: [
-                        Text(classStyle(c, colorblind: colorblind).sym,
-                            style: TextStyle(
-                                color:
-                                    classStyle(c, colorblind: colorblind).color,
-                                fontWeight: FontWeight.bold)),
+                        Text(
+                          classStyle(c, colorblind: colorblind).sym,
+                          style: TextStyle(
+                            color: classStyle(c, colorblind: colorblind).color,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                         const SizedBox(width: 6),
                         Flexible(
-                          child: Text(classLabel(t, c),
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                  color: classStyle(c, colorblind: colorblind)
-                                      .color,
-                                  fontSize: 13)),
+                          child: Text(
+                            classLabel(t, c),
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: classStyle(
+                                c,
+                                colorblind: colorblind,
+                              ).color,
+                              fontSize: 13,
+                            ),
+                          ),
                         ),
                       ],
                     ),
@@ -423,18 +554,22 @@ class _NavBar extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         IconButton(
-            onPressed: viewPly > 0 ? onFirst : null,
-            icon: const Icon(Icons.first_page)),
+          onPressed: viewPly > 0 ? onFirst : null,
+          icon: const Icon(Icons.first_page),
+        ),
         IconButton(
-            onPressed: viewPly > 0 ? onPrev : null,
-            icon: const Icon(Icons.chevron_left)),
+          onPressed: viewPly > 0 ? onPrev : null,
+          icon: const Icon(Icons.chevron_left),
+        ),
         Text('$viewPly / $total'),
         IconButton(
-            onPressed: viewPly < total ? onNext : null,
-            icon: const Icon(Icons.chevron_right)),
+          onPressed: viewPly < total ? onNext : null,
+          icon: const Icon(Icons.chevron_right),
+        ),
         IconButton(
-            onPressed: viewPly < total ? onLast : null,
-            icon: const Icon(Icons.last_page)),
+          onPressed: viewPly < total ? onLast : null,
+          icon: const Icon(Icons.last_page),
+        ),
       ],
     );
   }
@@ -445,11 +580,12 @@ class _MoveList extends StatelessWidget {
   final int viewPly;
   final void Function(int ply) onTap;
   final bool colorblind;
-  const _MoveList(
-      {required this.st,
-      required this.viewPly,
-      required this.onTap,
-      this.colorblind = false});
+  const _MoveList({
+    required this.st,
+    required this.viewPly,
+    required this.onTap,
+    this.colorblind = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -476,11 +612,12 @@ class _MoveChip extends StatelessWidget {
   final bool selected;
   final bool colorblind;
   final VoidCallback onTap;
-  const _MoveChip(
-      {required this.move,
-      required this.selected,
-      required this.onTap,
-      this.colorblind = false});
+  const _MoveChip({
+    required this.move,
+    required this.selected,
+    required this.onTap,
+    this.colorblind = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -501,13 +638,16 @@ class _MoveChip extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('$moveNo$dots ${move.san}',
-                style: const TextStyle(fontWeight: FontWeight.w500)),
+            Text(
+              '$moveNo$dots ${move.san}',
+              style: const TextStyle(fontWeight: FontWeight.w500),
+            ),
             if (cs.sym.isNotEmpty) ...[
               const SizedBox(width: 4),
-              Text(cs.sym,
-                  style: TextStyle(
-                      color: cs.color, fontWeight: FontWeight.bold)),
+              Text(
+                cs.sym,
+                style: TextStyle(color: cs.color, fontWeight: FontWeight.bold),
+              ),
             ],
           ],
         ),

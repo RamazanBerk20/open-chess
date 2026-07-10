@@ -18,11 +18,10 @@ const INF: i32 = 50_000;
 const MAX_PLY: usize = 64;
 const PVAL: [i32; 6] = [100, 320, 330, 500, 900, 20_000];
 
-/// Depth cap for the post-search *weakening* re-score. Weakening only needs a
-/// ranking of root moves (then noise/top-N/blunder selection), not deep
-/// accuracy, so a shallow pass keeps it cheap — critical for Fog of War, whose
-/// pseudo-legal movegen yields ~100 root moves to score.
-const WEAKEN_MAX_DEPTH: u8 = 3;
+/// Upper bound for the post-search candidate ranking. Lower skill levels only
+/// need a shallow, tactical-safe choice set; running a full second search for
+/// every legal root move would make weak play slower than strong play.
+const CANDIDATE_MAX_DEPTH: u8 = 5;
 
 const BOUND_EXACT: u8 = 0;
 const BOUND_LOWER: u8 = 1;
@@ -56,19 +55,19 @@ pub struct SearchLimits {
     pub move_time_ms: Option<u64>,
 }
 
-/// Difficulty configuration: full-strength search plus *principled* weakening
-/// (shallow search, top-N random selection, deliberate blunders, eval noise),
-/// all reproducible from `seed`.
+/// Difficulty configuration. Weakness is bounded: a level may vary among
+/// evaluated candidates, but cannot deliberately choose a move outside its
+/// centipawn-loss budget or a move that loses by force when a safe move exists.
 #[derive(Clone, Copy, Debug)]
 pub struct AiConfig {
     pub max_depth: u8,
     pub move_time_ms: Option<u64>,
-    /// Centipawn range of random noise added to each root move's score.
-    pub eval_noise: i32,
-    /// Probability (0..1) of deliberately choosing a weaker move.
-    pub blunder_chance: f32,
-    /// Pick randomly among the top-N moves (1 = always the best).
-    pub top_n_random: u8,
+    /// Maximum allowed root-score loss from the strongest evaluated candidate.
+    pub max_eval_loss_cp: i32,
+    /// Probability (0..1) of varying among eligible candidates.
+    pub random_move_chance: f32,
+    /// Depth used to rank candidates after the main search completes.
+    pub candidate_depth: u8,
     /// Draw aversion in centipawns (positive = avoid draws).
     pub contempt: i32,
     /// RNG seed for reproducible weakening.
@@ -80,9 +79,9 @@ impl Default for AiConfig {
         AiConfig {
             max_depth: 8,
             move_time_ms: Some(1000),
-            eval_noise: 0,
-            blunder_chance: 0.0,
-            top_n_random: 1,
+            max_eval_loss_cp: 0,
+            random_move_chance: 0.0,
+            candidate_depth: 3,
             contempt: 0,
             seed: 0,
         }
@@ -156,7 +155,7 @@ impl Engine {
     /// `-contempt` would invert at odd plies, making the engine seek draws.
     #[inline]
     fn draw_score(&self, ply: usize) -> i32 {
-        if ply % 2 == 0 {
+        if ply.is_multiple_of(2) {
             -self.contempt
         } else {
             self.contempt
@@ -175,8 +174,9 @@ impl Engine {
         self.run(root, limits, cancel, on_info)
     }
 
-    /// Search with difficulty config: full search, then *principled* weakening
-    /// (eval noise → top-N / blunder selection), reproducible from `config.seed`.
+    /// Search with a bounded difficulty policy. The main search always finds the
+    /// best line first; only then can a weaker level vary within a safe score
+    /// band. This keeps Normal and above from making obvious one-move blunders.
     pub fn search_with_config(
         &mut self,
         root: &Position,
@@ -185,45 +185,86 @@ impl Engine {
         on_info: impl FnMut(&SearchInfo),
     ) -> SearchInfo {
         self.contempt = config.contempt;
+        let mut rng = StdRng::seed_from_u64(config.seed);
+        let will_vary = config.max_eval_loss_cp > 0
+            && config.random_move_chance > 0.0
+            && rng.random::<f32>() < config.random_move_chance.clamp(0.0, 1.0);
+        // A deliberate variation must fit inside the level's total move budget.
+        // Reserve its small candidate pass before the primary search starts;
+        // otherwise a weak move could take up to 33% longer than advertised.
+        let selection_ms = config.move_time_ms.map(|ms| (ms / 3).clamp(50, 750));
+        let primary_time_ms = if will_vary {
+            config
+                .move_time_ms
+                .map(|ms| ms.saturating_sub(selection_ms.unwrap_or(0)).max(1))
+        } else {
+            config.move_time_ms
+        };
         let limits = SearchLimits {
             max_depth: config.max_depth,
-            move_time_ms: config.move_time_ms,
+            move_time_ms: primary_time_ms,
         };
         let info = self.run(root, limits, cancel, on_info);
 
-        let needs_weakening =
-            config.top_n_random > 1 || config.blunder_chance > 0.0 || config.eval_noise > 0;
-        if !needs_weakening {
+        if !will_vary {
             return info;
         }
 
-        // Weakening only needs a ranking of root moves, not deep accuracy.
-        // Re-searching every root move at full depth with NO time budget hangs
-        // in Fog of War (pseudo-legal movegen → ~100 root moves). Cap the depth
-        // shallow and keep the move-time budget as a hard backstop; if the
-        // deadline interrupts before any move scores, `scored` is empty and we
-        // fall back to the main search's best move below.
-        let depth = info.depth.min(WEAKEN_MAX_DEPTH).max(1);
+        // Candidate ranking is deliberately capped and gets a small separate
+        // budget. If it cannot finish, return the full search's best move.
+        let depth = info
+            .depth
+            .min(config.candidate_depth.clamp(1, CANDIDATE_MAX_DEPTH))
+            .max(1);
+        let candidate_ms = selection_ms.map(|ms| (ms / 2).max(25));
+        let verification_ms =
+            selection_ms.map(|ms| ms.saturating_sub(candidate_ms.unwrap_or(0)).max(25));
         self.stop = false;
-        self.deadline = limits
-            .move_time_ms
-            .map(|ms| Instant::now() + Duration::from_millis(ms));
+        self.deadline = candidate_ms.map(|ms| Instant::now() + Duration::from_millis(ms));
         let mut scored = self.root_scores(root, depth, cancel);
-        if scored.is_empty() {
+        if self.stop || scored.is_empty() {
             return info;
         }
 
-        let mut rng = StdRng::seed_from_u64(config.seed);
-        if config.eval_noise > 0 {
-            let n = config.eval_noise;
-            for s in scored.iter_mut() {
-                s.1 += rng.random_range(-n..=n);
+        if let Some(best) = info.best {
+            // The main search can see deeper than the candidate pass. Keep its
+            // principal move available even when the shallow order differs.
+            if !scored.iter().any(|(mv, _)| *mv == best) {
+                scored.push((best, info.score_cp));
+                scored.sort_by_key(|x| std::cmp::Reverse(x.1));
             }
-            scored.sort_by_key(|x| std::cmp::Reverse(x.1));
         }
-        let (mv, score) = select_move(&scored, &config, &mut rng);
+        let book_candidates: Vec<Move> = crate::opening::book_moves_if_ready(root)
+            .into_iter()
+            .filter_map(|uci| root.clone().parse_uci(&uci).ok())
+            .collect();
+        // The full-strength result remains the default. Candidate ranking only
+        // exists to select a deliberate, bounded variation; replacing the
+        // principal variation with the shallow candidate winner even when the
+        // RNG did not fire made Normal+ routinely play below their configured
+        // depth.
+        let Some((mv, _shallow_score)) =
+            select_safe_candidate(&scored, &book_candidates, &config, &mut rng)
+        else {
+            return info;
+        };
+        if info.best == Some(mv) {
+            return info;
+        }
+        // Candidate ranking is intentionally shallow for speed, but it must
+        // never be trusted as the final safety boundary. Re-search the one
+        // selected move at the same completed depth as the main PV; otherwise
+        // Normal can pick a move whose tactic only appears past candidate depth.
+        self.stop = false;
+        self.deadline = verification_ms.map(|ms| Instant::now() + Duration::from_millis(ms));
+        let Some(score) = self.root_move_score(root, mv, info.depth.max(1), cancel) else {
+            return info;
+        };
+        if !within_loss_budget(info.score_cp, score, config.max_eval_loss_cp) {
+            return info;
+        }
         SearchInfo {
-            depth,
+            depth: info.depth,
             score_cp: score,
             nodes: info.nodes,
             best: Some(mv),
@@ -257,6 +298,30 @@ impl Engine {
         out
     }
 
+    /// Re-evaluate one candidate at the full completed root depth. Returning
+    /// `None` on cancellation/deadline deliberately preserves the PV instead
+    /// of guessing about the candidate's tactical safety.
+    fn root_move_score(
+        &mut self,
+        root: &Position,
+        mv: Move,
+        depth: u8,
+        cancel: &dyn Fn() -> bool,
+    ) -> Option<i32> {
+        let mut pos = root.clone();
+        let legal = pos.generate_legal();
+        if !(0..legal.len()).any(|index| legal[index] == mv) {
+            return None;
+        }
+        self.path.clear();
+        self.path.push(pos.hash);
+        let undo = pos.make_move(mv);
+        let score = -self.negamax(&mut pos, depth as i32 - 1, -INF, INF, 1, cancel);
+        pos.unmake_move(mv, undo);
+        self.path.clear();
+        (!self.stop).then_some(score)
+    }
+
     fn run(
         &mut self,
         root: &Position,
@@ -272,6 +337,20 @@ impl Engine {
         self.deadline = limits
             .move_time_ms
             .map(|ms| Instant::now() + Duration::from_millis(ms));
+
+        // Variant wins are represented by a position that may still have
+        // pseudo-legal moves (three-check, hill, atomic, Fog). At a root such
+        // a position is already over and the side to move lost on the prior
+        // ply, so never return a spurious legal move or static evaluation.
+        if root.variant_terminal().is_some() {
+            return SearchInfo {
+                depth: 0,
+                score_cp: -MATE,
+                nodes: 0,
+                best: None,
+                pv: Vec::new(),
+            };
+        }
 
         // Fallback so we always return a legal move.
         let mut work = root.clone();
@@ -294,11 +373,28 @@ impl Engine {
         let max_depth = limits.max_depth.max(1).min(MAX_PLY as u8 - 1);
         for depth in 1..=max_depth {
             let mut pos = root.clone();
-            let score = self.negamax(&mut pos, depth as i32, -INF, INF, 0, cancel);
+            let prior = result.score_cp;
+            let use_aspiration =
+                is_standard_search(root) && depth > 1 && prior.abs() < MATE_THRESHOLD;
+            let (mut alpha, mut beta) = if use_aspiration {
+                (prior - 50, prior + 50)
+            } else {
+                (-INF, INF)
+            };
+            let mut score = self.negamax(&mut pos, depth as i32, alpha, beta, 0, cancel);
+            if !self.stop && use_aspiration && (score <= alpha || score >= beta) {
+                pos = root.clone();
+                alpha = -INF;
+                beta = INF;
+                score = self.negamax(&mut pos, depth as i32, alpha, beta, 0, cancel);
+            }
             if self.stop {
                 break; // discard the incomplete iteration, keep the last result
             }
-            let best = self.tt_probe(root.hash).and_then(|e| e.best).or(result.best);
+            let best = self
+                .tt_probe(root.hash)
+                .and_then(|e| e.best)
+                .or(result.best);
             let pv = self.extract_pv(root, depth as usize);
             result = SearchInfo {
                 depth,
@@ -369,15 +465,37 @@ impl Engine {
             };
         }
         self.order_moves(pos, &mut moves, tt_best, ply);
+        if ply == 0 {
+            // The complete opening corpus is a search-order preference, never
+            // a bypass of evaluation. This lets every level, including
+            // Impossible, efficiently follow sound book continuations while a
+            // tactical refutation can still win the full search.
+            self.prefer_root_book_moves(pos, &mut moves, tt_best);
+        }
 
         let alpha_orig = alpha;
         let mut best_score = -INF;
         let mut best_move = None;
         self.path.push(pos.hash);
+        let standard_search = is_standard_search(pos);
         for i in 0..moves.len() {
             let mv = moves[i];
             let u = pos.make_move(mv);
-            let score = -self.negamax(pos, depth - 1, -beta, -alpha, ply + 1, cancel);
+            let quiet = !mv.is_capture() && !pos.in_check(pos.side);
+            let reduced = standard_search && depth >= 3 && i >= 4 && quiet;
+            let child_depth = if reduced { depth - 2 } else { depth - 1 };
+            let mut score = if standard_search && i > 0 && depth > 1 {
+                // Principal-variation search: a null window cheaply rejects
+                // non-principal moves, then re-searches only genuine contenders.
+                -self.negamax(pos, child_depth, -alpha - 1, -alpha, ply + 1, cancel)
+            } else {
+                -self.negamax(pos, child_depth, -beta, -alpha, ply + 1, cancel)
+            };
+            let needs_research = (standard_search && i > 0 && score > alpha && score < beta)
+                || (reduced && score > alpha);
+            if !self.stop && needs_research {
+                score = -self.negamax(pos, depth - 1, -beta, -alpha, ply + 1, cancel);
+            }
             pos.unmake_move(mv, u);
             if self.stop {
                 self.path.pop();
@@ -477,13 +595,7 @@ impl Engine {
         alpha
     }
 
-    fn order_moves(
-        &self,
-        pos: &Position,
-        moves: &mut MoveList,
-        tt_best: Option<Move>,
-        ply: usize,
-    ) {
+    fn order_moves(&self, pos: &Position, moves: &mut MoveList, tt_best: Option<Move>, ply: usize) {
         let killers = self.killers[ply];
         let hist = &self.history;
         let score = |m: Move| -> i32 {
@@ -511,6 +623,26 @@ impl Engine {
         moves
             .as_mut_slice()
             .sort_by_key(|m| std::cmp::Reverse(score(*m)));
+    }
+
+    /// Keep a previous iterative-deepening principal move first, then search
+    /// legal opening-book continuations before ordinary moves at the root.
+    /// Stable sorting preserves the normal tactical/history ordering within
+    /// each group and does not affect non-Standard variants.
+    fn prefer_root_book_moves(&self, pos: &Position, moves: &mut MoveList, tt_best: Option<Move>) {
+        let book: Vec<Move> = crate::opening::book_moves_if_ready(pos)
+            .into_iter()
+            .filter_map(|uci| pos.clone().parse_uci(&uci).ok())
+            .collect();
+        if book.is_empty() {
+            return;
+        }
+        moves.as_mut_slice().sort_by_key(|mv| {
+            (
+                Some(*mv) != tt_best,
+                !book.iter().any(|candidate| candidate == mv),
+            )
+        });
     }
 
     fn store_killer(&mut self, ply: usize, mv: Move) {
@@ -576,17 +708,55 @@ impl Engine {
     }
 }
 
-/// Pick a move applying top-N randomness and deliberate blunders.
-fn select_move(scored: &[(Move, i32)], config: &AiConfig, rng: &mut StdRng) -> (Move, i32) {
-    let n = scored.len();
-    // Deliberate blunder: choose from the weaker half of the move list.
-    if n > 1 && config.blunder_chance > 0.0 && rng.random::<f32>() < config.blunder_chance {
-        let lo = (n / 2).max(1);
-        let idx = rng.random_range(lo..n);
-        return scored[idx];
+/// Pick only candidates inside the configured loss budget. A forced mate loss
+/// is never considered eligible unless the best move also loses by force.
+fn select_safe_candidate(
+    scored: &[(Move, i32)],
+    book_candidates: &[Move],
+    config: &AiConfig,
+    rng: &mut StdRng,
+) -> Option<(Move, i32)> {
+    let (_, best_score) = scored[0];
+    let floor = best_score.saturating_sub(config.max_eval_loss_cp.max(0));
+    let best_is_lost = best_score <= -MATE_THRESHOLD;
+    let eligible: Vec<(Move, i32)> = scored
+        .iter()
+        .copied()
+        .filter(|(_, score)| *score >= floor && (best_is_lost || *score > -MATE_THRESHOLD))
+        .collect();
+    if eligible.len() <= 1 {
+        return None;
     }
-    let top = (config.top_n_random.max(1) as usize).min(n);
-    scored[rng.random_range(0..top)]
+    // Opening lines are preferred only after the same safety filter as every
+    // other move. The corpus deliberately contains gambits, so it is never a
+    // free pass around the level's centipawn-loss budget.
+    let book_eligible: Vec<(Move, i32)> = eligible
+        .iter()
+        .copied()
+        .filter(|(mv, _)| book_candidates.contains(mv))
+        .collect();
+    let pool = if book_eligible.is_empty() {
+        &eligible
+    } else {
+        &book_eligible
+    };
+    Some(pool[rng.random_range(0..pool.len())])
+}
+
+/// A candidate may only replace the full-strength PV when its independently
+/// verified score stays in the configured loss band and does not introduce a
+/// forced loss the PV avoids.
+fn within_loss_budget(best_score: i32, candidate_score: i32, max_loss_cp: i32) -> bool {
+    candidate_score >= best_score.saturating_sub(max_loss_cp.max(0))
+        && (best_score <= -MATE_THRESHOLD || candidate_score > -MATE_THRESHOLD)
+}
+
+#[inline]
+fn is_standard_search(pos: &Position) -> bool {
+    matches!(
+        pos.variant,
+        chess_core::Variant::Standard | chess_core::Variant::Chess960
+    )
 }
 
 /// Convert a node-relative mate score into a TT-stored (root-relative) score.
@@ -641,5 +811,97 @@ fn mover_value(pos: &Position, m: Move) -> i32 {
     match pos.piece_at(m.from()) {
         Some((_, p)) => PVAL[p.index()],
         None => 0,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn bounded_selection_never_picks_a_forced_loss_when_safe_moves_exist() {
+        let mut pos = Position::startpos();
+        let best = pos.parse_uci("e2e4").unwrap();
+        let safe = pos.parse_uci("d2d4").unwrap();
+        let losing = pos.parse_uci("f2f3").unwrap();
+        let cfg = AiConfig {
+            max_depth: 2,
+            move_time_ms: None,
+            max_eval_loss_cp: 120,
+            random_move_chance: 1.0,
+            candidate_depth: 2,
+            contempt: 0,
+            seed: 9,
+        };
+        let scored = [(best, 20), (safe, -80), (losing, -MATE + 3)];
+        let mut rng = StdRng::seed_from_u64(cfg.seed);
+        let (selected, _) = select_safe_candidate(&scored, &[], &cfg, &mut rng).unwrap();
+        assert!(selected == best || selected == safe);
+    }
+
+    #[test]
+    fn a_single_safe_candidate_does_not_vary() {
+        let mut pos = Position::startpos();
+        let best = pos.parse_uci("e2e4").unwrap();
+        let safe = pos.parse_uci("d2d4").unwrap();
+        let cfg = AiConfig {
+            max_depth: 5,
+            move_time_ms: None,
+            max_eval_loss_cp: 100,
+            random_move_chance: 1.0,
+            candidate_depth: 4,
+            contempt: 0,
+            seed: 1,
+        };
+        let mut rng = StdRng::seed_from_u64(cfg.seed);
+        assert!(select_safe_candidate(&[(safe, 10), (best, -200)], &[], &cfg, &mut rng).is_none());
+    }
+
+    #[test]
+    fn root_ordering_prefers_embedded_book_moves() {
+        // Search-side lookup is deliberately non-initializing; make this unit
+        // test explicit about preloading the corpus first.
+        let _ = crate::opening::stats();
+        let mut pos = Position::startpos();
+        let mut moves = pos.generate_legal();
+        let engine = Engine::new(12);
+        engine.order_moves(&pos, &mut moves, None, 0);
+        engine.prefer_root_book_moves(&pos, &mut moves, None);
+
+        let first = moves[0].to_uci();
+        assert!(
+            crate::opening::book_moves(&pos)
+                .iter()
+                .any(|uci| uci == &first),
+            "expected a book move first, got {first}"
+        );
+    }
+
+    #[test]
+    fn verified_candidate_must_respect_the_main_search_loss_budget() {
+        assert!(within_loss_budget(42, 0, 50));
+        assert!(!within_loss_budget(42, -20, 50));
+        assert!(!within_loss_budget(20, -MATE + 3, 400));
+    }
+
+    #[test]
+    fn terminal_variant_root_has_no_spurious_move() {
+        let mut pos = Position::startpos();
+        pos.variant = chess_core::Variant::ThreeCheck;
+        pos.side = chess_core::Color::Black;
+        pos.checks = [3, 0];
+        pos.hash = pos.compute_hash();
+
+        let info = Engine::new(12).search(
+            &pos,
+            SearchLimits {
+                max_depth: 4,
+                move_time_ms: None,
+            },
+            &|| false,
+            |_| {},
+        );
+        assert!(info.best.is_none());
+        assert_eq!(info.score_cp, -MATE);
     }
 }

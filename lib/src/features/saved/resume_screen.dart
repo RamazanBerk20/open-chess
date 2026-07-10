@@ -1,39 +1,73 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:chess/l10n/app_localizations.dart';
-import 'package:chess/src/features/game/game_screen.dart';
-import 'package:chess/src/rust/api/game.dart';
-import 'package:chess/src/state/game_mode.dart';
-import 'package:chess/src/state/game_providers.dart';
-import 'package:chess/src/state/saved_games.dart';
-import 'package:chess/src/state/time_control.dart';
+import 'package:open_chess/l10n/app_localizations.dart';
+import 'package:open_chess/src/features/game/game_screen.dart';
+import 'package:open_chess/src/rust/api/game.dart';
+import 'package:open_chess/src/state/difficulty.dart';
+import 'package:open_chess/src/state/game_mode.dart';
+import 'package:open_chess/src/state/game_providers.dart';
+import 'package:open_chess/src/state/lan_controller.dart';
+import 'package:open_chess/src/state/l10n_labels.dart';
+import 'package:open_chess/src/state/saved_games.dart';
+import 'package:open_chess/src/state/time_control.dart';
 
 class ResumeScreen extends ConsumerWidget {
   const ResumeScreen({super.key});
 
   void _resume(WidgetRef ref, BuildContext context, SavedGame g) {
-    // Resumed games are reviewed/continued as same-device 2P, no clock.
-    ref
-        .read(selectedTimeControlProvider.notifier)
-        .set(TimeControlOption.infinite);
-    ref.read(gameModeProvider.notifier).setTwoPlayer();
-    ref.read(customStartFenProvider.notifier).set(null);
-    ref.read(selectedVariantProvider.notifier).set(GameVariant.standard);
+    // Resumed games are reviewed/continued as same-device 2P while preserving
+    // their original position, rules, and configured clock.
+    final tc = g.baseMinutes == null
+        ? TimeControlOption.infinite
+        : TimeControlOption(
+            '${g.baseMinutes}+${g.incrementSeconds}',
+            g.baseMinutes,
+            g.incrementSeconds,
+          );
+    final variant = variantFromCode(g.variantCode);
+    // A saved local continuation cannot preserve the separate private views or
+    // four-seat topology required by these network-only variants.
+    if (onlineOnlyVariants.contains(variant) ||
+        (!g.vsAi && !sameDeviceVariants.contains(variant))) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AppLocalizations.of(context).savedCorrupt)),
+      );
+      return;
+    }
+    if (hasActiveLanSession(ref.read(lanProvider))) {
+      ref.read(lanProvider.notifier).leave();
+    }
+    ref.read(selectedTimeControlProvider.notifier).set(tc);
+    if (g.vsAi) {
+      final difficulty = Difficulty.presets.firstWhere(
+        (level) => level.name == g.difficultyName,
+        orElse: () => Difficulty.normal,
+      );
+      final aiColor = g.aiColorCode == 'white'
+          ? PieceColor.white
+          : PieceColor.black;
+      ref.read(gameModeProvider.notifier).setVsAi(aiColor, difficulty);
+    } else {
+      ref.read(gameModeProvider.notifier).setTwoPlayer();
+    }
+    ref.read(customStartFenProvider.notifier).set(g.startFen);
+    ref.read(selectedVariantProvider.notifier).set(variant);
     ref.invalidate(gameControllerProvider);
-    final ok = ref.read(gameControllerProvider.notifier).loadGame(g.moves);
+    final ok = ref
+        .read(gameControllerProvider.notifier)
+        .loadGame(g.moves, whiteMs: g.whiteMs, blackMs: g.blackMs);
     if (!ok) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(AppLocalizations.of(context).savedCorrupt)),
       );
     }
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const GameScreen()),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const GameScreen()));
   }
 
-  Future<void> _rename(
-      BuildContext context, WidgetRef ref, SavedGame g) async {
+  Future<void> _rename(BuildContext context, WidgetRef ref, SavedGame g) async {
     final t = AppLocalizations.of(context);
     final ctl = TextEditingController(text: g.name);
     final name = await showDialog<String>(
@@ -46,11 +80,11 @@ class ResumeScreen extends ConsumerWidget {
           decoration: InputDecoration(labelText: t.gameName),
         ),
         actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(c), child: Text(t.cancel)),
+          TextButton(onPressed: () => Navigator.pop(c), child: Text(t.cancel)),
           FilledButton(
-              onPressed: () => Navigator.pop(c, ctl.text.trim()),
-              child: Text(t.save)),
+            onPressed: () => Navigator.pop(c, ctl.text.trim()),
+            child: Text(t.save),
+          ),
         ],
       ),
     );
@@ -90,9 +124,13 @@ class ResumeScreen extends ConsumerWidget {
                           },
                           itemBuilder: (_) => [
                             PopupMenuItem(
-                                value: 'rename', child: Text(t.rename)),
+                              value: 'rename',
+                              child: Text(t.rename),
+                            ),
                             PopupMenuItem(
-                                value: 'delete', child: Text(t.delete)),
+                              value: 'delete',
+                              child: Text(t.delete),
+                            ),
                           ],
                         ),
                         onTap: () => _resume(ref, context, g),

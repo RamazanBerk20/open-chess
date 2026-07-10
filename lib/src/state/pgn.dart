@@ -1,4 +1,4 @@
-import 'package:chess/src/rust/api/game.dart';
+import 'package:open_chess/src/rust/api/game.dart';
 
 /// Build a PGN string from a game's SAN moves + result. Pure Dart — the SAN
 /// move list and outcome already come from the Rust [GameView].
@@ -17,14 +17,13 @@ String buildPgn({
     GameOutcome.stalemate ||
     GameOutcome.drawFiftyMove ||
     GameOutcome.drawThreefold ||
-    GameOutcome.drawInsufficientMaterial =>
-      '1/2-1/2',
+    GameOutcome.drawInsufficientMaterial => '1/2-1/2',
     GameOutcome.ongoing => '*',
   };
 
   final b = StringBuffer()
     ..writeln('[Event "$event"]')
-    ..writeln('[Site "Chess app"]')
+    ..writeln('[Site "Open Chess"]')
     ..writeln('[Date "${date ?? '????.??.??'}"]')
     ..writeln('[White "${_esc(white)}"]')
     ..writeln('[Black "${_esc(black)}"]')

@@ -9,7 +9,7 @@ class AppLocalizationsZh extends AppLocalizations {
   AppLocalizationsZh([String locale = 'zh']) : super(locale);
 
   @override
-  String get appTitle => '国际象棋';
+  String get appTitle => 'Open Chess';
 
   @override
   String get menuSinglePlayer => '单人对战';
@@ -180,6 +180,33 @@ class AppLocalizationsZh extends AppLocalizations {
   String get analysis => '分析';
 
   @override
+  String get opening => '开局';
+
+  @override
+  String get openingGambit => '弃兵';
+
+  @override
+  String get openingVariation => '变例';
+
+  @override
+  String get openingNone => '无已命名开局';
+
+  @override
+  String get ratingEstimate => '估算等级分';
+
+  @override
+  String get ratingConfidenceLow => '低置信度';
+
+  @override
+  String get ratingConfidenceMedium => '中等置信度';
+
+  @override
+  String get ratingConfidenceHigh => '高置信度';
+
+  @override
+  String get ratingUnavailable => '无法估算等级分';
+
+  @override
   String get white => '白方';
 
   @override
@@ -260,6 +287,27 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settings => '设置';
+
+  @override
+  String get profile => '个人资料';
+
+  @override
+  String get profileUsername => '用户名';
+
+  @override
+  String get profileUsernameHint => '输入用户名';
+
+  @override
+  String get profileAvatar => '头像';
+
+  @override
+  String get profileChangeAvatar => '更改头像';
+
+  @override
+  String get profileRemoveAvatar => '删除头像';
+
+  @override
+  String get profileImageError => '无法使用此图片。';
 
   @override
   String get appearance => '外观';
@@ -355,6 +403,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get lanGame => '局域网对局';
 
   @override
+  String get lanAllowSpectators => '允许观战';
+
+  @override
+  String get lanSpectate => '观看对局';
+
+  @override
   String get chat => '聊天';
 
   @override
@@ -440,16 +494,28 @@ class AppLocalizationsZh extends AppLocalizations {
   String get diffBeginner => '初学者';
 
   @override
+  String get diffVeryEasy => '非常简单';
+
+  @override
   String get diffEasy => '简单';
 
   @override
   String get diffMedium => '中等';
 
   @override
+  String get diffNormal => '标准';
+
+  @override
   String get diffHard => '困难';
 
   @override
   String get diffExpert => '专家';
+
+  @override
+  String get diffVeryHard => '非常困难';
+
+  @override
+  String get diffImpossible => '不可能';
 
   @override
   String get baseMinutes => '基础时间（分钟）';
@@ -474,6 +540,12 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get evalNoise => '评估噪声（cp）';
+
+  @override
+  String get maxEvalLoss => '最大评估损失（兵值）';
+
+  @override
+  String get moveVariety => '走法多样性';
 
   @override
   String puzzlesSolved(Object solved, Object total) {
@@ -612,6 +684,12 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get fourVsBots => '对战电脑';
+
+  @override
+  String get fourSeatAi => 'AI';
+
+  @override
+  String get fourPerspective => '视角';
 
   @override
   String get fourYourSeats => '你的座位';

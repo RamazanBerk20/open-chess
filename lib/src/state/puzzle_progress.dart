@@ -23,27 +23,26 @@ class PuzzleProgress {
     Set<String>? attemptedIds,
     int? currentIndex,
     int? bestStreak,
-  }) =>
-      PuzzleProgress(
-        solvedIds: solvedIds ?? this.solvedIds,
-        attemptedIds: attemptedIds ?? this.attemptedIds,
-        currentIndex: currentIndex ?? this.currentIndex,
-        bestStreak: bestStreak ?? this.bestStreak,
-      );
+  }) => PuzzleProgress(
+    solvedIds: solvedIds ?? this.solvedIds,
+    attemptedIds: attemptedIds ?? this.attemptedIds,
+    currentIndex: currentIndex ?? this.currentIndex,
+    bestStreak: bestStreak ?? this.bestStreak,
+  );
 
   Map<String, dynamic> toJson() => {
-        'solved': solvedIds.toList(),
-        'attempted': attemptedIds.toList(),
-        'currentIndex': currentIndex,
-        'bestStreak': bestStreak,
-      };
+    'solved': solvedIds.toList(),
+    'attempted': attemptedIds.toList(),
+    'currentIndex': currentIndex,
+    'bestStreak': bestStreak,
+  };
 
   factory PuzzleProgress.fromJson(Map<String, dynamic> j) => PuzzleProgress(
-        solvedIds: (j['solved'] as List? ?? []).cast<String>().toSet(),
-        attemptedIds: (j['attempted'] as List? ?? []).cast<String>().toSet(),
-        currentIndex: j['currentIndex'] as int? ?? 0,
-        bestStreak: j['bestStreak'] as int? ?? 0,
-      );
+    solvedIds: (j['solved'] as List? ?? []).cast<String>().toSet(),
+    attemptedIds: (j['attempted'] as List? ?? []).cast<String>().toSet(),
+    currentIndex: j['currentIndex'] as int? ?? 0,
+    bestStreak: j['bestStreak'] as int? ?? 0,
+  );
 }
 
 Future<File> _progressFile() async {

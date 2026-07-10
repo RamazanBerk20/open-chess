@@ -1,9 +1,7 @@
 //! The board position: bitboards + mailbox, incremental Zobrist hash, and
 //! make/unmake with full rule handling (castling, en passant, promotion).
 
-use crate::attacks::{
-    bishop_attacks, king_attacks, knight_attacks, pawn_attacks, rook_attacks,
-};
+use crate::attacks::{bishop_attacks, king_attacks, knight_attacks, pawn_attacks, rook_attacks};
 use crate::bitboard::{bit, pop_lsb, Bitboard};
 use crate::types::{file_of, kind, CastlingRights, Color, Move, Piece, Square, Variant, HILL};
 use crate::zobrist::zobrist;
@@ -15,8 +13,7 @@ const CHECK_KEY: [u64; 2] = [0x9E3779B97F4A7C15, 0xC2B2AE3D27D4EB4F];
 
 #[inline]
 fn check_hash(checks: [u8; 2]) -> u64 {
-    (checks[0] as u64).wrapping_mul(CHECK_KEY[0])
-        ^ (checks[1] as u64).wrapping_mul(CHECK_KEY[1])
+    (checks[0] as u64).wrapping_mul(CHECK_KEY[0]) ^ (checks[1] as u64).wrapping_mul(CHECK_KEY[1])
 }
 
 /// Hash keys mixing the Crazyhouse reserve counts into the Zobrist hash, so the
@@ -46,6 +43,19 @@ fn hand_hash(hand: [[u8; 5]; 2]) -> u64 {
         for p in 0..5 {
             h ^= (hand[c][p] as u64).wrapping_mul(HAND_KEY[c][p]);
         }
+    }
+    h
+}
+
+/// Promoted Crazyhouse/Bughouse pieces need their own Zobrist contribution: a
+/// promoted queen and a native queen share board geometry but capture into
+/// different reserve pieces.
+#[inline]
+fn promoted_hash(mut promoted: Bitboard) -> u64 {
+    let z = zobrist();
+    let mut h = 0u64;
+    while promoted != 0 {
+        h ^= z.promoted(pop_lsb(&mut promoted));
     }
     h
 }
@@ -371,6 +381,7 @@ impl Position {
             if mv.is_promotion() || mover_promoted {
                 self.promoted |= bit(to);
             }
+            self.hash ^= promoted_hash(undo.prev_promoted) ^ promoted_hash(self.promoted);
         }
 
         // Update castling rights from touched squares.
@@ -479,7 +490,11 @@ impl Position {
         } else {
             // Reverse our piece move (undo promotion: original piece was a pawn).
             let placed = self.mailbox[to as usize].expect("to empty on unmake").1;
-            let original = if mv.is_promotion() { Piece::Pawn } else { placed };
+            let original = if mv.is_promotion() {
+                Piece::Pawn
+            } else {
+                placed
+            };
             self.remove_piece(us, placed, to);
             self.put_piece(us, original, from);
         }
@@ -520,6 +535,7 @@ impl Position {
         }
         h ^= check_hash(self.checks);
         h ^= hand_hash(self.hand);
+        h ^= promoted_hash(self.promoted);
         h
     }
 
@@ -670,22 +686,82 @@ impl Position {
         // The remaining five files take a knights/rooks/king pattern; the king is
         // always between the two rooks (so castling is well-defined).
         const KRN: [[Piece; 5]; 10] = [
-            [Piece::Knight, Piece::Knight, Piece::Rook, Piece::King, Piece::Rook],
-            [Piece::Knight, Piece::Rook, Piece::Knight, Piece::King, Piece::Rook],
-            [Piece::Knight, Piece::Rook, Piece::King, Piece::Knight, Piece::Rook],
-            [Piece::Knight, Piece::Rook, Piece::King, Piece::Rook, Piece::Knight],
-            [Piece::Rook, Piece::Knight, Piece::Knight, Piece::King, Piece::Rook],
-            [Piece::Rook, Piece::Knight, Piece::King, Piece::Knight, Piece::Rook],
-            [Piece::Rook, Piece::Knight, Piece::King, Piece::Rook, Piece::Knight],
-            [Piece::Rook, Piece::King, Piece::Knight, Piece::Knight, Piece::Rook],
-            [Piece::Rook, Piece::King, Piece::Knight, Piece::Rook, Piece::Knight],
-            [Piece::Rook, Piece::King, Piece::Rook, Piece::Knight, Piece::Knight],
+            [
+                Piece::Knight,
+                Piece::Knight,
+                Piece::Rook,
+                Piece::King,
+                Piece::Rook,
+            ],
+            [
+                Piece::Knight,
+                Piece::Rook,
+                Piece::Knight,
+                Piece::King,
+                Piece::Rook,
+            ],
+            [
+                Piece::Knight,
+                Piece::Rook,
+                Piece::King,
+                Piece::Knight,
+                Piece::Rook,
+            ],
+            [
+                Piece::Knight,
+                Piece::Rook,
+                Piece::King,
+                Piece::Rook,
+                Piece::Knight,
+            ],
+            [
+                Piece::Rook,
+                Piece::Knight,
+                Piece::Knight,
+                Piece::King,
+                Piece::Rook,
+            ],
+            [
+                Piece::Rook,
+                Piece::Knight,
+                Piece::King,
+                Piece::Knight,
+                Piece::Rook,
+            ],
+            [
+                Piece::Rook,
+                Piece::Knight,
+                Piece::King,
+                Piece::Rook,
+                Piece::Knight,
+            ],
+            [
+                Piece::Rook,
+                Piece::King,
+                Piece::Knight,
+                Piece::Knight,
+                Piece::Rook,
+            ],
+            [
+                Piece::Rook,
+                Piece::King,
+                Piece::Knight,
+                Piece::Rook,
+                Piece::Knight,
+            ],
+            [
+                Piece::Rook,
+                Piece::King,
+                Piece::Rook,
+                Piece::Knight,
+                Piece::Knight,
+            ],
         ];
         let krn = KRN[(n % 10) as usize];
         let mut ki = 0;
-        for f in 0..8 {
-            if files[f].is_none() {
-                files[f] = Some(krn[ki]);
+        for file in &mut files {
+            if file.is_none() {
+                *file = Some(krn[ki]);
                 ki += 1;
             }
         }
@@ -725,10 +801,10 @@ impl Position {
 /// Place `p` on the `n`-th empty file (left to right).
 fn place_nth_empty(files: &mut [Option<Piece>; 8], n: usize, p: Piece) {
     let mut count = 0;
-    for f in 0..8 {
-        if files[f].is_none() {
+    for file in files.iter_mut() {
+        if file.is_none() {
             if count == n {
-                files[f] = Some(p);
+                *file = Some(p);
                 return;
             }
             count += 1;

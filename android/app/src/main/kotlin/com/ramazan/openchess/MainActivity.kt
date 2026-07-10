@@ -1,4 +1,4 @@
-package com.ramazan.chess
+package com.ramazan.openchess
 
 import android.content.Context
 import android.net.wifi.WifiManager
@@ -16,7 +16,7 @@ class MainActivity : FlutterActivity() {
         super.onCreate(savedInstanceState)
         val wifi =
             applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
-        multicastLock = wifi.createMulticastLock("chess-mdns").apply {
+        multicastLock = wifi.createMulticastLock("open-chess-mdns").apply {
             setReferenceCounted(false)
             acquire()
         }

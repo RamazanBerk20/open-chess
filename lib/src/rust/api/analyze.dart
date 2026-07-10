@@ -4,13 +4,17 @@
 // ignore_for_file: invalid_use_of_internal_member, unused_import, unnecessary_import
 
 import '../frb_generated.dart';
+import 'game.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `classify`, `mate_in_from`, `mate_white`, `material`, `piece_val`, `white_cp`, `win_prob`, `win_stm`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `fmt`
+// These functions are ignored because they are not marked as `pub`: `classify`, `estimate_elo`, `is_standard_start`, `mate_in_from`, `mate_white`, `material`, `piece_val`, `white_cp`, `win_prob`, `win_stm`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `assert_fields_are_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `from`
 
-/// Analyze `moves` played from `start_fen`. `depth` is the fixed search depth
-/// per position. Streams an [`AnalysisUpdate`] per ply, then a `done` update.
+/// Legacy Standard-chess bridge endpoint.
+///
+/// Keep this exact signature until checked-in FRB bindings are regenerated.
+/// New callers should use [`analyze_game_request`] so variant games replay with
+/// their actual rules.
 Stream<AnalysisUpdate> analyzeGame({
   required String startFen,
   required List<String> moves,
@@ -21,8 +25,78 @@ Stream<AnalysisUpdate> analyzeGame({
   depth: depth,
 );
 
+/// Analyze a game with full start-position and variant context.
+///
+/// Streams an [`AnalysisUpdate`] per ply and attaches opening/Elo metadata to
+/// the final update.
+Stream<AnalysisUpdate> analyzeGameRequest({
+  required AnalyzeGameRequest request,
+}) => RustLib.instance.api.crateApiAnalyzeAnalyzeGameRequest(request: request);
+
 /// Cancel the running analysis.
 void analysisCancel() => RustLib.instance.api.crateApiAnalyzeAnalysisCancel();
+
+/// Named-opening details attached to a completed Standard-start analysis.
+class AnalysisOpening {
+  final String eco;
+  final String name;
+  final String opening;
+  final String? gambit;
+  final String? variation;
+
+  const AnalysisOpening({
+    required this.eco,
+    required this.name,
+    required this.opening,
+    this.gambit,
+    this.variation,
+  });
+
+  @override
+  int get hashCode =>
+      eco.hashCode ^
+      name.hashCode ^
+      opening.hashCode ^
+      gambit.hashCode ^
+      variation.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is AnalysisOpening &&
+          runtimeType == other.runtimeType &&
+          eco == other.eco &&
+          name == other.name &&
+          opening == other.opening &&
+          gambit == other.gambit &&
+          variation == other.variation;
+}
+
+/// Metadata computed at the end of analysis and attached to the final stream
+/// update. It stays a separate internal value so normal per-move updates avoid
+/// repeatedly cloning the same summary.
+class AnalysisSummary {
+  final AnalysisOpening? opening;
+  final EloEstimate? whiteElo;
+  final EloEstimate? blackElo;
+
+  const AnalysisSummary({this.opening, this.whiteElo, this.blackElo});
+
+  static Future<AnalysisSummary> default_() =>
+      RustLib.instance.api.crateApiAnalyzeAnalysisSummaryDefault();
+
+  @override
+  int get hashCode => opening.hashCode ^ whiteElo.hashCode ^ blackElo.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is AnalysisSummary &&
+          runtimeType == other.runtimeType &&
+          opening == other.opening &&
+          whiteElo == other.whiteElo &&
+          blackElo == other.blackElo;
+}
 
 class AnalysisUpdate {
   final int ply;
@@ -53,6 +127,13 @@ class AnalysisUpdate {
   final double whiteAccuracy;
   final double blackAccuracy;
 
+  /// Populated only on the final update for canonical Standard games.
+  final AnalysisOpening? opening;
+
+  /// Populated only on the final update for canonical Standard games.
+  final EloEstimate? whiteElo;
+  final EloEstimate? blackElo;
+
   const AnalysisUpdate({
     required this.ply,
     required this.uci,
@@ -70,6 +151,9 @@ class AnalysisUpdate {
     required this.done,
     required this.whiteAccuracy,
     required this.blackAccuracy,
+    this.opening,
+    this.whiteElo,
+    this.blackElo,
   });
 
   @override
@@ -89,7 +173,10 @@ class AnalysisUpdate {
       total.hashCode ^
       done.hashCode ^
       whiteAccuracy.hashCode ^
-      blackAccuracy.hashCode;
+      blackAccuracy.hashCode ^
+      opening.hashCode ^
+      whiteElo.hashCode ^
+      blackElo.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -111,5 +198,77 @@ class AnalysisUpdate {
           total == other.total &&
           done == other.done &&
           whiteAccuracy == other.whiteAccuracy &&
-          blackAccuracy == other.blackAccuracy;
+          blackAccuracy == other.blackAccuracy &&
+          opening == other.opening &&
+          whiteElo == other.whiteElo &&
+          blackElo == other.blackElo;
+}
+
+/// Complete context for an analysis request.
+///
+/// FEN alone does not retain the selected game rules, so callers using a
+/// saved/variant game must provide its [`GameVariant`](crate::api::game::GameVariant).
+/// The legacy `analyze_game` bridge endpoint remains as a Standard wrapper for
+/// existing callers.
+class AnalyzeGameRequest {
+  final String startFen;
+  final List<String> moves;
+  final int depth;
+  final GameVariant variant;
+
+  const AnalyzeGameRequest({
+    required this.startFen,
+    required this.moves,
+    required this.depth,
+    required this.variant,
+  });
+
+  @override
+  int get hashCode =>
+      startFen.hashCode ^ moves.hashCode ^ depth.hashCode ^ variant.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is AnalyzeGameRequest &&
+          runtimeType == other.runtimeType &&
+          startFen == other.startFen &&
+          moves == other.moves &&
+          depth == other.depth &&
+          variant == other.variant;
+}
+
+/// Confidence increases with the number of non-book moves used by an estimate.
+enum EloConfidence { low, medium, high }
+
+/// A local, post-game Elo estimate based on non-book average centipawn loss.
+class EloEstimate {
+  final int elo;
+  final EloConfidence confidence;
+  final int analyzedMoves;
+  final double averageCpLoss;
+
+  const EloEstimate({
+    required this.elo,
+    required this.confidence,
+    required this.analyzedMoves,
+    required this.averageCpLoss,
+  });
+
+  @override
+  int get hashCode =>
+      elo.hashCode ^
+      confidence.hashCode ^
+      analyzedMoves.hashCode ^
+      averageCpLoss.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is EloEstimate &&
+          runtimeType == other.runtimeType &&
+          elo == other.elo &&
+          confidence == other.confidence &&
+          analyzedMoves == other.analyzedMoves &&
+          averageCpLoss == other.averageCpLoss;
 }

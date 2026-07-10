@@ -1,12 +1,36 @@
 import 'package:flutter/material.dart';
 
-import 'package:chess/src/rust/api/four.dart';
-import 'package:chess/src/widgets/four_pieces.dart';
+import 'package:open_chess/src/rust/api/four.dart';
+import 'package:open_chess/src/widgets/four_pieces.dart';
+
+/// Converts a display-grid cell into the engine's canonical 14x14 square.
+///
+/// [displayRow] is measured from the visual top, while the engine stores row
+/// zero at Red's bottom edge. Every perspective therefore maps its own home
+/// edge to the visual bottom without rotating the underlying game state.
+int fourBoardSquareForDisplay({
+  required FourPlayer perspective,
+  required int displayRow,
+  required int displayCol,
+}) {
+  assert(displayRow >= 0 && displayRow < 14);
+  assert(displayCol >= 0 && displayCol < 14);
+  final (row, col) = switch (perspective) {
+    FourPlayer.red => (13 - displayRow, displayCol),
+    FourPlayer.blue => (13 - displayCol, 13 - displayRow),
+    FourPlayer.yellow => (displayRow, 13 - displayCol),
+    FourPlayer.green => (displayCol, displayRow),
+  };
+  return row * 14 + col;
+}
 
 /// The 14×14 four-player cross board. Cell index = row*14 + col (row 0 = the
-/// bottom edge, Red's side); invalid corner cells render as holes.
+/// bottom edge, Red's side); invalid corner cells render as holes. The board
+/// is rendered from [perspective], but all controller callbacks use canonical
+/// engine squares.
 class FourBoardWidget extends StatelessWidget {
   final FourView view;
+  final FourPlayer perspective;
   final int? selected;
   final Set<int> targets;
   final List<(int, int)> premoves;
@@ -18,6 +42,7 @@ class FourBoardWidget extends StatelessWidget {
   const FourBoardWidget({
     super.key,
     required this.view,
+    required this.perspective,
     required this.selected,
     required this.targets,
     this.premoves = const [],
@@ -66,7 +91,14 @@ class FourBoardWidget extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     for (int col = 0; col < 14; col++)
-                      _cell(13 - dr, col, cell, dead, board, premoveSquares),
+                      _cell(
+                        displayRow: dr,
+                        displayCol: col,
+                        cell: cell,
+                        dead: dead,
+                        board: board,
+                        premoveSquares: premoveSquares,
+                      ),
                   ],
                 ),
             ],
@@ -76,14 +108,26 @@ class FourBoardWidget extends StatelessWidget {
     );
   }
 
-  Widget _cell(int boardRow, int col, double cell, Set<FourPlayer> dead,
-      List<FourSquarePiece?> board, Set<int> premoveSquares) {
-    final sq = boardRow * 14 + col;
+  Widget _cell({
+    required int displayRow,
+    required int displayCol,
+    required double cell,
+    required Set<FourPlayer> dead,
+    required List<FourSquarePiece?> board,
+    required Set<int> premoveSquares,
+  }) {
+    final sq = fourBoardSquareForDisplay(
+      perspective: perspective,
+      displayRow: displayRow,
+      displayCol: displayCol,
+    );
     if (!view.valid[sq]) {
       return SizedBox(width: cell, height: cell); // cut corner → hole
     }
     final piece = board[sq];
-    final isLight = (col + boardRow) % 2 == 0;
+    final boardRow = sq ~/ 14;
+    final boardCol = sq % 14;
+    final isLight = (boardCol + boardRow) % 2 == 0;
     final isTarget = targets.contains(sq);
     final isPremoveTarget = premoveTargets.contains(sq);
 
@@ -119,7 +163,9 @@ class FourBoardWidget extends StatelessWidget {
                 color: piece != null ? null : const Color(0x55303030),
                 border: piece != null
                     ? Border.all(
-                        color: const Color(0x55303030), width: cell * 0.08)
+                        color: const Color(0x55303030),
+                        width: cell * 0.08,
+                      )
                     : null,
               ),
             ),

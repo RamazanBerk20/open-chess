@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:chess/src/rust/api/game.dart';
-import 'package:chess/src/state/clock_provider.dart';
+import 'package:open_chess/src/rust/api/game.dart';
+import 'package:open_chess/src/state/clock_provider.dart';
 
 /// Format remaining milliseconds: tenths under 20s, else M:SS.
 String formatClock(int ms) {

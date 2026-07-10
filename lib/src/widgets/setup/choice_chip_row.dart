@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'package:chess/src/theme/spacing.dart';
+import 'package:open_chess/src/theme/spacing.dart';
 
 /// A wrap of single-select [ChoiceChip]s over a list of options of type [T].
 /// One styling source for every variant / time-control / difficulty / seat row

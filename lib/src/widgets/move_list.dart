@@ -19,9 +19,9 @@ class MoveList extends StatelessWidget {
           child: Row(
             children: [
               SizedBox(
-                  width: 32,
-                  child: Text('$no.',
-                      style: const TextStyle(color: Colors.grey))),
+                width: 32,
+                child: Text('$no.', style: const TextStyle(color: Colors.grey)),
+              ),
               Expanded(child: Text(white)),
               Expanded(child: Text(black)),
             ],

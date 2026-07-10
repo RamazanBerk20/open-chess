@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'package:chess/src/theme/spacing.dart';
+import 'package:open_chess/src/theme/spacing.dart';
 
 /// A selectable game-mode card for the New Game hub. Flat by default; the
 /// selected card fills with the primary container colour.
@@ -54,19 +54,19 @@ class ModeCard extends StatelessWidget {
                     Text(
                       label,
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            color: fg,
-                            fontWeight: FontWeight.w600,
-                          ),
+                        color: fg,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     if (subtitle != null) ...[
                       const SizedBox(height: 2),
                       Text(
                         subtitle!,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: selected
-                                  ? fg.withValues(alpha: 0.8)
-                                  : cs.onSurfaceVariant,
-                            ),
+                          color: selected
+                              ? fg.withValues(alpha: 0.8)
+                              : cs.onSurfaceVariant,
+                        ),
                       ),
                     ],
                   ],

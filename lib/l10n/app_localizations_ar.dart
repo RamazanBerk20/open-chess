@@ -9,7 +9,7 @@ class AppLocalizationsAr extends AppLocalizations {
   AppLocalizationsAr([String locale = 'ar']) : super(locale);
 
   @override
-  String get appTitle => 'شطرنج';
+  String get appTitle => 'Open Chess';
 
   @override
   String get menuSinglePlayer => 'لاعب واحد';
@@ -180,6 +180,33 @@ class AppLocalizationsAr extends AppLocalizations {
   String get analysis => 'التحليل';
 
   @override
+  String get opening => 'الافتتاح';
+
+  @override
+  String get openingGambit => 'جامبيت';
+
+  @override
+  String get openingVariation => 'التنويع';
+
+  @override
+  String get openingNone => 'لا يوجد افتتاح مسمى';
+
+  @override
+  String get ratingEstimate => 'التصنيف التقديري';
+
+  @override
+  String get ratingConfidenceLow => 'ثقة منخفضة';
+
+  @override
+  String get ratingConfidenceMedium => 'ثقة متوسطة';
+
+  @override
+  String get ratingConfidenceHigh => 'ثقة عالية';
+
+  @override
+  String get ratingUnavailable => 'تقدير التصنيف غير متاح';
+
+  @override
   String get white => 'الأبيض';
 
   @override
@@ -260,6 +287,27 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get settings => 'الإعدادات';
+
+  @override
+  String get profile => 'الملف الشخصي';
+
+  @override
+  String get profileUsername => 'اسم المستخدم';
+
+  @override
+  String get profileUsernameHint => 'اختر اسم مستخدم';
+
+  @override
+  String get profileAvatar => 'الصورة الرمزية';
+
+  @override
+  String get profileChangeAvatar => 'تغيير الصورة الرمزية';
+
+  @override
+  String get profileRemoveAvatar => 'إزالة الصورة الرمزية';
+
+  @override
+  String get profileImageError => 'تعذر استخدام هذه الصورة.';
 
   @override
   String get appearance => 'المظهر';
@@ -355,6 +403,12 @@ class AppLocalizationsAr extends AppLocalizations {
   String get lanGame => 'لعبة عبر الشبكة المحلية';
 
   @override
+  String get lanAllowSpectators => 'السماح بالمشاهدين';
+
+  @override
+  String get lanSpectate => 'مشاهدة المباراة';
+
+  @override
   String get chat => 'الدردشة';
 
   @override
@@ -440,16 +494,28 @@ class AppLocalizationsAr extends AppLocalizations {
   String get diffBeginner => 'مبتدئ';
 
   @override
+  String get diffVeryEasy => 'سهل جدًا';
+
+  @override
   String get diffEasy => 'سهل';
 
   @override
   String get diffMedium => 'متوسط';
 
   @override
+  String get diffNormal => 'عادي';
+
+  @override
   String get diffHard => 'صعب';
 
   @override
   String get diffExpert => 'خبير';
+
+  @override
+  String get diffVeryHard => 'صعب جدًا';
+
+  @override
+  String get diffImpossible => 'مستحيل';
 
   @override
   String get baseMinutes => 'الدقائق الأساسية';
@@ -474,6 +540,12 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get evalNoise => 'تشويش التقييم (سم)';
+
+  @override
+  String get maxEvalLoss => 'أقصى خسارة في التقييم (سم)';
+
+  @override
+  String get moveVariety => 'تنوع النقلات';
 
   @override
   String puzzlesSolved(Object solved, Object total) {
@@ -612,6 +684,12 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get fourVsBots => 'ضد الروبوتات';
+
+  @override
+  String get fourSeatAi => 'ذكاء اصطناعي';
+
+  @override
+  String get fourPerspective => 'المنظور';
 
   @override
   String get fourYourSeats => 'مقاعدك';

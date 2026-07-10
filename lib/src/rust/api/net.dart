@@ -6,34 +6,47 @@
 import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `bug_assign_notify`, `bug_authority`, `bug_broadcast`, `bug_check_end`, `bug_client_handle`, `bug_client_out`, `bug_cmd`, `bug_finish`, `bug_game`, `bug_host_task`, `bug_inbound`, `bug_join_task`, `bug_passable`, `bug_reader`, `bug_team`, `bug_writer`, `cmd_slot`, `color_u8`, `drive`, `es`, `feed_target`, `four_apply_uci`, `four_assign_notify`, `four_authority`, `four_client_handle`, `four_client_out`, `four_cmd`, `four_finish`, `four_format`, `four_host_task`, `four_inbound`, `four_join_task`, `four_player_code`, `four_result_str`, `handle_incoming`, `host_task`, `join_task`, `lock`, `of`, `piece_u8`, `read_message`, `runtime`, `seat_board`, `seat_index`, `send`, `session_cancel`, `variant_from_code`, `variant_game`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `clone`, `clone`, `clone`, `eq`, `fmt`, `fmt`, `fmt`
+// These functions are ignored because they are not marked as `pub`: `apply_network_increment`, `apply_variant_state`, `begin_session`, `bind_lan_listener`, `broadcast_except`, `broadcast`, `bug_assign_notify`, `bug_authority`, `bug_broadcast`, `bug_check_end`, `bug_client_handle`, `bug_client_out`, `bug_cmd`, `bug_finish`, `bug_game`, `bug_host_task`, `bug_inbound`, `bug_join_task`, `bug_passable`, `bug_reader`, `bug_team`, `bug_writer`, `cancel_sessions`, `charge_network_clock`, `cmd_slot`, `color_u8`, `connected_event`, `drive`, `empty`, `es`, `feed_target`, `four_ai_difficulties`, `four_apply_uci`, `four_assign_notify`, `four_authority`, `four_client_handle`, `four_client_out`, `four_cmd`, `four_finish`, `four_format`, `four_host_task`, `four_inbound`, `four_join_task`, `four_owner_can_act`, `four_owner_from_assignment`, `four_play_ai_turn`, `four_player_code`, `four_publish_move`, `four_reader`, `four_result_str`, `four_spectator_message`, `from_protocol`, `game_over_code`, `game_over_event`, `handle_incoming`, `host_reader`, `host_task`, `host_writer`, `initial_clock_ms`, `join_connect`, `join_handshake`, `join_task`, `join_write`, `lobby_player_handshake`, `lock`, `of`, `piece_u8`, `prepare_host_handshake`, `read_handshake_message`, `read_message`, `record_four_history`, `reject_host_handshake`, `reject`, `runtime`, `seat_board`, `seat_index`, `send_leave`, `send_spectator`, `send`, `session_cancel`, `session_current`, `spectator_start`, `timeout_event`, `to_protocol`, `valid_four_seat_owners`, `valid_network_seat_owners`, `validate_host_hello`, `variant_from_code`, `variant_game`, `variant_state`
+// These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `FourSeatOwner`, `FourSource`, `FourStartAssignment`, `HostHandshake`, `HostInbound`, `HostPeer`, `HostSource`, `PendingLobbyPeer`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
 
 /// Browse for LAN hosts. Streams each resolved host until `net_stop_browse`.
 Stream<NetHost> netBrowse() => RustLib.instance.api.crateApiNetNetBrowse();
 
 void netStopBrowse() => RustLib.instance.api.crateApiNetNetStopBrowse();
 
-/// Host a game: advertise on mDNS, accept one peer, then run the session.
+/// Host a two-player game. Once a player has joined, enabled hosts can accept
+/// any number of read-only spectators and fan out the authoritative position
+/// stream to them.
 Stream<NetEvent> netHost({
-  required String name,
+  required PlayerProfileWire profile,
   required int baseMinutes,
   required int incrementSeconds,
   required bool hostWhite,
   required String variant,
   required int chess960Index,
+  required bool allowSpectators,
 }) => RustLib.instance.api.crateApiNetNetHost(
-  name: name,
+  profile: profile,
   baseMinutes: baseMinutes,
   incrementSeconds: incrementSeconds,
   hostWhite: hostWhite,
   variant: variant,
   chess960Index: chess960Index,
+  allowSpectators: allowSpectators,
 );
 
-/// Join a host at `addr` ("ip:port").
-Stream<NetEvent> netJoin({required String addr, required String name}) =>
-    RustLib.instance.api.crateApiNetNetJoin(addr: addr, name: name);
+/// Join a two-player host as the playing opponent.
+Stream<NetEvent> netJoin({
+  required String addr,
+  required PlayerProfileWire profile,
+}) => RustLib.instance.api.crateApiNetNetJoin(addr: addr, profile: profile);
+
+/// Join an enabled live two-player host as a strictly read-only spectator.
+Stream<NetEvent> netSpectate({
+  required String addr,
+  required PlayerProfileWire profile,
+}) => RustLib.instance.api.crateApiNetNetSpectate(addr: addr, profile: profile);
 
 void netSendMove({
   required String uci,
@@ -55,16 +68,19 @@ void netRespondDraw({required bool accept}) =>
 void netSendChat({required String text}) =>
     RustLib.instance.api.crateApiNetNetSendChat(text: text);
 
+void netSendSpectatorChat({required String text}) =>
+    RustLib.instance.api.crateApiNetNetSendSpectatorChat(text: text);
+
 void netLeave() => RustLib.instance.api.crateApiNetNetLeave();
 
 /// Host a Bughouse match: advertise (name prefixed "[BH]"), accept up to 3
 /// joiners into a lobby, then — once the host assigns seats — run the authority.
 Stream<NetEvent> netHostBughouse({
-  required String name,
+  required PlayerProfileWire profile,
   required int baseMinutes,
   required int incrementSeconds,
 }) => RustLib.instance.api.crateApiNetNetHostBughouse(
-  name: name,
+  profile: profile,
   baseMinutes: baseMinutes,
   incrementSeconds: incrementSeconds,
 );
@@ -72,8 +88,11 @@ Stream<NetEvent> netHostBughouse({
 /// Join a Bughouse host at `addr`; mirror its broadcasts as NetEvents.
 Stream<NetEvent> netJoinBughouse({
   required String addr,
-  required String name,
-}) => RustLib.instance.api.crateApiNetNetJoinBughouse(addr: addr, name: name);
+  required PlayerProfileWire profile,
+}) => RustLib.instance.api.crateApiNetNetJoinBughouse(
+  addr: addr,
+  profile: profile,
+);
 
 /// Host assigns the four seats and starts the match. `seat_owner[seat]` is the
 /// connection index (join order, 0-based) or -1 for the host.
@@ -96,14 +115,42 @@ void netBugResign({required int seat}) =>
     RustLib.instance.api.crateApiNetNetBugResign(seat: seat);
 
 /// Host a 4-player match: advertise "[4P]", accept ≤3 joiners, run the authority.
-Stream<NetEvent> netHostFour({required String name, required String format}) =>
-    RustLib.instance.api.crateApiNetNetHostFour(name: name, format: format);
+Stream<NetEvent> netHostFour({
+  required PlayerProfileWire profile,
+  required String format,
+  required bool allowSpectators,
+}) => RustLib.instance.api.crateApiNetNetHostFour(
+  profile: profile,
+  format: format,
+  allowSpectators: allowSpectators,
+);
 
-Stream<NetEvent> netJoinFour({required String addr, required String name}) =>
-    RustLib.instance.api.crateApiNetNetJoinFour(addr: addr, name: name);
+Stream<NetEvent> netJoinFour({
+  required String addr,
+  required PlayerProfileWire profile,
+}) => RustLib.instance.api.crateApiNetNetJoinFour(addr: addr, profile: profile);
 
-void netFourStart({required List<int> seatOwner}) =>
-    RustLib.instance.api.crateApiNetNetFourStart(seatOwner: seatOwner);
+/// Join an enabled live four-player host as a strictly read-only spectator.
+Stream<NetEvent> netSpectateFour({
+  required String addr,
+  required PlayerProfileWire profile,
+}) => RustLib.instance.api.crateApiNetNetSpectateFour(
+  addr: addr,
+  profile: profile,
+);
+
+/// Host assigns seats and starts the match. `seat_owner` values are `-1` for
+/// the host, `0..=2` for joined peers in join order, and `-2` for host-run AI.
+/// `ai_difficulties` is parallel to the four colours: `0=Very Easy`,
+/// `1=Easy`, `2=Normal`, `3=Hard`, `4=Very Hard`, `5=Impossible`; every human
+/// seat must use `-1`.
+void netFourStart({
+  required List<int> seatOwner,
+  required List<int> aiDifficulties,
+}) => RustLib.instance.api.crateApiNetNetFourStart(
+  seatOwner: seatOwner,
+  aiDifficulties: aiDifficulties,
+);
 
 void netSendFourMove({required int seat, required String uci}) =>
     RustLib.instance.api.crateApiNetNetSendFourMove(seat: seat, uci: uci);
@@ -126,8 +173,28 @@ class NetEvent {
   final bool drawAccepted;
   final String text;
 
+  /// Authenticated sender for spectator-only chat messages.
+  final String sender;
+
   /// Variant code agreed for this game (e.g. "standard", "crazyhouse").
   final String variant;
+
+  /// True only for a read-only live spectator session.
+  final bool isSpectator;
+
+  /// Both player profiles are carried in every initial connection event.
+  final PlayerProfileWire whiteProfile;
+  final PlayerProfileWire blackProfile;
+
+  /// Profile associated with a lobby join / spectator join event.
+  final PlayerProfileWire peerProfile;
+
+  /// Variant state excluded from FEN, used to restore a live spectator.
+  final int whiteChecks;
+  final int blackChecks;
+  final Uint32List whiteHand;
+  final Uint32List blackHand;
+  final BigInt promoted;
   final int board;
   final int toBoard;
   final int toColor;
@@ -136,6 +203,7 @@ class NetEvent {
   final int winningTeam;
   final Uint32List yourSeats;
   final List<String> seats;
+  final List<PlayerProfileWire> seatProfiles;
 
   const NetEvent({
     required this.kind,
@@ -150,7 +218,17 @@ class NetEvent {
     required this.blackMs,
     required this.drawAccepted,
     required this.text,
+    required this.sender,
     required this.variant,
+    required this.isSpectator,
+    required this.whiteProfile,
+    required this.blackProfile,
+    required this.peerProfile,
+    required this.whiteChecks,
+    required this.blackChecks,
+    required this.whiteHand,
+    required this.blackHand,
+    required this.promoted,
     required this.board,
     required this.toBoard,
     required this.toColor,
@@ -159,6 +237,7 @@ class NetEvent {
     required this.winningTeam,
     required this.yourSeats,
     required this.seats,
+    required this.seatProfiles,
   });
 
   @override
@@ -175,7 +254,17 @@ class NetEvent {
       blackMs.hashCode ^
       drawAccepted.hashCode ^
       text.hashCode ^
+      sender.hashCode ^
       variant.hashCode ^
+      isSpectator.hashCode ^
+      whiteProfile.hashCode ^
+      blackProfile.hashCode ^
+      peerProfile.hashCode ^
+      whiteChecks.hashCode ^
+      blackChecks.hashCode ^
+      whiteHand.hashCode ^
+      blackHand.hashCode ^
+      promoted.hashCode ^
       board.hashCode ^
       toBoard.hashCode ^
       toColor.hashCode ^
@@ -183,7 +272,8 @@ class NetEvent {
       seat.hashCode ^
       winningTeam.hashCode ^
       yourSeats.hashCode ^
-      seats.hashCode;
+      seats.hashCode ^
+      seatProfiles.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -202,7 +292,17 @@ class NetEvent {
           blackMs == other.blackMs &&
           drawAccepted == other.drawAccepted &&
           text == other.text &&
+          sender == other.sender &&
           variant == other.variant &&
+          isSpectator == other.isSpectator &&
+          whiteProfile == other.whiteProfile &&
+          blackProfile == other.blackProfile &&
+          peerProfile == other.peerProfile &&
+          whiteChecks == other.whiteChecks &&
+          blackChecks == other.blackChecks &&
+          whiteHand == other.whiteHand &&
+          blackHand == other.blackHand &&
+          promoted == other.promoted &&
           board == other.board &&
           toBoard == other.toBoard &&
           toColor == other.toColor &&
@@ -210,7 +310,8 @@ class NetEvent {
           seat == other.seat &&
           winningTeam == other.winningTeam &&
           yourSeats == other.yourSeats &&
-          seats == other.seats;
+          seats == other.seats &&
+          seatProfiles == other.seatProfiles;
 }
 
 enum NetEventKind {
@@ -220,8 +321,15 @@ enum NetEventKind {
   drawOffer,
   drawResponse,
   chat,
+
+  /// Private spectator-only chat. Player transports never surface this event.
+  spectatorChat,
   disconnected,
   error,
+
+  /// A spectator joined an enabled live host. This is informational for the
+  /// host UI; the spectator itself receives its game-start event.
+  spectatorJoined,
   bugJoin,
   bugStart,
   bugMove,
@@ -236,17 +344,37 @@ enum NetEventKind {
 /// A host discovered on the LAN.
 class NetHost {
   final String name;
+
+  /// Internal connection target. The app deliberately does not render this.
   final String addr;
   final String timeControl;
+  final String mode;
+  final String variant;
+  final bool spectatorsEnabled;
+  final int playerCount;
+  final int maxPlayers;
 
   const NetHost({
     required this.name,
     required this.addr,
     required this.timeControl,
+    required this.mode,
+    required this.variant,
+    required this.spectatorsEnabled,
+    required this.playerCount,
+    required this.maxPlayers,
   });
 
   @override
-  int get hashCode => name.hashCode ^ addr.hashCode ^ timeControl.hashCode;
+  int get hashCode =>
+      name.hashCode ^
+      addr.hashCode ^
+      timeControl.hashCode ^
+      mode.hashCode ^
+      variant.hashCode ^
+      spectatorsEnabled.hashCode ^
+      playerCount.hashCode ^
+      maxPlayers.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -255,5 +383,30 @@ class NetHost {
           runtimeType == other.runtimeType &&
           name == other.name &&
           addr == other.addr &&
-          timeControl == other.timeControl;
+          timeControl == other.timeControl &&
+          mode == other.mode &&
+          variant == other.variant &&
+          spectatorsEnabled == other.spectatorsEnabled &&
+          playerCount == other.playerCount &&
+          maxPlayers == other.maxPlayers;
+}
+
+/// Bridge-safe profile. Protocol serialization uses Base64 internally; Flutter
+/// receives compact bytes and can render the built-in pawn for an empty avatar.
+class PlayerProfileWire {
+  final String username;
+  final Uint8List avatarBytes;
+
+  const PlayerProfileWire({required this.username, required this.avatarBytes});
+
+  @override
+  int get hashCode => username.hashCode ^ avatarBytes.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is PlayerProfileWire &&
+          runtimeType == other.runtimeType &&
+          username == other.username &&
+          avatarBytes == other.avatarBytes;
 }

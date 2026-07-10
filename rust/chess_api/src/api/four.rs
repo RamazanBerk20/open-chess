@@ -168,10 +168,15 @@ impl FourGame {
         false
     }
 
-    /// The greedy bot's move (UCI form) for the side to move, or None if none.
+    /// The requested-difficulty bot move (UCI form) for the side to move, or
+    /// None if none. Unknown codes deliberately fall back to Normal so a stale
+    /// local setting can never make the four-player bot unavailable.
     #[frb(sync)]
-    pub fn bot_move(&self, seed: u64) -> Option<String> {
-        chess4::bot::greedy_move(&self.inner, seed).map(chess4::serial::move_to_uci)
+    pub fn bot_move(&self, seed: u64, difficulty_code: i32) -> Option<String> {
+        let difficulty = chess4::bot::BotDifficulty::from_code(difficulty_code)
+            .unwrap_or(chess4::bot::BotDifficulty::Normal);
+        chess4::bot::move_for_difficulty(&self.inner, difficulty, seed)
+            .map(chess4::serial::move_to_uci)
     }
 
     #[frb(sync)]
@@ -281,5 +286,20 @@ fn from_status(s: PlayerStatus) -> FourPlayerStatus {
         PlayerStatus::Checkmated => FourPlayerStatus::Checkmated,
         PlayerStatus::Stalemated => FourPlayerStatus::Stalemated,
         PlayerStatus::Resigned => FourPlayerStatus::Resigned,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{FourFormat, FourGame};
+
+    #[test]
+    fn local_four_bot_uses_normal_for_unknown_difficulty_codes() {
+        let game = FourGame::new_game(FourFormat::FreeForAll);
+        let normal = game.bot_move(41, 2);
+        assert_eq!(game.bot_move(41, -1), normal);
+        assert_eq!(game.bot_move(41, 99), normal);
+        assert!(game.bot_move(41, 0).is_some());
+        assert!(game.bot_move(41, 5).is_some());
     }
 }

@@ -9,7 +9,7 @@ class AppLocalizationsTr extends AppLocalizations {
   AppLocalizationsTr([String locale = 'tr']) : super(locale);
 
   @override
-  String get appTitle => 'Satranç';
+  String get appTitle => 'Open Chess';
 
   @override
   String get menuSinglePlayer => 'Tek Oyuncu';
@@ -180,6 +180,33 @@ class AppLocalizationsTr extends AppLocalizations {
   String get analysis => 'Analiz';
 
   @override
+  String get opening => 'Açılış';
+
+  @override
+  String get openingGambit => 'Gambit';
+
+  @override
+  String get openingVariation => 'Varyant';
+
+  @override
+  String get openingNone => 'Adlandırılmış açılış yok';
+
+  @override
+  String get ratingEstimate => 'Tahmini ELO';
+
+  @override
+  String get ratingConfidenceLow => 'Düşük güven';
+
+  @override
+  String get ratingConfidenceMedium => 'Orta güven';
+
+  @override
+  String get ratingConfidenceHigh => 'Yüksek güven';
+
+  @override
+  String get ratingUnavailable => 'ELO tahmini kullanılamıyor';
+
+  @override
   String get white => 'Beyaz';
 
   @override
@@ -260,6 +287,27 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get settings => 'Ayarlar';
+
+  @override
+  String get profile => 'Profil';
+
+  @override
+  String get profileUsername => 'Kullanıcı adı';
+
+  @override
+  String get profileUsernameHint => 'Bir kullanıcı adı seçin';
+
+  @override
+  String get profileAvatar => 'Avatar';
+
+  @override
+  String get profileChangeAvatar => 'Avatarı değiştir';
+
+  @override
+  String get profileRemoveAvatar => 'Avatarı kaldır';
+
+  @override
+  String get profileImageError => 'Bu resim kullanılamadı.';
 
   @override
   String get appearance => 'Görünüm';
@@ -355,6 +403,12 @@ class AppLocalizationsTr extends AppLocalizations {
   String get lanGame => 'LAN oyunu';
 
   @override
+  String get lanAllowSpectators => 'İzleyicilere izin ver';
+
+  @override
+  String get lanSpectate => 'Oyunu izle';
+
+  @override
   String get chat => 'Sohbet';
 
   @override
@@ -440,16 +494,28 @@ class AppLocalizationsTr extends AppLocalizations {
   String get diffBeginner => 'Acemi';
 
   @override
+  String get diffVeryEasy => 'Çok kolay';
+
+  @override
   String get diffEasy => 'Kolay';
 
   @override
   String get diffMedium => 'Orta';
 
   @override
+  String get diffNormal => 'Normal';
+
+  @override
   String get diffHard => 'Zor';
 
   @override
   String get diffExpert => 'Uzman';
+
+  @override
+  String get diffVeryHard => 'Çok zor';
+
+  @override
+  String get diffImpossible => 'İmkansız';
 
   @override
   String get baseMinutes => 'Temel dakika';
@@ -474,6 +540,12 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get evalNoise => 'Değerlendirme gürültüsü (cp)';
+
+  @override
+  String get maxEvalLoss => 'En yüksek değerlendirme kaybı (cp)';
+
+  @override
+  String get moveVariety => 'Hamle çeşitliliği';
 
   @override
   String puzzlesSolved(Object solved, Object total) {
@@ -613,6 +685,12 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get fourVsBots => 'Botlara Karşı';
+
+  @override
+  String get fourSeatAi => 'Yapay zekâ';
+
+  @override
+  String get fourPerspective => 'Bakış açısı';
 
   @override
   String get fourYourSeats => 'Koltuklarınız';

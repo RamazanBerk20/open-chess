@@ -9,9 +9,13 @@ use crate::types::{file_of, rank_of, Color, Move, MoveList, Piece, Variant};
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum GameStatus {
     Ongoing,
-    Checkmate { winner: Color },
+    Checkmate {
+        winner: Color,
+    },
     /// A variant-specific win (three checks, king on the hill, king exploded).
-    VariantWin { winner: Color },
+    VariantWin {
+        winner: Color,
+    },
     Stalemate,
     DrawFiftyMove,
     DrawThreefold,
@@ -76,6 +80,14 @@ impl Game {
         self.hashes.clone()
     }
 
+    /// Discard move/repetition history after externally restoring a complete
+    /// position snapshot. The current position becomes the only known start.
+    pub fn reset_history(&mut self) {
+        self.history.clear();
+        self.hashes.clear();
+        self.hashes.push(self.pos.hash);
+    }
+
     /// How many times the current position has occurred (>=3 means threefold).
     pub fn repetition_count(&self) -> usize {
         let cur = self.pos.hash;
@@ -96,9 +108,7 @@ impl Game {
                 return GameStatus::Stalemate;
             }
             return if self.pos.in_check(side) {
-                GameStatus::Checkmate {
-                    winner: side.opp(),
-                }
+                GameStatus::Checkmate { winner: side.opp() }
             } else {
                 GameStatus::Stalemate
             };
@@ -130,9 +140,9 @@ impl Game {
                 return false;
             }
         }
-        let knights =
-            (p.pieces(Color::White, Piece::Knight) | p.pieces(Color::Black, Piece::Knight))
-                .count_ones();
+        let knights = (p.pieces(Color::White, Piece::Knight)
+            | p.pieces(Color::Black, Piece::Knight))
+        .count_ones();
         let bishops_bb =
             p.pieces(Color::White, Piece::Bishop) | p.pieces(Color::Black, Piece::Bishop);
         let bishops = bishops_bb.count_ones();

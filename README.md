@@ -1,20 +1,20 @@
-# Chess
+# Open Chess
 
-Cross-platform chess app: a **Flutter** front end over a hand-written **Rust** core
+Open Chess is a cross-platform chess app: a **Flutter** front end over a hand-written **Rust** core
 (rules engine + AI), connected via **flutter_rust_bridge v2**. Targets Linux,
 Windows and Android.
 
 ## Download / Install
 
-Grab the latest build from **[Releases](https://github.com/RamazanBerk20/chess/releases/latest)**:
+Grab the latest build from **[Releases](https://github.com/RamazanBerk20/open-chess/releases/latest)**:
 
 | Platform | File |
 |----------|------|
-| Android  | `chess-<version>-android.apk` (sideload) |
-| Windows  | `chess-<version>-windows-setup.exe` (installer) or the portable `.zip` |
+| Android  | `open-chess-<version>-android.apk` (sideload) |
+| Windows  | `open-chess-<version>-windows-setup.exe` (installer) or the portable `.zip` |
 | Linux    | `.AppImage` (portable), `.deb` (Debian/Ubuntu), or the `.tar.gz` bundle |
 
-Arch Linux: install **`satranc-bin`** from the AUR (e.g. `yay -S satranc-bin`).
+Arch Linux: install **`open-chess-bin`** from the AUR (e.g. `yay -S open-chess-bin`).
 
 The app checks GitHub Releases on launch and offers an in-app update when a newer
 version is available (Settings → Support → Check for updates).
@@ -32,15 +32,29 @@ version is available (Settings → Support → Check for updates).
 
 ## Features
 
-Single player vs AI (configurable difficulty), two-player same-device, two-player
-over LAN (auto-discovery, resign/draw/disconnect handling), plus **variants**:
-Three-Check, King of the Hill, Chess960, Atomic, Crazyhouse, Fog of War,
-**Bughouse** (2-board) and **4-player** (14×14). Premove (queued chains +
-castling) in every mode where it applies. Clocks (Fischer + presets, flag-fall
-with insufficient-material draw), post-game **analysis** (accuracy, move
-classification, eval graph), a 100-puzzle trainer (hints, persisted progress),
-saved/resumable games, 10 UI languages, and settings (board themes,
-accessibility, sound/haptics, hints, animation, defaults).
+Single player vs AI with calibrated presets from Very Easy (roughly 500 Elo) to
+Impossible, two-player same-device, and LAN play with auto-discovery,
+resign/draw/disconnect handling, profile names, custom avatars, and an
+host-controlled spectator mode. Variants include Three-Check, King of the Hill,
+Chess960, Atomic, Crazyhouse, Fog of War, **Bughouse** (2-board), and
+**4-player** (14x14). Fog of War is LAN-only so neither player can see the
+other's hidden information; Bughouse is LAN-only because it needs four
+independently controlled seats. Premove (queued chains + castling) is available
+where it applies. Clocks support Fischer controls and presets, including
+host-authoritative LAN flag-fall handling.
+
+Post-game **analysis** provides accuracy, move classification, an evaluation
+graph, opening/ECO/gambit/variation identification, and an estimated player Elo
+based on the played game. The bundled CC0 Lichess opening corpus supplies 3,790
+opening positions. Other features include a 100-puzzle trainer (hints,
+persisted progress), saved/resumable offline games, 10 UI languages, and board,
+accessibility, sound/haptics, hint, animation, and default settings.
+
+### LAN firewall
+
+LAN discovery uses mDNS (UDP 5353), and hosted games use TCP ports 1714-1764.
+On systems with an inbound firewall, allow that UDP port and TCP range for the
+local network.
 
 ## Puzzles
 
@@ -100,7 +114,7 @@ AppImage/`.deb`/`.tar.gz`, and attaches them all to a GitHub Release.
 
 ```sh
 # bump `version:` in pubspec.yaml first, then:
-git tag v1.0.0 && git push origin v1.0.0
+git tag v1.1.0 && git push origin v1.1.0
 ```
 
 ## Support

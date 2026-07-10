@@ -11,7 +11,12 @@ fn three_check_wins_on_third_check() {
     g.make_move(mv);
     assert_eq!(g.pos.checks, [3, 0]);
     assert_eq!(g.pos.variant_terminal(), Some(Color::White));
-    assert_eq!(g.status(), GameStatus::VariantWin { winner: Color::White });
+    assert_eq!(
+        g.status(),
+        GameStatus::VariantWin {
+            winner: Color::White
+        }
+    );
 }
 
 #[test]
@@ -31,7 +36,12 @@ fn koth_wins_when_king_reaches_centre() {
     let mv = g.pos.parse_uci("e3e4").unwrap(); // Ke4 — onto the hill
     g.make_move(mv);
     assert_eq!(g.pos.variant_terminal(), Some(Color::White));
-    assert_eq!(g.status(), GameStatus::VariantWin { winner: Color::White });
+    assert_eq!(
+        g.status(),
+        GameStatus::VariantWin {
+            winner: Color::White
+        }
+    );
 }
 
 #[test]
@@ -56,7 +66,12 @@ fn atomic_capture_explodes_adjacent_king() {
     // Querying check for the side whose king is gone must not panic (this was
     // the source of the post-win UI freeze).
     assert!(!g.pos.in_check(Color::Black));
-    assert_eq!(g.status(), GameStatus::VariantWin { winner: Color::White });
+    assert_eq!(
+        g.status(),
+        GameStatus::VariantWin {
+            winner: Color::White
+        }
+    );
 }
 
 #[test]
@@ -104,7 +119,10 @@ fn chess960_index_518_is_standard() {
     ];
     for f in 0..8u8 {
         assert_eq!(pos.piece_at(f), Some((Color::White, expect[f as usize])));
-        assert_eq!(pos.piece_at(56 + f), Some((Color::Black, expect[f as usize])));
+        assert_eq!(
+            pos.piece_at(56 + f),
+            Some((Color::Black, expect[f as usize]))
+        );
     }
 }
 
@@ -174,10 +192,23 @@ fn crazyhouse_promoted_piece_reverts_to_pawn_when_taken() {
     let promo = g.pos.parse_uci("b7b8q").unwrap();
     g.make_move(promo);
     assert!(g.pos.promoted & (1u64 << 57) != 0); // b8 marked promoted
+    assert_eq!(g.pos.hash, g.pos.compute_hash());
     let take = g.pos.parse_uci("a8b8").unwrap(); // Rxb8
     g.make_move(take);
     assert_eq!(g.pos.hand[Color::Black.index()][Piece::Pawn.index()], 1);
     assert_eq!(g.pos.hand[Color::Black.index()][Piece::Queen.index()], 0);
+}
+
+#[test]
+fn crazyhouse_promoted_mask_changes_position_hash() {
+    let mut native = Game::from_fen("4k3/8/8/8/8/8/8/3QK3 w - - 0 1").unwrap();
+    native.pos.variant = Variant::Crazyhouse;
+    native.pos.hash = native.pos.compute_hash();
+    let mut promoted = native.clone();
+    promoted.pos.promoted = 1u64 << 3; // d1 queen is a promoted pawn
+    promoted.pos.hash = promoted.pos.compute_hash();
+
+    assert_ne!(native.pos.hash, promoted.pos.hash);
 }
 
 #[test]
@@ -244,8 +275,9 @@ fn bughouse_give_to_hand_enables_drop_and_keeps_hash() {
     assert_eq!(g.pos.hand[Color::White.index()][Piece::Queen.index()], 1);
     assert_eq!(g.pos.hash, g.pos.compute_hash());
     let legal = g.pos.generate_legal();
-    assert!((0..legal.len())
-        .any(|i| legal[i].is_drop() && legal[i].dropped_piece() == Piece::Queen));
+    assert!(
+        (0..legal.len()).any(|i| legal[i].is_drop() && legal[i].dropped_piece() == Piece::Queen)
+    );
 }
 
 #[test]
@@ -293,7 +325,12 @@ fn fog_win_by_king_capture() {
     g.make_move(m2);
     assert_eq!(g.pos.pieces(Color::White, Piece::King), 0);
     assert_eq!(g.pos.variant_terminal(), Some(Color::Black));
-    assert_eq!(g.status(), GameStatus::VariantWin { winner: Color::Black });
+    assert_eq!(
+        g.status(),
+        GameStatus::VariantWin {
+            winner: Color::Black
+        }
+    );
 }
 
 #[test]

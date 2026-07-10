@@ -1,0 +1,11 @@
+#!/usr/bin/env xdg-open
+[Desktop Entry]
+Type=Application
+Name=Open Chess
+GenericName=Open Chess
+Comment=Open Chess with variants, AI, LAN multiplayer and puzzles
+Exec=open-chess
+Icon=open-chess
+Terminal=false
+Categories=Game;BoardGame;
+Keywords=open-chess;chess;satranc;board;game;

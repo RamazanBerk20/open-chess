@@ -1,5 +1,5 @@
-name: chess
-description: "A new Flutter project."
+name: open_chess
+description: "Open Chess: cross-platform chess with offline AI, analysis, and LAN play."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.1+2
+version: 1.1.0+3
 
 environment:
   sdk: ^3.12.0
@@ -42,9 +42,13 @@ dependencies:
   flutter_localizations:
     sdk: flutter
   intl: any
-  share_plus: ^10.1.4
+  # Current releases support Flutter's built-in Kotlin integration used by the
+  # Android Gradle 9 project below.
+  share_plus: ^13.2.0
   url_launcher: ^6.3.0
-  package_info_plus: ^8.0.0
+  package_info_plus: ^10.2.0
+  file_selector: ^1.0.3
+  image: ^4.5.4
 
 dev_dependencies:
   flutter_test:
@@ -59,11 +63,11 @@ dev_dependencies:
   flutter_launcher_icons: ^0.14.4
 
 flutter_launcher_icons:
-  image_path: "assets/icon/chess.png"
+  image_path: "assets/icon/open-chess.png"
   android: true
   min_sdk_android: 21
   adaptive_icon_background: "#769656"
-  adaptive_icon_foreground: "assets/icon/chess.png"
+  adaptive_icon_foreground: "assets/icon/open-chess.png"
   web:
     generated: true
   windows:

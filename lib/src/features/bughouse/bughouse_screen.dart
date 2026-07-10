@@ -3,18 +3,18 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:chess/l10n/app_localizations.dart';
-import 'package:chess/src/rust/api/game.dart';
-import 'package:chess/src/state/bughouse_controller.dart';
-import 'package:chess/src/state/bughouse_lan_controller.dart';
-import 'package:chess/src/state/settings.dart';
-import 'package:chess/src/widgets/board_widget.dart';
-import 'package:chess/src/widgets/captured_tray.dart';
-import 'package:chess/src/widgets/clock_widget.dart';
-import 'package:chess/src/widgets/hand_tray.dart';
-import 'package:chess/src/widgets/promotion_dialog.dart';
+import 'package:open_chess/l10n/app_localizations.dart';
+import 'package:open_chess/src/rust/api/game.dart';
+import 'package:open_chess/src/state/bughouse_controller.dart';
+import 'package:open_chess/src/state/bughouse_lan_controller.dart';
+import 'package:open_chess/src/state/settings.dart';
+import 'package:open_chess/src/widgets/board_widget.dart';
+import 'package:open_chess/src/widgets/captured_tray.dart';
+import 'package:open_chess/src/widgets/clock_widget.dart';
+import 'package:open_chess/src/widgets/hand_tray.dart';
+import 'package:open_chess/src/widgets/promotion_dialog.dart';
 
-/// A two-board Bughouse match (local hot-seat or vs-AI).
+/// A two-board, host-authoritative LAN Bughouse match.
 class BughouseScreen extends ConsumerStatefulWidget {
   final BugConfig config;
   const BughouseScreen({super.key, required this.config});
@@ -25,6 +25,7 @@ class BughouseScreen extends ConsumerStatefulWidget {
 
 class _BughouseScreenState extends ConsumerState<BughouseScreen> {
   late final BughouseController _ctl;
+  late final BughouseLanController _lan;
   BugBoard _shown = BugBoard.a; // portrait toggle
   bool _promoOpen = false;
 
@@ -32,13 +33,14 @@ class _BughouseScreenState extends ConsumerState<BughouseScreen> {
   void initState() {
     super.initState();
     _ctl = BughouseController(widget.config);
-    if (widget.config.mode == BughouseMode.lan) {
-      ref.read(bughouseLanProvider.notifier).register(_ctl);
-    }
+    _lan = ref.read(bughouseLanProvider.notifier);
+    _lan.register(_ctl);
   }
 
   @override
   void dispose() {
+    _lan.unregister(_ctl);
+    _lan.leave();
     _ctl.dispose();
     super.dispose();
   }
@@ -53,6 +55,7 @@ class _BughouseScreenState extends ConsumerState<BughouseScreen> {
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         final kind = await showPromotionDialog(context, color);
         _promoOpen = false;
+        if (!mounted) return;
         if (kind != null) {
           _ctl.completePromotion(board, kind);
         } else {
@@ -96,9 +99,13 @@ class _BughouseScreenState extends ConsumerState<BughouseScreen> {
                           child: SegmentedButton<BugBoard>(
                             segments: [
                               ButtonSegment(
-                                  value: BugBoard.a, label: Text(t.bugBoardA)),
+                                value: BugBoard.a,
+                                label: Text(t.bugBoardA),
+                              ),
                               ButtonSegment(
-                                  value: BugBoard.b, label: Text(t.bugBoardB)),
+                                value: BugBoard.b,
+                                label: Text(t.bugBoardB),
+                              ),
                             ],
                             selected: {_shown},
                             onSelectionChanged: (s) =>
@@ -129,15 +136,18 @@ class _BughouseScreenState extends ConsumerState<BughouseScreen> {
         final top = bottom == PieceColor.white
             ? PieceColor.black
             : PieceColor.white;
-        final advWhite =
-            materialAdvantage(view.capturedByWhite, view.capturedByBlack);
+        final advWhite = materialAdvantage(
+          view.capturedByWhite,
+          view.capturedByBlack,
+        );
 
         const rowH = 38.0, handH = 40.0;
         final chrome = (rowH + handH) * 2 + 28;
-        final side = (c.maxHeight.isFinite
-                ? min(c.maxWidth - 12, c.maxHeight - chrome)
-                : c.maxWidth - 12)
-            .clamp(120.0, 900.0);
+        final side =
+            (c.maxHeight.isFinite
+                    ? min(c.maxWidth - 12, c.maxHeight - chrome)
+                    : c.maxWidth - 12)
+                .clamp(120.0, 900.0);
 
         Widget infoRow(PieceColor owner) {
           final captured = owner == PieceColor.white
@@ -150,7 +160,10 @@ class _BughouseScreenState extends ConsumerState<BughouseScreen> {
               children: [
                 Expanded(
                   child: CapturedTray(
-                      owner: owner, captured: captured, advantage: adv),
+                    owner: owner,
+                    captured: captured,
+                    advantage: adv,
+                  ),
                 ),
                 ClockText(snap: snap, color: owner),
               ],
@@ -182,8 +195,10 @@ class _BughouseScreenState extends ConsumerState<BughouseScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(board == BugBoard.a ? t.bugBoardA : t.bugBoardB,
-                    style: Theme.of(context).textTheme.labelMedium),
+                Text(
+                  board == BugBoard.a ? t.bugBoardA : t.bugBoardB,
+                  style: Theme.of(context).textTheme.labelMedium,
+                ),
                 infoRow(top),
                 hand(top),
                 SizedBox(
@@ -231,7 +246,10 @@ class _ResultBanner extends StatelessWidget {
         t.bugTeamWins(result.winningTeam.toString()),
         textAlign: TextAlign.center,
         style: const TextStyle(
-            fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87),
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+          color: Colors.black87,
+        ),
       ),
     );
   }

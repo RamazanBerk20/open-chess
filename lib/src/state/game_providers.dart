@@ -4,15 +4,15 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge.dart' show Uint64List;
 
-import 'package:chess/src/rust/api/game.dart';
-import 'package:chess/src/rust/api/net.dart' show netSendMove;
-import 'package:chess/src/state/ai_provider.dart';
-import 'package:chess/src/state/clock_provider.dart';
-import 'package:chess/src/state/game_mode.dart';
-import 'package:chess/src/state/l10n_labels.dart';
-import 'package:chess/src/state/saved_games.dart';
-import 'package:chess/src/state/settings.dart';
-import 'package:chess/src/state/time_control.dart';
+import 'package:open_chess/src/rust/api/game.dart';
+import 'package:open_chess/src/rust/api/net.dart' show netSendMove;
+import 'package:open_chess/src/state/ai_provider.dart';
+import 'package:open_chess/src/state/clock_provider.dart';
+import 'package:open_chess/src/state/game_mode.dart';
+import 'package:open_chess/src/state/l10n_labels.dart';
+import 'package:open_chess/src/state/saved_games.dart';
+import 'package:open_chess/src/state/settings.dart';
+import 'package:open_chess/src/state/time_control.dart';
 
 /// UI state for a single same-device game. The authoritative chess state lives
 /// in the Rust [ChessGame]; this holds the current rendered [GameView] plus
@@ -64,7 +64,8 @@ class GameUiState {
 /// Setup screens set this (null for normal games) before building the game.
 final customStartFenProvider =
     NotifierProvider<CustomStartFenController, String?>(
-        CustomStartFenController.new);
+      CustomStartFenController.new,
+    );
 
 class CustomStartFenController extends Notifier<String?> {
   @override
@@ -76,7 +77,8 @@ class CustomStartFenController extends Notifier<String?> {
 /// screens set this before building the game.
 final selectedVariantProvider =
     NotifierProvider<SelectedVariantController, GameVariant>(
-        SelectedVariantController.new);
+      SelectedVariantController.new,
+    );
 
 class SelectedVariantController extends Notifier<GameVariant> {
   @override
@@ -84,12 +86,13 @@ class SelectedVariantController extends Notifier<GameVariant> {
   void set(GameVariant v) => state = v;
 }
 
-final gameControllerProvider =
-    NotifierProvider<GameController, GameUiState>(GameController.new);
+final gameControllerProvider = NotifierProvider<GameController, GameUiState>(
+  GameController.new,
+);
 
 class GameController extends Notifier<GameUiState> {
   late ChessGame _game;
-  String? _startFen; // the position this game (and any rematch) starts from
+  String? _startFen; // exact position this game (and any rematch) starts from
   GameVariant _variant = GameVariant.standard;
 
   @override
@@ -97,8 +100,15 @@ class GameController extends Notifier<GameUiState> {
     final tc = ref.watch(selectedTimeControlProvider);
     _startFen = ref.read(customStartFenProvider);
     _variant = ref.read(selectedVariantProvider);
-    _game = _makeStart(tc);
     final mode = ref.read(gameModeProvider);
+    // Setup screens and resume already reject these variants, but keep the
+    // engine boundary strict for legacy state or a programmatic caller.
+    if (onlineOnlyVariants.contains(_variant) &&
+        (!mode.lan || mode.lanSpectator)) {
+      _variant = GameVariant.standard;
+    }
+    _game = _makeStart(tc);
+    _startFen = _game.view().fen;
     final flipped = mode.lan ? mode.lanMyColor == PieceColor.black : false;
     return GameUiState(view: _game.view(), flipped: flipped);
   }
@@ -112,22 +122,30 @@ class GameController extends Notifier<GameUiState> {
           );
   }
 
-  /// Build the game from the custom start FEN if one is set ("Play from
-  /// Position"), else a normal start. Falls back to a normal game on a bad FEN.
+  /// Build the game from a saved/custom start FEN if one is set, preserving the
+  /// selected rules and clock. Falls back to a normal game on a bad FEN.
   ChessGame _makeStart(TimeControlOption tc) {
     final fen = _startFen;
     if (fen != null) {
       try {
-        return ChessGame.fromFen(fen: fen);
-      } catch (_) {/* fall through to a normal game */}
+        return ChessGame.fromFenVariant(
+          fen: fen,
+          variant: _variant,
+          baseMinutes: tc.baseMinutes ?? 0,
+          incrementSeconds: tc.incrementSeconds,
+        );
+      } catch (_) {
+        /* fall through to a normal game */
+      }
     }
     if (_variant != GameVariant.standard) {
       return ChessGame.newVariant(
         variant: _variant,
         baseMinutes: tc.baseMinutes ?? 0,
         incrementSeconds: tc.incrementSeconds,
-        chess960Index:
-            _variant == GameVariant.chess960 ? Random().nextInt(960) : 0,
+        chess960Index: _variant == GameVariant.chess960
+            ? Random().nextInt(960)
+            : 0,
       );
     }
     return _make(tc);
@@ -139,22 +157,12 @@ class GameController extends Notifier<GameUiState> {
   /// Position-hash history (for the AI's repetition avoidance).
   Uint64List hashHistory() => _game.hashHistory();
 
-  /// Fog of War: the squares the appropriate viewer can see (null off-fog).
-  /// Viewer = the human (vs-AI), my colour (LAN), or the side to move (hot-seat).
+  /// Fog of War: the squares the local LAN player can see (null off-fog).
   Set<int>? fogMask() {
     if (state.view.variant != GameVariant.fogOfWar) return null;
     final mode = ref.read(gameModeProvider);
-    final PieceColor viewer;
-    if (mode.vsAi) {
-      viewer = mode.aiColor == PieceColor.white
-          ? PieceColor.black
-          : PieceColor.white;
-    } else if (mode.lan) {
-      viewer = mode.lanMyColor ?? PieceColor.white;
-    } else {
-      viewer = state.view.sideToMove;
-    }
-    return _game.visibleSquares(viewer: viewer).toSet();
+    if (!mode.lan || mode.lanSpectator || mode.lanMyColor == null) return null;
+    return _game.visibleSquares(viewer: mode.lanMyColor!).toSet();
   }
 
   /// Advance the running clock by [elapsedMs]; returns the new clock snapshot.
@@ -179,6 +187,14 @@ class GameController extends Notifier<GameUiState> {
       );
     }
     return snap;
+  }
+
+  /// Store a LAN clock projection without running the local timeout state
+  /// machine. The next local move can then apply its Fischer increment from a
+  /// current display value while the host remains the sole flag authority.
+  void lanSetProjectedClock(ClockSnapshot snapshot) {
+    if (snapshot.infinite || state.isOver) return;
+    _game.setClockMs(whiteMs: snapshot.whiteMs, blackMs: snapshot.blackMs);
   }
 
   GameUiState _idle({
@@ -241,8 +257,9 @@ class GameController extends Notifier<GameUiState> {
   }
 
   /// Flattened [f0,t0,f1,t1,…] of the queued premoves for the Rust bridge.
-  List<int> _flatPremoves() =>
-      [for (final (f, t) in state.premoves) ...[f, t]];
+  List<int> _flatPremoves() => [
+    for (final (f, t) in state.premoves) ...[f, t],
+  ];
 
   /// Premove targets for `sq` on the board after the queued premoves.
   Set<int> _premoveTargetsAfter(int sq) =>
@@ -270,6 +287,7 @@ class GameController extends Notifier<GameUiState> {
     // Stop any in-flight AI search so it can't land a stale move on the new game.
     ref.read(aiControllerProvider.notifier).cancel();
     _game = _makeStart(ref.read(selectedTimeControlProvider));
+    _startFen = _game.view().fen;
     state = GameUiState(
       view: _game.view(),
       flipped: state.flipped,
@@ -290,7 +308,9 @@ class GameController extends Notifier<GameUiState> {
         _game.undo(); // AI reply
         _game.undo(); // your move
         state = _idle(animateLast: false, keepPremove: false);
-        ref.invalidate(clockProvider); // restart the ticker (also after a flag-fall)
+        ref.invalidate(
+          clockProvider,
+        ); // restart the ticker (also after a flag-fall)
       }
       return;
     }
@@ -358,7 +378,10 @@ class GameController extends Notifier<GameUiState> {
 
     if (sel == null) {
       if (piece != null && piece.color == view.sideToMove) {
-        state = _idle(selected: sq, targets: _game.legalTargets(from: sq).toSet());
+        state = _idle(
+          selected: sq,
+          targets: _game.legalTargets(from: sq).toSet(),
+        );
       }
       return;
     }
@@ -371,7 +394,10 @@ class GameController extends Notifier<GameUiState> {
       return;
     }
     if (piece != null && piece.color == view.sideToMove) {
-      state = _idle(selected: sq, targets: _game.legalTargets(from: sq).toSet());
+      state = _idle(
+        selected: sq,
+        targets: _game.legalTargets(from: sq).toSet(),
+      );
     } else {
       state = _idle();
     }
@@ -390,7 +416,9 @@ class GameController extends Notifier<GameUiState> {
       if (piece != null && piece.color == hc) {
         state = _premoveState(from: sq, targets: _premoveTargetsAfter(sq));
       } else {
-        state = _premoveState(premoves: const []); // tap empty/enemy → clear chain
+        state = _premoveState(
+          premoves: const [],
+        ); // tap empty/enemy → clear chain
       }
       return;
     }
@@ -399,7 +427,9 @@ class GameController extends Notifier<GameUiState> {
       return;
     }
     if (state.premoveTargets.contains(sq)) {
-      state = _premoveState(premoves: [...state.premoves, (selFrom, sq)]); // queue
+      state = _premoveState(
+        premoves: [...state.premoves, (selFrom, sq)],
+      ); // queue
       return;
     }
     if (piece != null && piece.color == hc) {
@@ -431,7 +461,10 @@ class GameController extends Notifier<GameUiState> {
     final piece = state.view.board[from];
     if (piece == null || piece.color != state.view.sideToMove) return;
     if (!_game.legalTargets(from: from).contains(to)) {
-      state = _idle(selected: from, targets: _game.legalTargets(from: from).toSet());
+      state = _idle(
+        selected: from,
+        targets: _game.legalTargets(from: from).toSet(),
+      );
       return;
     }
     _attempt(from, to);
@@ -606,6 +639,65 @@ class GameController extends Notifier<GameUiState> {
     }
   }
 
+  /// Apply the host-authoritative LAN flag fall. The host only emits this for
+  /// the side currently on move, so ticking zero milliseconds latches the
+  /// existing clock model's normal on-time result without inventing a second
+  /// result representation.
+  void lanApplyTimeout(PieceColor loser) {
+    if (state.isOver) return;
+    var snap = _game.clockSnapshot();
+    if (snap.infinite) return;
+    // A client can optimistically submit a move in the narrow interval before
+    // the host's clock tick rejects it. The authoritative timeout belongs to
+    // the pre-move side, so roll that local optimistic ply back first.
+    if (snap.running != loser && _game.undo()) {
+      snap = _game.clockSnapshot();
+    }
+    _game.setClockMs(
+      whiteMs: loser == PieceColor.white ? 0 : snap.whiteMs,
+      blackMs: loser == PieceColor.black ? 0 : snap.blackMs,
+    );
+    _game.tick(elapsedMs: 0);
+    state = _idle(animateLast: false, keepPremove: false);
+    ref.read(clockProvider.notifier).resetAndRefresh();
+  }
+
+  /// Replace the local board with the authoritative position sent to a LAN
+  /// spectator. A current-position FEN deliberately becomes this view's start:
+  /// spectators join live and do not receive earlier private move history.
+  void lanLoadSnapshot({
+    required String fen,
+    required GameVariant variant,
+    required int baseMinutes,
+    required int incrementSeconds,
+    required int whiteMs,
+    required int blackMs,
+    required int whiteChecks,
+    required int blackChecks,
+    required List<int> whiteHand,
+    required List<int> blackHand,
+    required BigInt promoted,
+  }) {
+    _variant = variant;
+    _startFen = fen;
+    _game = ChessGame.fromFenVariant(
+      fen: fen,
+      variant: variant,
+      baseMinutes: baseMinutes,
+      incrementSeconds: incrementSeconds,
+    );
+    _game.restoreVariantState(
+      whiteChecks: whiteChecks,
+      blackChecks: blackChecks,
+      whiteHand: whiteHand,
+      blackHand: blackHand,
+      promoted: promoted,
+    );
+    _game.setClockMs(whiteMs: whiteMs, blackMs: blackMs);
+    state = GameUiState(view: _game.view());
+    ref.invalidate(clockProvider);
+  }
+
   /// Show a non-board result (resignation, draw agreed, disconnect).
   void lanSetResult(String text) {
     state = _idle(overlayResult: text);
@@ -616,7 +708,10 @@ class GameController extends Notifier<GameUiState> {
 
   /// The custom start FEN this game began from (null = standard start) — used
   /// for PGN export of games started via "Play from Position".
-  String? get startFen => _startFen;
+  String get startFen =>
+      _startFen ?? 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+
+  GameVariant get variant => _variant;
 
   // ---- Saved games ----
 
@@ -624,26 +719,48 @@ class GameController extends Notifier<GameUiState> {
   void saveGame(String name) {
     final moves = _game.moveHistoryUci();
     if (moves.isEmpty) return;
+    // Capture the same moment users clicked Save rather than the ticker's last
+    // 100 ms snapshot, so a resumed timed game does not gain thinking time.
+    ref.read(clockProvider.notifier).flushElapsed();
     final now = DateTime.now();
     final stamp = now.toString().split('.').first;
-    ref.read(savedGamesProvider.notifier).add(SavedGame(
-          id: now.microsecondsSinceEpoch.toString(),
-          name: name.trim().isEmpty ? 'Game $stamp' : name.trim(),
-          moves: moves,
-          createdAt: stamp,
-        ));
+    final tc = ref.read(selectedTimeControlProvider);
+    final clock = _game.clockSnapshot();
+    final mode = ref.read(gameModeProvider);
+    ref
+        .read(savedGamesProvider.notifier)
+        .add(
+          SavedGame(
+            id: now.microsecondsSinceEpoch.toString(),
+            name: name.trim().isEmpty ? 'Game $stamp' : name.trim(),
+            moves: moves,
+            createdAt: stamp,
+            startFen: startFen,
+            variantCode: variantCode(_variant),
+            baseMinutes: tc.isInfinite ? null : tc.baseMinutes,
+            incrementSeconds: tc.incrementSeconds,
+            whiteMs: clock.infinite ? null : clock.whiteMs.toInt(),
+            blackMs: clock.infinite ? null : clock.blackMs.toInt(),
+            vsAi: mode.vsAi,
+            aiColorCode: mode.aiColor == PieceColor.white ? 'white' : 'black',
+            difficultyName: mode.vsAi ? mode.difficulty.name : null,
+          ),
+        );
   }
 
   /// Replay a saved move list onto the current (freshly built) game. The caller
   /// invalidates this provider with an infinite time control first. Returns
   /// false if a move was illegal (corrupt save) — replay stops at that point.
-  bool loadGame(List<String> moves) {
+  bool loadGame(List<String> moves, {int? whiteMs, int? blackMs}) {
     var ok = true;
     for (final u in moves) {
       if (!_game.playUci(uci: u)) {
         ok = false;
         break; // don't apply later plies onto a desynced position
       }
+    }
+    if (whiteMs != null && blackMs != null) {
+      _game.setClockMs(whiteMs: whiteMs, blackMs: blackMs);
     }
     state = GameUiState(view: _game.view());
     ref.invalidate(clockProvider);
@@ -654,10 +771,10 @@ class GameController extends Notifier<GameUiState> {
       '${String.fromCharCode(97 + sq % 8)}${String.fromCharCode(49 + sq ~/ 8)}';
 
   static String _promoChar(PieceKind k) => switch (k) {
-        PieceKind.queen => 'q',
-        PieceKind.rook => 'r',
-        PieceKind.bishop => 'b',
-        PieceKind.knight => 'n',
-        _ => 'q',
-      };
+    PieceKind.queen => 'q',
+    PieceKind.rook => 'r',
+    PieceKind.bishop => 'b',
+    PieceKind.knight => 'n',
+    _ => 'q',
+  };
 }

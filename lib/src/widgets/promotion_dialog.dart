@@ -1,13 +1,10 @@
 import 'package:flutter/material.dart';
 
-import 'package:chess/src/rust/api/game.dart';
-import 'package:chess/src/widgets/pieces.dart';
+import 'package:open_chess/src/rust/api/game.dart';
+import 'package:open_chess/src/widgets/pieces.dart';
 
 /// Ask the user which piece to promote to. Returns null if dismissed.
-Future<PieceKind?> showPromotionDialog(
-  BuildContext context,
-  PieceColor color,
-) {
+Future<PieceKind?> showPromotionDialog(BuildContext context, PieceColor color) {
   const choices = [
     PieceKind.queen,
     PieceKind.rook,
@@ -25,7 +22,10 @@ Future<PieceKind?> showPromotionDialog(
             IconButton(
               iconSize: 48,
               onPressed: () => Navigator.of(context).pop(k),
-              icon: PieceGlyph(piece: SquarePiece(color: color, kind: k), size: 44),
+              icon: PieceGlyph(
+                piece: SquarePiece(color: color, kind: k),
+                size: 44,
+              ),
             ),
         ],
       ),

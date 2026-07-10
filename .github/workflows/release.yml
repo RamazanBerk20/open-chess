@@ -1,6 +1,6 @@
 name: Release
 
-# Tag a version (e.g. `git tag v1.0.0 && git push --tags`) to build installers
+# Tag a version (e.g. `git tag v1.1.0 && git push --tags`) to build installers
 # for Android, Linux and Windows and attach them to a GitHub Release.
 on:
   push:
@@ -25,14 +25,32 @@ jobs:
           targets: aarch64-linux-android,armv7-linux-androideabi,x86_64-linux-android,i686-linux-android
       - uses: subosito/flutter-action@v2
         with: { flutter-version: '${{ env.FLUTTER_VERSION }}', channel: stable, cache: true }
+      - name: Configure release signing
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          test -n "$ANDROID_KEYSTORE_BASE64"
+          test -n "$ANDROID_KEYSTORE_PASSWORD"
+          test -n "$ANDROID_KEY_ALIAS"
+          test -n "$ANDROID_KEY_PASSWORD"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/upload-keystore.jks
+          cat > android/key.properties <<EOF
+          storeFile=upload-keystore.jks
+          storePassword=$ANDROID_KEYSTORE_PASSWORD
+          keyAlias=$ANDROID_KEY_ALIAS
+          keyPassword=$ANDROID_KEY_PASSWORD
+          EOF
       - run: flutter pub get
       - run: flutter build apk --release
       - name: Rename APK
         run: |
           V="${GITHUB_REF_NAME#v}"
-          cp build/app/outputs/flutter-apk/app-release.apk "chess-${V}-android.apk"
+          cp build/app/outputs/flutter-apk/app-release.apk "open-chess-${V}-android.apk"
       - uses: actions/upload-artifact@v4
-        with: { name: android, path: 'chess-*-android.apk' }
+        with: { name: android, path: 'open-chess-*-android.apk' }
 
   linux:
     runs-on: ubuntu-22.04
@@ -51,14 +69,14 @@ jobs:
         run: |
           set -e
           export VERSION="${GITHUB_REF_NAME#v}"
-          tar -C build/linux/x64/release/bundle -czf "chess-${VERSION}-linux-x86_64.tar.gz" .
+          tar -C build/linux/x64/release/bundle -czf "open-chess-${VERSION}-linux-x86_64.tar.gz" .
           bash installers/linux/build_appimage.sh
           bash installers/linux/build_deb.sh
       - uses: actions/upload-artifact@v4
         with:
           name: linux
           path: |
-            chess-*-linux-x86_64.tar.gz
+            open-chess-*-linux-x86_64.tar.gz
             *.AppImage
             *.deb
 
@@ -76,14 +94,14 @@ jobs:
         run: |
           $V = "${env:GITHUB_REF_NAME}".TrimStart("v")
           choco install innosetup --no-progress -y
-          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "/DMyAppVersion=$V" installers\windows\chess.iss
-          Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath "chess-$V-windows-x64.zip"
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "/DMyAppVersion=$V" installers\windows\open-chess.iss
+          Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath "open-chess-$V-windows-x64.zip"
       - uses: actions/upload-artifact@v4
         with:
           name: windows
           path: |
             installers/windows/Output/*.exe
-            chess-*-windows-x64.zip
+            open-chess-*-windows-x64.zip
 
   release:
     needs: [android, linux, windows]

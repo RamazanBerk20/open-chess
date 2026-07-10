@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:chess/l10n/app_localizations.dart';
-import 'package:chess/src/state/puzzle_controller.dart';
-import 'package:chess/src/state/settings.dart';
-import 'package:chess/src/widgets/board_widget.dart';
+import 'package:open_chess/l10n/app_localizations.dart';
+import 'package:open_chess/src/state/puzzle_controller.dart';
+import 'package:open_chess/src/state/settings.dart';
+import 'package:open_chess/src/widgets/board_widget.dart';
 
 class PuzzleScreen extends ConsumerWidget {
   const PuzzleScreen({super.key});
@@ -22,7 +22,9 @@ class PuzzleScreen extends ConsumerWidget {
           async.maybeWhen(
             data: (s) => Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: Center(child: Text(t.puzzlesSolved(s.solvedCount, s.total))),
+              child: Center(
+                child: Text(t.puzzlesSolved(s.solvedCount, s.total)),
+              ),
             ),
             orElse: () => const SizedBox.shrink(),
           ),
@@ -89,7 +91,8 @@ class _Banner extends StatelessWidget {
     Color color = Theme.of(context).colorScheme.secondaryContainer;
     switch (state.status) {
       case PuzzleStatus.solving:
-        text = (whiteToMove ? t.whiteToMove : t.blackToMove) +
+        text =
+            (whiteToMove ? t.whiteToMove : t.blackToMove) +
             (state.alreadySolved ? '  ✓ ${t.alreadySolved}' : '');
       case PuzzleStatus.wrong:
         text = t.puzzleWrong;
@@ -106,7 +109,10 @@ class _Banner extends StatelessWidget {
         text,
         textAlign: TextAlign.center,
         style: const TextStyle(
-            fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87),
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+          color: Colors.black87,
+        ),
       ),
     );
   }
@@ -126,8 +132,13 @@ class _Controls extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            t.puzzleFooter(state.index + 1, state.total, state.puzzle.rating,
-                state.currentStreak, state.bestStreak),
+            t.puzzleFooter(
+              state.index + 1,
+              state.total,
+              state.puzzle.rating,
+              state.currentStreak,
+              state.bestStreak,
+            ),
             style: Theme.of(context).textTheme.bodySmall,
           ),
           Row(
@@ -141,7 +152,9 @@ class _Controls extends StatelessWidget {
               IconButton(
                 tooltip: t.hint,
                 icon: const Icon(Icons.lightbulb_outline),
-                onPressed: state.status == PuzzleStatus.solved ? null : ctrl.hint,
+                onPressed: state.status == PuzzleStatus.solved
+                    ? null
+                    : ctrl.hint,
               ),
               IconButton(
                 tooltip: t.restartPuzzle,

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'package:chess/src/rust/api/game.dart';
+import 'package:open_chess/src/rust/api/game.dart';
 
 /// Solid (filled) Unicode glyphs for every piece kind. We use the filled set for
 /// both colors and tint them, so White pieces stay visible on light squares.

@@ -63,8 +63,7 @@ fn zobrist_consistency() {
 
 #[test]
 fn en_passant() {
-    let mut p =
-        parse_fen("rnbqkbnr/ppp1pppp/8/3pP3/8/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 3").unwrap();
+    let mut p = parse_fen("rnbqkbnr/ppp1pppp/8/3pP3/8/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 3").unwrap();
     let mv = p.parse_uci("e5d6").unwrap();
     assert!(mv.is_ep());
     p.make_move(mv);
@@ -209,7 +208,8 @@ fn malformed_fen_rejected() {
     assert!(parse_fen("8/8/8/8/8/8/8/4K3 w - - 0 1").is_err()); // no black king
     assert!(parse_fen("4k3/8/8/8/8/8/8/RK2K3 w - - 0 1").is_err()); // two white kings
     assert!(parse_fen("4k3/8/8/8/8/8/4R3/4K3 w - - 0 1").is_err()); // side not to move in check
-    assert!(parse_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQKQ - 0 1").is_err()); // dup castling
+    assert!(parse_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQKQ - 0 1").is_err());
+    // dup castling
 }
 
 #[test]
@@ -217,12 +217,36 @@ fn castling_rights_require_pieces_home() {
     // King/rook absent or off its home square → those rights are stripped (the
     // FEN still parses, mirroring the ep normalisation) so movegen can't trust a
     // phantom right. WK=0b0001, WQ=0b0010, BK=0b0100, BQ=0b1000.
-    assert_eq!(parse_fen("4k3/8/8/8/8/8/8/4K3 w KQkq - 0 1").unwrap().castling.0, 0); // no rooks
-    assert_eq!(parse_fen("4k3/8/8/8/8/8/8/1R2KR2 w KQ - 0 1").unwrap().castling.0, 0); // off corners
-    // White intact (e1 king, a1/h1 rooks); black has no rooks → black rights gone.
-    assert_eq!(parse_fen("4k3/8/8/8/8/8/8/R3K2R w KQq - 0 1").unwrap().castling.0, 0b0011);
+    assert_eq!(
+        parse_fen("4k3/8/8/8/8/8/8/4K3 w KQkq - 0 1")
+            .unwrap()
+            .castling
+            .0,
+        0
+    ); // no rooks
+    assert_eq!(
+        parse_fen("4k3/8/8/8/8/8/8/1R2KR2 w KQ - 0 1")
+            .unwrap()
+            .castling
+            .0,
+        0
+    ); // off corners
+       // White intact (e1 king, a1/h1 rooks); black has no rooks → black rights gone.
+    assert_eq!(
+        parse_fen("4k3/8/8/8/8/8/8/R3K2R w KQq - 0 1")
+            .unwrap()
+            .castling
+            .0,
+        0b0011
+    );
     // Fully valid setup keeps all four.
-    assert_eq!(parse_fen("r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1").unwrap().castling.0, 0b1111);
+    assert_eq!(
+        parse_fen("r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1")
+            .unwrap()
+            .castling
+            .0,
+        0b1111
+    );
 }
 
 #[test]

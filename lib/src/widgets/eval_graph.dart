@@ -2,8 +2,8 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 
-import 'package:chess/src/state/analysis_provider.dart';
-import 'package:chess/src/widgets/move_class.dart';
+import 'package:open_chess/src/state/analysis_provider.dart';
+import 'package:open_chess/src/widgets/move_class.dart';
 
 /// A compact eval graph over the whole game (White advantage, win%-mapped).
 /// White's share fills from the bottom; blunders/mistakes/misses are dotted in
@@ -43,7 +43,10 @@ class EvalGraph extends StatelessWidget {
               child: CustomPaint(
                 size: Size(w, height),
                 painter: _EvalGraphPainter(
-                    moves: moves, viewPly: viewPly, colorblind: colorblind),
+                  moves: moves,
+                  viewPly: viewPly,
+                  colorblind: colorblind,
+                ),
               ),
             ),
           );
@@ -57,8 +60,11 @@ class _EvalGraphPainter extends CustomPainter {
   final List<AnalysisMove> moves;
   final int viewPly;
   final bool colorblind;
-  _EvalGraphPainter(
-      {required this.moves, required this.viewPly, required this.colorblind});
+  _EvalGraphPainter({
+    required this.moves,
+    required this.viewPly,
+    required this.colorblind,
+  });
 
   double _frac(int cp, int mateIn) {
     if (mateIn != 0) return mateIn > 0 ? 1.0 : 0.0;
@@ -69,7 +75,9 @@ class _EvalGraphPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     canvas.drawRect(
-        Offset.zero & size, Paint()..color = const Color(0xFF2B2B2B));
+      Offset.zero & size,
+      Paint()..color = const Color(0xFF2B2B2B),
+    );
     final n = moves.length;
     if (n == 0) return;
 
@@ -93,8 +101,13 @@ class _EvalGraphPainter extends CustomPainter {
     canvas.drawPath(area, Paint()..color = const Color(0xFFE8E8E8));
 
     // 50% midline.
-    canvas.drawLine(Offset(0, h / 2), Offset(w, h / 2),
-        Paint()..color = const Color(0x44000000)..strokeWidth = 1);
+    canvas.drawLine(
+      Offset(0, h / 2),
+      Offset(w, h / 2),
+      Paint()
+        ..color = const Color(0x44000000)
+        ..strokeWidth = 1,
+    );
 
     // Eval line.
     final line = Path();
@@ -107,25 +120,34 @@ class _EvalGraphPainter extends CustomPainter {
       }
     }
     canvas.drawPath(
-        line,
-        Paint()
-          ..color = const Color(0xFF6E6E6E)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1.2);
+      line,
+      Paint()
+        ..color = const Color(0xFF6E6E6E)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.2,
+    );
 
     // Flag the costly moves.
     for (var i = 0; i < moves.length; i++) {
       final cls = moves[i].classification;
       if (cls == 'blunder' || cls == 'mistake' || cls == 'miss') {
-        canvas.drawCircle(pt(i + 1), 2.6,
-            Paint()..color = classStyle(cls, colorblind: colorblind).color);
+        canvas.drawCircle(
+          pt(i + 1),
+          2.6,
+          Paint()..color = classStyle(cls, colorblind: colorblind).color,
+        );
       }
     }
 
     // Current-ply marker.
     final mx = (viewPly / n).clamp(0.0, 1.0) * w;
-    canvas.drawLine(Offset(mx, 0), Offset(mx, h),
-        Paint()..color = const Color(0xCC1E88E5)..strokeWidth = 1.5);
+    canvas.drawLine(
+      Offset(mx, 0),
+      Offset(mx, h),
+      Paint()
+        ..color = const Color(0xCC1E88E5)
+        ..strokeWidth = 1.5,
+    );
   }
 
   @override

@@ -8,7 +8,7 @@
                      android:usesPermissionFlags="neverForLocation"/>
 
     <application
-        android:label="Chess"
+        android:label="Open Chess"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

@@ -21,7 +21,11 @@ fn read_coord(b: &[u8], i: &mut usize) -> Option<Coord> {
     if *i == start {
         return None;
     }
-    let row: i8 = std::str::from_utf8(&b[start..*i]).ok()?.parse::<i8>().ok()? - 1;
+    let row: i8 = std::str::from_utf8(&b[start..*i])
+        .ok()?
+        .parse::<i8>()
+        .ok()?
+        - 1;
     if (0..14).contains(&col) && (0..14).contains(&row) {
         Some(Coord::new(col, row))
     } else {

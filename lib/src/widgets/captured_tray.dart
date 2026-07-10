@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import 'package:chess/src/rust/api/game.dart';
-import 'package:chess/src/widgets/pieces.dart';
+import 'package:open_chess/src/rust/api/game.dart';
+import 'package:open_chess/src/widgets/pieces.dart';
 
 const Map<PieceKind, int> _value = {
   PieceKind.pawn: 1,
@@ -29,8 +29,9 @@ class CapturedTray extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final oppColor =
-        owner == PieceColor.white ? PieceColor.black : PieceColor.white;
+    final oppColor = owner == PieceColor.white
+        ? PieceColor.black
+        : PieceColor.white;
     final sorted = [...captured]
       ..sort((a, b) => _value[b]!.compareTo(_value[a]!));
     return SizedBox(
@@ -48,8 +49,10 @@ class CapturedTray extends StatelessWidget {
           if (advantage > 0)
             Padding(
               padding: const EdgeInsets.only(left: 4),
-              child: Text('+$advantage',
-                  style: const TextStyle(fontWeight: FontWeight.bold)),
+              child: Text(
+                '+$advantage',
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
             ),
         ],
       ),

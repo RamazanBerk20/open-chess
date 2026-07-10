@@ -6,9 +6,7 @@
 //! discovered checks, double checks and the en-passant discovered-check edge
 //! case. Castling transit-square safety is checked during generation.
 
-use crate::attacks::{
-    bishop_attacks, king_attacks, knight_attacks, pawn_attacks, rook_attacks,
-};
+use crate::attacks::{bishop_attacks, king_attacks, knight_attacks, pawn_attacks, rook_attacks};
 use crate::bitboard::{bit, pop_lsb, Bitboard};
 use crate::position::Position;
 use crate::types::{kind, rank_of, Color, Move, MoveList, Piece, Square};
@@ -262,8 +260,7 @@ impl Position {
             // Every square in the king's and rook's paths must be empty, except
             // where the king and the castling rook currently stand.
             let occ = self.all & !bit(king_from) & !bit(rook_from);
-            let paths =
-                rank_segment(king_from, king_dest) | rank_segment(rook_from, rook_dest);
+            let paths = rank_segment(king_from, king_dest) | rank_segment(rook_from, rook_dest);
             if paths & occ != 0 {
                 continue;
             }
@@ -279,7 +276,11 @@ impl Position {
             if !safe {
                 continue;
             }
-            let k = if kingside { kind::KING_CASTLE } else { kind::QUEEN_CASTLE };
+            let k = if kingside {
+                kind::KING_CASTLE
+            } else {
+                kind::QUEEN_CASTLE
+            };
             list.push(Move::new(king_from, rook_from, k));
         }
     }

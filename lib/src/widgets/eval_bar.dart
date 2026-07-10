@@ -53,8 +53,9 @@ class EvalBar extends StatelessWidget {
               children: [
                 Container(color: const Color(0xFF2B2B2B)), // black side
                 Align(
-                  alignment:
-                      flipped ? Alignment.topCenter : Alignment.bottomCenter,
+                  alignment: flipped
+                      ? Alignment.topCenter
+                      : Alignment.bottomCenter,
                   child: Container(
                     height: (height * frac).clamp(0.0, height),
                     width: width,

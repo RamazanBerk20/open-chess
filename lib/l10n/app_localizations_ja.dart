@@ -9,7 +9,7 @@ class AppLocalizationsJa extends AppLocalizations {
   AppLocalizationsJa([String locale = 'ja']) : super(locale);
 
   @override
-  String get appTitle => 'チェス';
+  String get appTitle => 'Open Chess';
 
   @override
   String get menuSinglePlayer => 'シングルプレイ';
@@ -180,6 +180,33 @@ class AppLocalizationsJa extends AppLocalizations {
   String get analysis => '解析';
 
   @override
+  String get opening => 'オープニング';
+
+  @override
+  String get openingGambit => 'ギャンビット';
+
+  @override
+  String get openingVariation => '変化';
+
+  @override
+  String get openingNone => '名前の付いたオープニングなし';
+
+  @override
+  String get ratingEstimate => '推定レーティング';
+
+  @override
+  String get ratingConfidenceLow => '低い信頼度';
+
+  @override
+  String get ratingConfidenceMedium => '普通の信頼度';
+
+  @override
+  String get ratingConfidenceHigh => '高い信頼度';
+
+  @override
+  String get ratingUnavailable => '推定レーティングは利用できません';
+
+  @override
   String get white => '白';
 
   @override
@@ -260,6 +287,27 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get settings => '設定';
+
+  @override
+  String get profile => 'プロフィール';
+
+  @override
+  String get profileUsername => 'ユーザー名';
+
+  @override
+  String get profileUsernameHint => 'ユーザー名を入力';
+
+  @override
+  String get profileAvatar => 'アバター';
+
+  @override
+  String get profileChangeAvatar => 'アバターを変更';
+
+  @override
+  String get profileRemoveAvatar => 'アバターを削除';
+
+  @override
+  String get profileImageError => 'この画像は使用できませんでした。';
 
   @override
   String get appearance => '外観';
@@ -355,6 +403,12 @@ class AppLocalizationsJa extends AppLocalizations {
   String get lanGame => 'LAN対局';
 
   @override
+  String get lanAllowSpectators => '観戦を許可';
+
+  @override
+  String get lanSpectate => '対局を観戦';
+
+  @override
   String get chat => 'チャット';
 
   @override
@@ -440,16 +494,28 @@ class AppLocalizationsJa extends AppLocalizations {
   String get diffBeginner => '初心者';
 
   @override
+  String get diffVeryEasy => 'とても簡単';
+
+  @override
   String get diffEasy => '易しい';
 
   @override
   String get diffMedium => '普通';
 
   @override
+  String get diffNormal => '標準';
+
+  @override
   String get diffHard => '難しい';
 
   @override
   String get diffExpert => 'エキスパート';
+
+  @override
+  String get diffVeryHard => 'とても難しい';
+
+  @override
+  String get diffImpossible => '不可能';
 
   @override
   String get baseMinutes => '基本時間（分）';
@@ -474,6 +540,12 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get evalNoise => '評価ノイズ（センチポーン）';
+
+  @override
+  String get maxEvalLoss => '最大評価損失（センチポーン）';
+
+  @override
+  String get moveVariety => '指し手の多様性';
 
   @override
   String puzzlesSolved(Object solved, Object total) {
@@ -612,6 +684,12 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get fourVsBots => '対ボット';
+
+  @override
+  String get fourSeatAi => 'AI';
+
+  @override
+  String get fourPerspective => '視点';
 
   @override
   String get fourYourSeats => 'あなたの担当';

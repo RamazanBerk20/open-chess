@@ -1,0 +1,7 @@
+# Keep the real key.properties and keystore out of version control.
+# CI writes these values from ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD,
+# ANDROID_KEY_ALIAS, and ANDROID_KEY_PASSWORD secrets before tagged releases.
+storeFile=upload-keystore.jks
+storePassword=replace-me
+keyAlias=replace-me
+keyPassword=replace-me

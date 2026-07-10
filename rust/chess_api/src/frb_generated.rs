@@ -40,7 +40,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.12.0";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 1410675393;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -810678739;
 
 // Section: executor
 
@@ -171,6 +171,44 @@ fn wire__crate__api__game__ChessGame_from_fen_impl(
             deserializer.end();
             transform_result_sse::<_, String>((move || {
                 let output_ok = crate::api::game::ChessGame::from_fen(api_fen)?;
+                Ok(output_ok)
+            })())
+        },
+    )
+}
+fn wire__crate__api__game__ChessGame_from_fen_variant_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "ChessGame_from_fen_variant",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_fen = <String>::sse_decode(&mut deserializer);
+            let api_variant = <crate::api::game::GameVariant>::sse_decode(&mut deserializer);
+            let api_base_minutes = <u32>::sse_decode(&mut deserializer);
+            let api_increment_seconds = <u32>::sse_decode(&mut deserializer);
+            deserializer.end();
+            transform_result_sse::<_, String>((move || {
+                let output_ok = crate::api::game::ChessGame::from_fen_variant(
+                    api_fen,
+                    api_variant,
+                    api_base_minutes,
+                    api_increment_seconds,
+                )?;
                 Ok(output_ok)
             })())
         },
@@ -785,6 +823,64 @@ fn wire__crate__api__game__ChessGame_premove_targets_after_impl(
         },
     )
 }
+fn wire__crate__api__game__ChessGame_restore_variant_state_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "ChessGame_restore_variant_state",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_that = <RustOpaqueMoi<
+                flutter_rust_bridge::for_generated::RustAutoOpaqueInner<ChessGame>,
+            >>::sse_decode(&mut deserializer);
+            let api_white_checks = <u32>::sse_decode(&mut deserializer);
+            let api_black_checks = <u32>::sse_decode(&mut deserializer);
+            let api_white_hand = <Vec<u32>>::sse_decode(&mut deserializer);
+            let api_black_hand = <Vec<u32>>::sse_decode(&mut deserializer);
+            let api_promoted = <u64>::sse_decode(&mut deserializer);
+            deserializer.end();
+            transform_result_sse::<_, String>((move || {
+                let mut api_that_guard = None;
+                let decode_indices_ =
+                    flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
+                        flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+                            &api_that, 0, true,
+                        ),
+                    ]);
+                for i in decode_indices_ {
+                    match i {
+                        0 => api_that_guard = Some(api_that.lockable_decode_sync_ref_mut()),
+                        _ => unreachable!(),
+                    }
+                }
+                let mut api_that_guard = api_that_guard.unwrap();
+                let output_ok = crate::api::game::ChessGame::restore_variant_state(
+                    &mut *api_that_guard,
+                    api_white_checks,
+                    api_black_checks,
+                    api_white_hand,
+                    api_black_hand,
+                    api_promoted,
+                )?;
+                Ok(output_ok)
+            })())
+        },
+    )
+}
 fn wire__crate__api__game__ChessGame_set_clock_ms_impl(
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
@@ -1057,6 +1153,7 @@ fn wire__crate__api__four__FourGame_bot_move_impl(
                 flutter_rust_bridge::for_generated::RustAutoOpaqueInner<FourGame>,
             >>::sse_decode(&mut deserializer);
             let api_seed = <u64>::sse_decode(&mut deserializer);
+            let api_difficulty_code = <i32>::sse_decode(&mut deserializer);
             deserializer.end();
             transform_result_sse::<_, ()>((move || {
                 let mut api_that_guard = None;
@@ -1076,6 +1173,7 @@ fn wire__crate__api__four__FourGame_bot_move_impl(
                 let output_ok = Result::<_, ()>::Ok(crate::api::four::FourGame::bot_move(
                     &*api_that_guard,
                     api_seed,
+                    api_difficulty_code,
                 ))?;
                 Ok(output_ok)
             })())
@@ -1472,16 +1570,7 @@ fn wire__crate__api__ai__ai_search_impl(
             };
             let mut deserializer =
                 flutter_rust_bridge::for_generated::SseDeserializer::new(message);
-            let api_search_id = <u64>::sse_decode(&mut deserializer);
-            let api_fen = <String>::sse_decode(&mut deserializer);
-            let api_config = <crate::api::ai::AiConfigDto>::sse_decode(&mut deserializer);
-            let api_history = <Vec<u64>>::sse_decode(&mut deserializer);
-            let api_variant = <crate::api::game::GameVariant>::sse_decode(&mut deserializer);
-            let api_white_checks = <u32>::sse_decode(&mut deserializer);
-            let api_black_checks = <u32>::sse_decode(&mut deserializer);
-            let api_white_hand = <Vec<u32>>::sse_decode(&mut deserializer);
-            let api_black_hand = <Vec<u32>>::sse_decode(&mut deserializer);
-            let api_promoted = <u64>::sse_decode(&mut deserializer);
+            let api_request = <crate::api::ai::AiSearchRequest>::sse_decode(&mut deserializer);
             let api_sink = <StreamSink<
                 crate::api::ai::AiUpdate,
                 flutter_rust_bridge::for_generated::SseCodec,
@@ -1489,19 +1578,7 @@ fn wire__crate__api__ai__ai_search_impl(
             deserializer.end();
             move |context| {
                 transform_result_sse::<_, String>((move || {
-                    let output_ok = crate::api::ai::ai_search(
-                        api_search_id,
-                        api_fen,
-                        api_config,
-                        api_history,
-                        api_variant,
-                        api_white_checks,
-                        api_black_checks,
-                        api_white_hand,
-                        api_black_hand,
-                        api_promoted,
-                        api_sink,
-                    )?;
+                    let output_ok = crate::api::ai::ai_search(api_request, api_sink)?;
                     Ok(output_ok)
                 })())
             }
@@ -1536,6 +1613,39 @@ fn wire__crate__api__analyze__analysis_cancel_impl(
                 })?;
                 Ok(output_ok)
             })())
+        },
+    )
+}
+fn wire__crate__api__analyze__analysis_summary_default_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "analysis_summary_default",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok =
+                        Result::<_, ()>::Ok(crate::api::analyze::AnalysisSummary::default())?;
+                    Ok(output_ok)
+                })())
+            }
         },
     )
 }
@@ -1577,6 +1687,45 @@ fn wire__crate__api__analyze__analyze_game_impl(
                         api_depth,
                         api_sink,
                     )?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__crate__api__analyze__analyze_game_request_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "analyze_game_request",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_request =
+                <crate::api::analyze::AnalyzeGameRequest>::sse_decode(&mut deserializer);
+            let api_sink = <StreamSink<
+                crate::api::analyze::AnalysisUpdate,
+                flutter_rust_bridge::for_generated::SseCodec,
+            >>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, String>((move || {
+                    let output_ok =
+                        crate::api::analyze::analyze_game_request(api_request, api_sink)?;
                     Ok(output_ok)
                 })())
             }
@@ -1830,10 +1979,11 @@ fn wire__crate__api__net__net_four_start_impl(
             let mut deserializer =
                 flutter_rust_bridge::for_generated::SseDeserializer::new(message);
             let api_seat_owner = <Vec<i32>>::sse_decode(&mut deserializer);
+            let api_ai_difficulties = <Vec<i32>>::sse_decode(&mut deserializer);
             deserializer.end();
             transform_result_sse::<_, ()>((move || {
                 let output_ok = Result::<_, ()>::Ok({
-                    crate::api::net::net_four_start(api_seat_owner);
+                    crate::api::net::net_four_start(api_seat_owner, api_ai_difficulties);
                 })?;
                 Ok(output_ok)
             })())
@@ -1862,12 +2012,13 @@ fn wire__crate__api__net__net_host_impl(
             };
             let mut deserializer =
                 flutter_rust_bridge::for_generated::SseDeserializer::new(message);
-            let api_name = <String>::sse_decode(&mut deserializer);
+            let api_profile = <crate::api::net::PlayerProfileWire>::sse_decode(&mut deserializer);
             let api_base_minutes = <u32>::sse_decode(&mut deserializer);
             let api_increment_seconds = <u32>::sse_decode(&mut deserializer);
             let api_host_white = <bool>::sse_decode(&mut deserializer);
             let api_variant = <String>::sse_decode(&mut deserializer);
             let api_chess960_index = <u32>::sse_decode(&mut deserializer);
+            let api_allow_spectators = <bool>::sse_decode(&mut deserializer);
             let api_sink = <StreamSink<
                 crate::api::net::NetEvent,
                 flutter_rust_bridge::for_generated::SseCodec,
@@ -1876,12 +2027,13 @@ fn wire__crate__api__net__net_host_impl(
             move |context| {
                 transform_result_sse::<_, String>((move || {
                     let output_ok = crate::api::net::net_host(
-                        api_name,
+                        api_profile,
                         api_base_minutes,
                         api_increment_seconds,
                         api_host_white,
                         api_variant,
                         api_chess960_index,
+                        api_allow_spectators,
                         api_sink,
                     )?;
                     Ok(output_ok)
@@ -1912,7 +2064,7 @@ fn wire__crate__api__net__net_host_bughouse_impl(
             };
             let mut deserializer =
                 flutter_rust_bridge::for_generated::SseDeserializer::new(message);
-            let api_name = <String>::sse_decode(&mut deserializer);
+            let api_profile = <crate::api::net::PlayerProfileWire>::sse_decode(&mut deserializer);
             let api_base_minutes = <u32>::sse_decode(&mut deserializer);
             let api_increment_seconds = <u32>::sse_decode(&mut deserializer);
             let api_sink = <StreamSink<
@@ -1923,7 +2075,7 @@ fn wire__crate__api__net__net_host_bughouse_impl(
             move |context| {
                 transform_result_sse::<_, String>((move || {
                     let output_ok = crate::api::net::net_host_bughouse(
-                        api_name,
+                        api_profile,
                         api_base_minutes,
                         api_increment_seconds,
                         api_sink,
@@ -1956,8 +2108,9 @@ fn wire__crate__api__net__net_host_four_impl(
             };
             let mut deserializer =
                 flutter_rust_bridge::for_generated::SseDeserializer::new(message);
-            let api_name = <String>::sse_decode(&mut deserializer);
+            let api_profile = <crate::api::net::PlayerProfileWire>::sse_decode(&mut deserializer);
             let api_format = <String>::sse_decode(&mut deserializer);
+            let api_allow_spectators = <bool>::sse_decode(&mut deserializer);
             let api_sink = <StreamSink<
                 crate::api::net::NetEvent,
                 flutter_rust_bridge::for_generated::SseCodec,
@@ -1965,7 +2118,12 @@ fn wire__crate__api__net__net_host_four_impl(
             deserializer.end();
             move |context| {
                 transform_result_sse::<_, String>((move || {
-                    let output_ok = crate::api::net::net_host_four(api_name, api_format, api_sink)?;
+                    let output_ok = crate::api::net::net_host_four(
+                        api_profile,
+                        api_format,
+                        api_allow_spectators,
+                        api_sink,
+                    )?;
                     Ok(output_ok)
                 })())
             }
@@ -1995,7 +2153,7 @@ fn wire__crate__api__net__net_join_impl(
             let mut deserializer =
                 flutter_rust_bridge::for_generated::SseDeserializer::new(message);
             let api_addr = <String>::sse_decode(&mut deserializer);
-            let api_name = <String>::sse_decode(&mut deserializer);
+            let api_profile = <crate::api::net::PlayerProfileWire>::sse_decode(&mut deserializer);
             let api_sink = <StreamSink<
                 crate::api::net::NetEvent,
                 flutter_rust_bridge::for_generated::SseCodec,
@@ -2003,7 +2161,7 @@ fn wire__crate__api__net__net_join_impl(
             deserializer.end();
             move |context| {
                 transform_result_sse::<_, String>((move || {
-                    let output_ok = crate::api::net::net_join(api_addr, api_name, api_sink)?;
+                    let output_ok = crate::api::net::net_join(api_addr, api_profile, api_sink)?;
                     Ok(output_ok)
                 })())
             }
@@ -2033,7 +2191,7 @@ fn wire__crate__api__net__net_join_bughouse_impl(
             let mut deserializer =
                 flutter_rust_bridge::for_generated::SseDeserializer::new(message);
             let api_addr = <String>::sse_decode(&mut deserializer);
-            let api_name = <String>::sse_decode(&mut deserializer);
+            let api_profile = <crate::api::net::PlayerProfileWire>::sse_decode(&mut deserializer);
             let api_sink = <StreamSink<
                 crate::api::net::NetEvent,
                 flutter_rust_bridge::for_generated::SseCodec,
@@ -2042,7 +2200,7 @@ fn wire__crate__api__net__net_join_bughouse_impl(
             move |context| {
                 transform_result_sse::<_, String>((move || {
                     let output_ok =
-                        crate::api::net::net_join_bughouse(api_addr, api_name, api_sink)?;
+                        crate::api::net::net_join_bughouse(api_addr, api_profile, api_sink)?;
                     Ok(output_ok)
                 })())
             }
@@ -2072,7 +2230,7 @@ fn wire__crate__api__net__net_join_four_impl(
             let mut deserializer =
                 flutter_rust_bridge::for_generated::SseDeserializer::new(message);
             let api_addr = <String>::sse_decode(&mut deserializer);
-            let api_name = <String>::sse_decode(&mut deserializer);
+            let api_profile = <crate::api::net::PlayerProfileWire>::sse_decode(&mut deserializer);
             let api_sink = <StreamSink<
                 crate::api::net::NetEvent,
                 flutter_rust_bridge::for_generated::SseCodec,
@@ -2080,7 +2238,8 @@ fn wire__crate__api__net__net_join_four_impl(
             deserializer.end();
             move |context| {
                 transform_result_sse::<_, String>((move || {
-                    let output_ok = crate::api::net::net_join_four(api_addr, api_name, api_sink)?;
+                    let output_ok =
+                        crate::api::net::net_join_four(api_addr, api_profile, api_sink)?;
                     Ok(output_ok)
                 })())
             }
@@ -2351,6 +2510,115 @@ fn wire__crate__api__net__net_send_move_impl(
         },
     )
 }
+fn wire__crate__api__net__net_send_spectator_chat_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "net_send_spectator_chat",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_text = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            transform_result_sse::<_, ()>((move || {
+                let output_ok = Result::<_, ()>::Ok({
+                    crate::api::net::net_send_spectator_chat(api_text);
+                })?;
+                Ok(output_ok)
+            })())
+        },
+    )
+}
+fn wire__crate__api__net__net_spectate_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "net_spectate",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_addr = <String>::sse_decode(&mut deserializer);
+            let api_profile = <crate::api::net::PlayerProfileWire>::sse_decode(&mut deserializer);
+            let api_sink = <StreamSink<
+                crate::api::net::NetEvent,
+                flutter_rust_bridge::for_generated::SseCodec,
+            >>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, String>((move || {
+                    let output_ok = crate::api::net::net_spectate(api_addr, api_profile, api_sink)?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__crate__api__net__net_spectate_four_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "net_spectate_four",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_addr = <String>::sse_decode(&mut deserializer);
+            let api_profile = <crate::api::net::PlayerProfileWire>::sse_decode(&mut deserializer);
+            let api_sink = <StreamSink<
+                crate::api::net::NetEvent,
+                flutter_rust_bridge::for_generated::SseCodec,
+            >>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, String>((move || {
+                    let output_ok =
+                        crate::api::net::net_spectate_four(api_addr, api_profile, api_sink)?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
 fn wire__crate__api__net__net_stop_browse_impl(
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
@@ -2498,19 +2766,47 @@ impl SseDecode for crate::api::ai::AiConfigDto {
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut var_maxDepth = <u32>::sse_decode(deserializer);
         let mut var_moveTimeMs = <Option<u64>>::sse_decode(deserializer);
-        let mut var_evalNoise = <i32>::sse_decode(deserializer);
-        let mut var_blunderChance = <f32>::sse_decode(deserializer);
-        let mut var_topNRandom = <u32>::sse_decode(deserializer);
+        let mut var_maxEvalLossCp = <i32>::sse_decode(deserializer);
+        let mut var_randomMoveChance = <f32>::sse_decode(deserializer);
+        let mut var_candidateDepth = <u32>::sse_decode(deserializer);
         let mut var_contempt = <i32>::sse_decode(deserializer);
         let mut var_seed = <u64>::sse_decode(deserializer);
         return crate::api::ai::AiConfigDto {
             max_depth: var_maxDepth,
             move_time_ms: var_moveTimeMs,
-            eval_noise: var_evalNoise,
-            blunder_chance: var_blunderChance,
-            top_n_random: var_topNRandom,
+            max_eval_loss_cp: var_maxEvalLossCp,
+            random_move_chance: var_randomMoveChance,
+            candidate_depth: var_candidateDepth,
             contempt: var_contempt,
             seed: var_seed,
+        };
+    }
+}
+
+impl SseDecode for crate::api::ai::AiSearchRequest {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_searchId = <u64>::sse_decode(deserializer);
+        let mut var_fen = <String>::sse_decode(deserializer);
+        let mut var_config = <crate::api::ai::AiConfigDto>::sse_decode(deserializer);
+        let mut var_history = <Vec<u64>>::sse_decode(deserializer);
+        let mut var_variant = <crate::api::game::GameVariant>::sse_decode(deserializer);
+        let mut var_whiteChecks = <u32>::sse_decode(deserializer);
+        let mut var_blackChecks = <u32>::sse_decode(deserializer);
+        let mut var_whiteHand = <Vec<u32>>::sse_decode(deserializer);
+        let mut var_blackHand = <Vec<u32>>::sse_decode(deserializer);
+        let mut var_promoted = <u64>::sse_decode(deserializer);
+        return crate::api::ai::AiSearchRequest {
+            search_id: var_searchId,
+            fen: var_fen,
+            config: var_config,
+            history: var_history,
+            variant: var_variant,
+            white_checks: var_whiteChecks,
+            black_checks: var_blackChecks,
+            white_hand: var_whiteHand,
+            black_hand: var_blackHand,
+            promoted: var_promoted,
         };
     }
 }
@@ -2535,6 +2831,39 @@ impl SseDecode for crate::api::ai::AiUpdate {
     }
 }
 
+impl SseDecode for crate::api::analyze::AnalysisOpening {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_eco = <String>::sse_decode(deserializer);
+        let mut var_name = <String>::sse_decode(deserializer);
+        let mut var_opening = <String>::sse_decode(deserializer);
+        let mut var_gambit = <Option<String>>::sse_decode(deserializer);
+        let mut var_variation = <Option<String>>::sse_decode(deserializer);
+        return crate::api::analyze::AnalysisOpening {
+            eco: var_eco,
+            name: var_name,
+            opening: var_opening,
+            gambit: var_gambit,
+            variation: var_variation,
+        };
+    }
+}
+
+impl SseDecode for crate::api::analyze::AnalysisSummary {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_opening =
+            <Option<crate::api::analyze::AnalysisOpening>>::sse_decode(deserializer);
+        let mut var_whiteElo = <Option<crate::api::analyze::EloEstimate>>::sse_decode(deserializer);
+        let mut var_blackElo = <Option<crate::api::analyze::EloEstimate>>::sse_decode(deserializer);
+        return crate::api::analyze::AnalysisSummary {
+            opening: var_opening,
+            white_elo: var_whiteElo,
+            black_elo: var_blackElo,
+        };
+    }
+}
+
 impl SseDecode for crate::api::analyze::AnalysisUpdate {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -2554,6 +2883,10 @@ impl SseDecode for crate::api::analyze::AnalysisUpdate {
         let mut var_done = <bool>::sse_decode(deserializer);
         let mut var_whiteAccuracy = <f32>::sse_decode(deserializer);
         let mut var_blackAccuracy = <f32>::sse_decode(deserializer);
+        let mut var_opening =
+            <Option<crate::api::analyze::AnalysisOpening>>::sse_decode(deserializer);
+        let mut var_whiteElo = <Option<crate::api::analyze::EloEstimate>>::sse_decode(deserializer);
+        let mut var_blackElo = <Option<crate::api::analyze::EloEstimate>>::sse_decode(deserializer);
         return crate::api::analyze::AnalysisUpdate {
             ply: var_ply,
             uci: var_uci,
@@ -2571,6 +2904,25 @@ impl SseDecode for crate::api::analyze::AnalysisUpdate {
             done: var_done,
             white_accuracy: var_whiteAccuracy,
             black_accuracy: var_blackAccuracy,
+            opening: var_opening,
+            white_elo: var_whiteElo,
+            black_elo: var_blackElo,
+        };
+    }
+}
+
+impl SseDecode for crate::api::analyze::AnalyzeGameRequest {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_startFen = <String>::sse_decode(deserializer);
+        let mut var_moves = <Vec<String>>::sse_decode(deserializer);
+        let mut var_depth = <u32>::sse_decode(deserializer);
+        let mut var_variant = <crate::api::game::GameVariant>::sse_decode(deserializer);
+        return crate::api::analyze::AnalyzeGameRequest {
+            start_fen: var_startFen,
+            moves: var_moves,
+            depth: var_depth,
+            variant: var_variant,
         };
     }
 }
@@ -2596,6 +2948,35 @@ impl SseDecode for crate::api::game::ClockSnapshot {
             black_ms: var_blackMs,
             running: var_running,
             over: var_over,
+        };
+    }
+}
+
+impl SseDecode for crate::api::analyze::EloConfidence {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <i32>::sse_decode(deserializer);
+        return match inner {
+            0 => crate::api::analyze::EloConfidence::Low,
+            1 => crate::api::analyze::EloConfidence::Medium,
+            2 => crate::api::analyze::EloConfidence::High,
+            _ => unreachable!("Invalid variant for EloConfidence: {}", inner),
+        };
+    }
+}
+
+impl SseDecode for crate::api::analyze::EloEstimate {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_elo = <u32>::sse_decode(deserializer);
+        let mut var_confidence = <crate::api::analyze::EloConfidence>::sse_decode(deserializer);
+        let mut var_analyzedMoves = <u32>::sse_decode(deserializer);
+        let mut var_averageCpLoss = <f32>::sse_decode(deserializer);
+        return crate::api::analyze::EloEstimate {
+            elo: var_elo,
+            confidence: var_confidence,
+            analyzed_moves: var_analyzedMoves,
+            average_cp_loss: var_averageCpLoss,
         };
     }
 }
@@ -2899,6 +3280,20 @@ impl SseDecode for Vec<crate::api::game::PieceKind> {
     }
 }
 
+impl SseDecode for Vec<crate::api::net::PlayerProfileWire> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = Vec::with_capacity(len_ as usize);
+        for idx_ in 0..len_ {
+            ans_.push(<crate::api::net::PlayerProfileWire>::sse_decode(
+                deserializer,
+            ));
+        }
+        return ans_;
+    }
+}
+
 impl SseDecode for Vec<i32> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -2975,7 +3370,17 @@ impl SseDecode for crate::api::net::NetEvent {
         let mut var_blackMs = <i64>::sse_decode(deserializer);
         let mut var_drawAccepted = <bool>::sse_decode(deserializer);
         let mut var_text = <String>::sse_decode(deserializer);
+        let mut var_sender = <String>::sse_decode(deserializer);
         let mut var_variant = <String>::sse_decode(deserializer);
+        let mut var_isSpectator = <bool>::sse_decode(deserializer);
+        let mut var_whiteProfile = <crate::api::net::PlayerProfileWire>::sse_decode(deserializer);
+        let mut var_blackProfile = <crate::api::net::PlayerProfileWire>::sse_decode(deserializer);
+        let mut var_peerProfile = <crate::api::net::PlayerProfileWire>::sse_decode(deserializer);
+        let mut var_whiteChecks = <u32>::sse_decode(deserializer);
+        let mut var_blackChecks = <u32>::sse_decode(deserializer);
+        let mut var_whiteHand = <Vec<u32>>::sse_decode(deserializer);
+        let mut var_blackHand = <Vec<u32>>::sse_decode(deserializer);
+        let mut var_promoted = <u64>::sse_decode(deserializer);
         let mut var_board = <u32>::sse_decode(deserializer);
         let mut var_toBoard = <u32>::sse_decode(deserializer);
         let mut var_toColor = <u32>::sse_decode(deserializer);
@@ -2984,6 +3389,8 @@ impl SseDecode for crate::api::net::NetEvent {
         let mut var_winningTeam = <u32>::sse_decode(deserializer);
         let mut var_yourSeats = <Vec<u32>>::sse_decode(deserializer);
         let mut var_seats = <Vec<String>>::sse_decode(deserializer);
+        let mut var_seatProfiles =
+            <Vec<crate::api::net::PlayerProfileWire>>::sse_decode(deserializer);
         return crate::api::net::NetEvent {
             kind: var_kind,
             you_are_white: var_youAreWhite,
@@ -2997,7 +3404,17 @@ impl SseDecode for crate::api::net::NetEvent {
             black_ms: var_blackMs,
             draw_accepted: var_drawAccepted,
             text: var_text,
+            sender: var_sender,
             variant: var_variant,
+            is_spectator: var_isSpectator,
+            white_profile: var_whiteProfile,
+            black_profile: var_blackProfile,
+            peer_profile: var_peerProfile,
+            white_checks: var_whiteChecks,
+            black_checks: var_blackChecks,
+            white_hand: var_whiteHand,
+            black_hand: var_blackHand,
+            promoted: var_promoted,
             board: var_board,
             to_board: var_toBoard,
             to_color: var_toColor,
@@ -3006,6 +3423,7 @@ impl SseDecode for crate::api::net::NetEvent {
             winning_team: var_winningTeam,
             your_seats: var_yourSeats,
             seats: var_seats,
+            seat_profiles: var_seatProfiles,
         };
     }
 }
@@ -3021,17 +3439,19 @@ impl SseDecode for crate::api::net::NetEventKind {
             3 => crate::api::net::NetEventKind::DrawOffer,
             4 => crate::api::net::NetEventKind::DrawResponse,
             5 => crate::api::net::NetEventKind::Chat,
-            6 => crate::api::net::NetEventKind::Disconnected,
-            7 => crate::api::net::NetEventKind::Error,
-            8 => crate::api::net::NetEventKind::BugJoin,
-            9 => crate::api::net::NetEventKind::BugStart,
-            10 => crate::api::net::NetEventKind::BugMove,
-            11 => crate::api::net::NetEventKind::BugPass,
-            12 => crate::api::net::NetEventKind::BugResult,
-            13 => crate::api::net::NetEventKind::FourJoin,
-            14 => crate::api::net::NetEventKind::FourStart,
-            15 => crate::api::net::NetEventKind::FourMove,
-            16 => crate::api::net::NetEventKind::FourResult,
+            6 => crate::api::net::NetEventKind::SpectatorChat,
+            7 => crate::api::net::NetEventKind::Disconnected,
+            8 => crate::api::net::NetEventKind::Error,
+            9 => crate::api::net::NetEventKind::SpectatorJoined,
+            10 => crate::api::net::NetEventKind::BugJoin,
+            11 => crate::api::net::NetEventKind::BugStart,
+            12 => crate::api::net::NetEventKind::BugMove,
+            13 => crate::api::net::NetEventKind::BugPass,
+            14 => crate::api::net::NetEventKind::BugResult,
+            15 => crate::api::net::NetEventKind::FourJoin,
+            16 => crate::api::net::NetEventKind::FourStart,
+            17 => crate::api::net::NetEventKind::FourMove,
+            18 => crate::api::net::NetEventKind::FourResult,
             _ => unreachable!("Invalid variant for NetEventKind: {}", inner),
         };
     }
@@ -3043,10 +3463,20 @@ impl SseDecode for crate::api::net::NetHost {
         let mut var_name = <String>::sse_decode(deserializer);
         let mut var_addr = <String>::sse_decode(deserializer);
         let mut var_timeControl = <String>::sse_decode(deserializer);
+        let mut var_mode = <String>::sse_decode(deserializer);
+        let mut var_variant = <String>::sse_decode(deserializer);
+        let mut var_spectatorsEnabled = <bool>::sse_decode(deserializer);
+        let mut var_playerCount = <u32>::sse_decode(deserializer);
+        let mut var_maxPlayers = <u32>::sse_decode(deserializer);
         return crate::api::net::NetHost {
             name: var_name,
             addr: var_addr,
             time_control: var_timeControl,
+            mode: var_mode,
+            variant: var_variant,
+            spectators_enabled: var_spectatorsEnabled,
+            player_count: var_playerCount,
+            max_players: var_maxPlayers,
         };
     }
 }
@@ -3056,6 +3486,30 @@ impl SseDecode for Option<String> {
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         if (<bool>::sse_decode(deserializer)) {
             return Some(<String>::sse_decode(deserializer));
+        } else {
+            return None;
+        }
+    }
+}
+
+impl SseDecode for Option<crate::api::analyze::AnalysisOpening> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        if (<bool>::sse_decode(deserializer)) {
+            return Some(<crate::api::analyze::AnalysisOpening>::sse_decode(
+                deserializer,
+            ));
+        } else {
+            return None;
+        }
+    }
+}
+
+impl SseDecode for Option<crate::api::analyze::EloEstimate> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        if (<bool>::sse_decode(deserializer)) {
+            return Some(<crate::api::analyze::EloEstimate>::sse_decode(deserializer));
         } else {
             return None;
         }
@@ -3158,6 +3612,18 @@ impl SseDecode for crate::api::game::PieceKind {
     }
 }
 
+impl SseDecode for crate::api::net::PlayerProfileWire {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_username = <String>::sse_decode(deserializer);
+        let mut var_avatarBytes = <Vec<u8>>::sse_decode(deserializer);
+        return crate::api::net::PlayerProfileWire {
+            username: var_username,
+            avatar_bytes: var_avatarBytes,
+        };
+    }
+}
+
 impl SseDecode for crate::api::game::SquarePiece {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -3212,16 +3678,27 @@ fn pde_ffi_dispatcher_primary_impl(
 ) {
     // Codec=Pde (Serialization + dispatch), see doc to use other codecs
     match func_id {
-        31 => wire__crate__api__ai__ai_search_impl(port, ptr, rust_vec_len, data_len),
-        33 => wire__crate__api__analyze__analyze_game_impl(port, ptr, rust_vec_len, data_len),
-        36 => wire__crate__api__simple__init_app_impl(port, ptr, rust_vec_len, data_len),
-        37 => wire__crate__api__net__net_browse_impl(port, ptr, rust_vec_len, data_len),
-        42 => wire__crate__api__net__net_host_impl(port, ptr, rust_vec_len, data_len),
-        43 => wire__crate__api__net__net_host_bughouse_impl(port, ptr, rust_vec_len, data_len),
-        44 => wire__crate__api__net__net_host_four_impl(port, ptr, rust_vec_len, data_len),
-        45 => wire__crate__api__net__net_join_impl(port, ptr, rust_vec_len, data_len),
-        46 => wire__crate__api__net__net_join_bughouse_impl(port, ptr, rust_vec_len, data_len),
-        47 => wire__crate__api__net__net_join_four_impl(port, ptr, rust_vec_len, data_len),
+        33 => wire__crate__api__ai__ai_search_impl(port, ptr, rust_vec_len, data_len),
+        35 => wire__crate__api__analyze__analysis_summary_default_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        36 => wire__crate__api__analyze__analyze_game_impl(port, ptr, rust_vec_len, data_len),
+        37 => {
+            wire__crate__api__analyze__analyze_game_request_impl(port, ptr, rust_vec_len, data_len)
+        }
+        40 => wire__crate__api__simple__init_app_impl(port, ptr, rust_vec_len, data_len),
+        41 => wire__crate__api__net__net_browse_impl(port, ptr, rust_vec_len, data_len),
+        46 => wire__crate__api__net__net_host_impl(port, ptr, rust_vec_len, data_len),
+        47 => wire__crate__api__net__net_host_bughouse_impl(port, ptr, rust_vec_len, data_len),
+        48 => wire__crate__api__net__net_host_four_impl(port, ptr, rust_vec_len, data_len),
+        49 => wire__crate__api__net__net_join_impl(port, ptr, rust_vec_len, data_len),
+        50 => wire__crate__api__net__net_join_bughouse_impl(port, ptr, rust_vec_len, data_len),
+        51 => wire__crate__api__net__net_join_four_impl(port, ptr, rust_vec_len, data_len),
+        61 => wire__crate__api__net__net_spectate_impl(port, ptr, rust_vec_len, data_len),
+        62 => wire__crate__api__net__net_spectate_four_impl(port, ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -3237,59 +3714,66 @@ fn pde_ffi_dispatcher_sync_impl(
         1 => wire__crate__api__game__ChessGame_clock_snapshot_impl(ptr, rust_vec_len, data_len),
         2 => wire__crate__api__game__ChessGame_drop_targets_impl(ptr, rust_vec_len, data_len),
         3 => wire__crate__api__game__ChessGame_from_fen_impl(ptr, rust_vec_len, data_len),
-        4 => wire__crate__api__game__ChessGame_give_to_hand_impl(ptr, rust_vec_len, data_len),
-        5 => wire__crate__api__game__ChessGame_hash_history_impl(ptr, rust_vec_len, data_len),
-        6 => wire__crate__api__game__ChessGame_last_passable_capture_impl(
+        4 => wire__crate__api__game__ChessGame_from_fen_variant_impl(ptr, rust_vec_len, data_len),
+        5 => wire__crate__api__game__ChessGame_give_to_hand_impl(ptr, rust_vec_len, data_len),
+        6 => wire__crate__api__game__ChessGame_hash_history_impl(ptr, rust_vec_len, data_len),
+        7 => wire__crate__api__game__ChessGame_last_passable_capture_impl(
             ptr,
             rust_vec_len,
             data_len,
         ),
-        7 => wire__crate__api__game__ChessGame_legal_targets_impl(ptr, rust_vec_len, data_len),
-        8 => wire__crate__api__game__ChessGame_move_history_uci_impl(ptr, rust_vec_len, data_len),
-        9 => wire__crate__api__game__ChessGame_new_game_impl(ptr, rust_vec_len, data_len),
-        10 => wire__crate__api__game__ChessGame_new_timed_impl(ptr, rust_vec_len, data_len),
-        11 => wire__crate__api__game__ChessGame_new_variant_impl(ptr, rust_vec_len, data_len),
-        12 => wire__crate__api__game__ChessGame_play_impl(ptr, rust_vec_len, data_len),
-        13 => wire__crate__api__game__ChessGame_play_drop_impl(ptr, rust_vec_len, data_len),
-        14 => wire__crate__api__game__ChessGame_play_uci_impl(ptr, rust_vec_len, data_len),
-        15 => wire__crate__api__game__ChessGame_premove_targets_impl(ptr, rust_vec_len, data_len),
-        16 => wire__crate__api__game__ChessGame_premove_targets_after_impl(
+        8 => wire__crate__api__game__ChessGame_legal_targets_impl(ptr, rust_vec_len, data_len),
+        9 => wire__crate__api__game__ChessGame_move_history_uci_impl(ptr, rust_vec_len, data_len),
+        10 => wire__crate__api__game__ChessGame_new_game_impl(ptr, rust_vec_len, data_len),
+        11 => wire__crate__api__game__ChessGame_new_timed_impl(ptr, rust_vec_len, data_len),
+        12 => wire__crate__api__game__ChessGame_new_variant_impl(ptr, rust_vec_len, data_len),
+        13 => wire__crate__api__game__ChessGame_play_impl(ptr, rust_vec_len, data_len),
+        14 => wire__crate__api__game__ChessGame_play_drop_impl(ptr, rust_vec_len, data_len),
+        15 => wire__crate__api__game__ChessGame_play_uci_impl(ptr, rust_vec_len, data_len),
+        16 => wire__crate__api__game__ChessGame_premove_targets_impl(ptr, rust_vec_len, data_len),
+        17 => wire__crate__api__game__ChessGame_premove_targets_after_impl(
             ptr,
             rust_vec_len,
             data_len,
         ),
-        17 => wire__crate__api__game__ChessGame_set_clock_ms_impl(ptr, rust_vec_len, data_len),
-        18 => wire__crate__api__game__ChessGame_tick_impl(ptr, rust_vec_len, data_len),
-        19 => wire__crate__api__game__ChessGame_undo_impl(ptr, rust_vec_len, data_len),
-        20 => wire__crate__api__game__ChessGame_view_impl(ptr, rust_vec_len, data_len),
-        21 => wire__crate__api__game__ChessGame_visible_squares_impl(ptr, rust_vec_len, data_len),
-        22 => wire__crate__api__four__FourGame_bot_move_impl(ptr, rust_vec_len, data_len),
-        23 => wire__crate__api__four__FourGame_legal_targets_impl(ptr, rust_vec_len, data_len),
-        24 => wire__crate__api__four__FourGame_new_game_impl(ptr, rust_vec_len, data_len),
-        25 => wire__crate__api__four__FourGame_play_impl(ptr, rust_vec_len, data_len),
-        26 => wire__crate__api__four__FourGame_play_uci_impl(ptr, rust_vec_len, data_len),
-        27 => wire__crate__api__four__FourGame_premove_targets_impl(ptr, rust_vec_len, data_len),
-        28 => {
+        18 => wire__crate__api__game__ChessGame_restore_variant_state_impl(
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        19 => wire__crate__api__game__ChessGame_set_clock_ms_impl(ptr, rust_vec_len, data_len),
+        20 => wire__crate__api__game__ChessGame_tick_impl(ptr, rust_vec_len, data_len),
+        21 => wire__crate__api__game__ChessGame_undo_impl(ptr, rust_vec_len, data_len),
+        22 => wire__crate__api__game__ChessGame_view_impl(ptr, rust_vec_len, data_len),
+        23 => wire__crate__api__game__ChessGame_visible_squares_impl(ptr, rust_vec_len, data_len),
+        24 => wire__crate__api__four__FourGame_bot_move_impl(ptr, rust_vec_len, data_len),
+        25 => wire__crate__api__four__FourGame_legal_targets_impl(ptr, rust_vec_len, data_len),
+        26 => wire__crate__api__four__FourGame_new_game_impl(ptr, rust_vec_len, data_len),
+        27 => wire__crate__api__four__FourGame_play_impl(ptr, rust_vec_len, data_len),
+        28 => wire__crate__api__four__FourGame_play_uci_impl(ptr, rust_vec_len, data_len),
+        29 => wire__crate__api__four__FourGame_premove_targets_impl(ptr, rust_vec_len, data_len),
+        30 => {
             wire__crate__api__four__FourGame_premove_targets_after_impl(ptr, rust_vec_len, data_len)
         }
-        29 => wire__crate__api__four__FourGame_view_impl(ptr, rust_vec_len, data_len),
-        30 => wire__crate__api__ai__ai_cancel_impl(ptr, rust_vec_len, data_len),
-        32 => wire__crate__api__analyze__analysis_cancel_impl(ptr, rust_vec_len, data_len),
-        34 => wire__crate__api__simple__engine_info_impl(ptr, rust_vec_len, data_len),
-        35 => wire__crate__api__simple__greet_impl(ptr, rust_vec_len, data_len),
-        38 => wire__crate__api__net__net_bug_resign_impl(ptr, rust_vec_len, data_len),
-        39 => wire__crate__api__net__net_bug_start_impl(ptr, rust_vec_len, data_len),
-        40 => wire__crate__api__net__net_four_resign_impl(ptr, rust_vec_len, data_len),
-        41 => wire__crate__api__net__net_four_start_impl(ptr, rust_vec_len, data_len),
-        48 => wire__crate__api__net__net_leave_impl(ptr, rust_vec_len, data_len),
-        49 => wire__crate__api__net__net_offer_draw_impl(ptr, rust_vec_len, data_len),
-        50 => wire__crate__api__net__net_resign_impl(ptr, rust_vec_len, data_len),
-        51 => wire__crate__api__net__net_respond_draw_impl(ptr, rust_vec_len, data_len),
-        52 => wire__crate__api__net__net_send_bug_move_impl(ptr, rust_vec_len, data_len),
-        53 => wire__crate__api__net__net_send_chat_impl(ptr, rust_vec_len, data_len),
-        54 => wire__crate__api__net__net_send_four_move_impl(ptr, rust_vec_len, data_len),
-        55 => wire__crate__api__net__net_send_move_impl(ptr, rust_vec_len, data_len),
-        56 => wire__crate__api__net__net_stop_browse_impl(ptr, rust_vec_len, data_len),
+        31 => wire__crate__api__four__FourGame_view_impl(ptr, rust_vec_len, data_len),
+        32 => wire__crate__api__ai__ai_cancel_impl(ptr, rust_vec_len, data_len),
+        34 => wire__crate__api__analyze__analysis_cancel_impl(ptr, rust_vec_len, data_len),
+        38 => wire__crate__api__simple__engine_info_impl(ptr, rust_vec_len, data_len),
+        39 => wire__crate__api__simple__greet_impl(ptr, rust_vec_len, data_len),
+        42 => wire__crate__api__net__net_bug_resign_impl(ptr, rust_vec_len, data_len),
+        43 => wire__crate__api__net__net_bug_start_impl(ptr, rust_vec_len, data_len),
+        44 => wire__crate__api__net__net_four_resign_impl(ptr, rust_vec_len, data_len),
+        45 => wire__crate__api__net__net_four_start_impl(ptr, rust_vec_len, data_len),
+        52 => wire__crate__api__net__net_leave_impl(ptr, rust_vec_len, data_len),
+        53 => wire__crate__api__net__net_offer_draw_impl(ptr, rust_vec_len, data_len),
+        54 => wire__crate__api__net__net_resign_impl(ptr, rust_vec_len, data_len),
+        55 => wire__crate__api__net__net_respond_draw_impl(ptr, rust_vec_len, data_len),
+        56 => wire__crate__api__net__net_send_bug_move_impl(ptr, rust_vec_len, data_len),
+        57 => wire__crate__api__net__net_send_chat_impl(ptr, rust_vec_len, data_len),
+        58 => wire__crate__api__net__net_send_four_move_impl(ptr, rust_vec_len, data_len),
+        59 => wire__crate__api__net__net_send_move_impl(ptr, rust_vec_len, data_len),
+        60 => wire__crate__api__net__net_send_spectator_chat_impl(ptr, rust_vec_len, data_len),
+        63 => wire__crate__api__net__net_stop_browse_impl(ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -3332,9 +3816,9 @@ impl flutter_rust_bridge::IntoDart for crate::api::ai::AiConfigDto {
         [
             self.max_depth.into_into_dart().into_dart(),
             self.move_time_ms.into_into_dart().into_dart(),
-            self.eval_noise.into_into_dart().into_dart(),
-            self.blunder_chance.into_into_dart().into_dart(),
-            self.top_n_random.into_into_dart().into_dart(),
+            self.max_eval_loss_cp.into_into_dart().into_dart(),
+            self.random_move_chance.into_into_dart().into_dart(),
+            self.candidate_depth.into_into_dart().into_dart(),
             self.contempt.into_into_dart().into_dart(),
             self.seed.into_into_dart().into_dart(),
         ]
@@ -3346,6 +3830,35 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::ai::AiConfigDto>
     for crate::api::ai::AiConfigDto
 {
     fn into_into_dart(self) -> crate::api::ai::AiConfigDto {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::ai::AiSearchRequest {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.search_id.into_into_dart().into_dart(),
+            self.fen.into_into_dart().into_dart(),
+            self.config.into_into_dart().into_dart(),
+            self.history.into_into_dart().into_dart(),
+            self.variant.into_into_dart().into_dart(),
+            self.white_checks.into_into_dart().into_dart(),
+            self.black_checks.into_into_dart().into_dart(),
+            self.white_hand.into_into_dart().into_dart(),
+            self.black_hand.into_into_dart().into_dart(),
+            self.promoted.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::ai::AiSearchRequest
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::ai::AiSearchRequest>
+    for crate::api::ai::AiSearchRequest
+{
+    fn into_into_dart(self) -> crate::api::ai::AiSearchRequest {
         self
     }
 }
@@ -3370,6 +3883,52 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::ai::AiUpdate> for crate::api:
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::analyze::AnalysisOpening {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.eco.into_into_dart().into_dart(),
+            self.name.into_into_dart().into_dart(),
+            self.opening.into_into_dart().into_dart(),
+            self.gambit.into_into_dart().into_dart(),
+            self.variation.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::analyze::AnalysisOpening
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::analyze::AnalysisOpening>
+    for crate::api::analyze::AnalysisOpening
+{
+    fn into_into_dart(self) -> crate::api::analyze::AnalysisOpening {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::analyze::AnalysisSummary {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.opening.into_into_dart().into_dart(),
+            self.white_elo.into_into_dart().into_dart(),
+            self.black_elo.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::analyze::AnalysisSummary
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::analyze::AnalysisSummary>
+    for crate::api::analyze::AnalysisSummary
+{
+    fn into_into_dart(self) -> crate::api::analyze::AnalysisSummary {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
 impl flutter_rust_bridge::IntoDart for crate::api::analyze::AnalysisUpdate {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
@@ -3389,6 +3948,9 @@ impl flutter_rust_bridge::IntoDart for crate::api::analyze::AnalysisUpdate {
             self.done.into_into_dart().into_dart(),
             self.white_accuracy.into_into_dart().into_dart(),
             self.black_accuracy.into_into_dart().into_dart(),
+            self.opening.into_into_dart().into_dart(),
+            self.white_elo.into_into_dart().into_dart(),
+            self.black_elo.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -3401,6 +3963,29 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::analyze::AnalysisUpdate>
     for crate::api::analyze::AnalysisUpdate
 {
     fn into_into_dart(self) -> crate::api::analyze::AnalysisUpdate {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::analyze::AnalyzeGameRequest {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.start_fen.into_into_dart().into_dart(),
+            self.moves.into_into_dart().into_dart(),
+            self.depth.into_into_dart().into_dart(),
+            self.variant.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::analyze::AnalyzeGameRequest
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::analyze::AnalyzeGameRequest>
+    for crate::api::analyze::AnalyzeGameRequest
+{
+    fn into_into_dart(self) -> crate::api::analyze::AnalyzeGameRequest {
         self
     }
 }
@@ -3425,6 +4010,51 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::game::ClockSnapshot>
     for crate::api::game::ClockSnapshot
 {
     fn into_into_dart(self) -> crate::api::game::ClockSnapshot {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::analyze::EloConfidence {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self {
+            Self::Low => 0.into_dart(),
+            Self::Medium => 1.into_dart(),
+            Self::High => 2.into_dart(),
+            _ => unreachable!(),
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::analyze::EloConfidence
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::analyze::EloConfidence>
+    for crate::api::analyze::EloConfidence
+{
+    fn into_into_dart(self) -> crate::api::analyze::EloConfidence {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::analyze::EloEstimate {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.elo.into_into_dart().into_dart(),
+            self.confidence.into_into_dart().into_dart(),
+            self.analyzed_moves.into_into_dart().into_dart(),
+            self.average_cp_loss.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::analyze::EloEstimate
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::analyze::EloEstimate>
+    for crate::api::analyze::EloEstimate
+{
+    fn into_into_dart(self) -> crate::api::analyze::EloEstimate {
         self
     }
 }
@@ -3701,7 +4331,17 @@ impl flutter_rust_bridge::IntoDart for crate::api::net::NetEvent {
             self.black_ms.into_into_dart().into_dart(),
             self.draw_accepted.into_into_dart().into_dart(),
             self.text.into_into_dart().into_dart(),
+            self.sender.into_into_dart().into_dart(),
             self.variant.into_into_dart().into_dart(),
+            self.is_spectator.into_into_dart().into_dart(),
+            self.white_profile.into_into_dart().into_dart(),
+            self.black_profile.into_into_dart().into_dart(),
+            self.peer_profile.into_into_dart().into_dart(),
+            self.white_checks.into_into_dart().into_dart(),
+            self.black_checks.into_into_dart().into_dart(),
+            self.white_hand.into_into_dart().into_dart(),
+            self.black_hand.into_into_dart().into_dart(),
+            self.promoted.into_into_dart().into_dart(),
             self.board.into_into_dart().into_dart(),
             self.to_board.into_into_dart().into_dart(),
             self.to_color.into_into_dart().into_dart(),
@@ -3710,6 +4350,7 @@ impl flutter_rust_bridge::IntoDart for crate::api::net::NetEvent {
             self.winning_team.into_into_dart().into_dart(),
             self.your_seats.into_into_dart().into_dart(),
             self.seats.into_into_dart().into_dart(),
+            self.seat_profiles.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -3730,17 +4371,19 @@ impl flutter_rust_bridge::IntoDart for crate::api::net::NetEventKind {
             Self::DrawOffer => 3.into_dart(),
             Self::DrawResponse => 4.into_dart(),
             Self::Chat => 5.into_dart(),
-            Self::Disconnected => 6.into_dart(),
-            Self::Error => 7.into_dart(),
-            Self::BugJoin => 8.into_dart(),
-            Self::BugStart => 9.into_dart(),
-            Self::BugMove => 10.into_dart(),
-            Self::BugPass => 11.into_dart(),
-            Self::BugResult => 12.into_dart(),
-            Self::FourJoin => 13.into_dart(),
-            Self::FourStart => 14.into_dart(),
-            Self::FourMove => 15.into_dart(),
-            Self::FourResult => 16.into_dart(),
+            Self::SpectatorChat => 6.into_dart(),
+            Self::Disconnected => 7.into_dart(),
+            Self::Error => 8.into_dart(),
+            Self::SpectatorJoined => 9.into_dart(),
+            Self::BugJoin => 10.into_dart(),
+            Self::BugStart => 11.into_dart(),
+            Self::BugMove => 12.into_dart(),
+            Self::BugPass => 13.into_dart(),
+            Self::BugResult => 14.into_dart(),
+            Self::FourJoin => 15.into_dart(),
+            Self::FourStart => 16.into_dart(),
+            Self::FourMove => 17.into_dart(),
+            Self::FourResult => 18.into_dart(),
             _ => unreachable!(),
         }
     }
@@ -3760,6 +4403,11 @@ impl flutter_rust_bridge::IntoDart for crate::api::net::NetHost {
             self.name.into_into_dart().into_dart(),
             self.addr.into_into_dart().into_dart(),
             self.time_control.into_into_dart().into_dart(),
+            self.mode.into_into_dart().into_dart(),
+            self.variant.into_into_dart().into_dart(),
+            self.spectators_enabled.into_into_dart().into_dart(),
+            self.player_count.into_into_dart().into_dart(),
+            self.max_players.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -3807,6 +4455,27 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::game::PieceKind>
     for crate::api::game::PieceKind
 {
     fn into_into_dart(self) -> crate::api::game::PieceKind {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::net::PlayerProfileWire {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.username.into_into_dart().into_dart(),
+            self.avatar_bytes.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::net::PlayerProfileWire
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::net::PlayerProfileWire>
+    for crate::api::net::PlayerProfileWire
+{
+    fn into_into_dart(self) -> crate::api::net::PlayerProfileWire {
         self
     }
 }
@@ -3923,11 +4592,27 @@ impl SseEncode for crate::api::ai::AiConfigDto {
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <u32>::sse_encode(self.max_depth, serializer);
         <Option<u64>>::sse_encode(self.move_time_ms, serializer);
-        <i32>::sse_encode(self.eval_noise, serializer);
-        <f32>::sse_encode(self.blunder_chance, serializer);
-        <u32>::sse_encode(self.top_n_random, serializer);
+        <i32>::sse_encode(self.max_eval_loss_cp, serializer);
+        <f32>::sse_encode(self.random_move_chance, serializer);
+        <u32>::sse_encode(self.candidate_depth, serializer);
         <i32>::sse_encode(self.contempt, serializer);
         <u64>::sse_encode(self.seed, serializer);
+    }
+}
+
+impl SseEncode for crate::api::ai::AiSearchRequest {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <u64>::sse_encode(self.search_id, serializer);
+        <String>::sse_encode(self.fen, serializer);
+        <crate::api::ai::AiConfigDto>::sse_encode(self.config, serializer);
+        <Vec<u64>>::sse_encode(self.history, serializer);
+        <crate::api::game::GameVariant>::sse_encode(self.variant, serializer);
+        <u32>::sse_encode(self.white_checks, serializer);
+        <u32>::sse_encode(self.black_checks, serializer);
+        <Vec<u32>>::sse_encode(self.white_hand, serializer);
+        <Vec<u32>>::sse_encode(self.black_hand, serializer);
+        <u64>::sse_encode(self.promoted, serializer);
     }
 }
 
@@ -3940,6 +4625,26 @@ impl SseEncode for crate::api::ai::AiUpdate {
         <Vec<String>>::sse_encode(self.pv, serializer);
         <u64>::sse_encode(self.nodes, serializer);
         <bool>::sse_encode(self.done, serializer);
+    }
+}
+
+impl SseEncode for crate::api::analyze::AnalysisOpening {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.eco, serializer);
+        <String>::sse_encode(self.name, serializer);
+        <String>::sse_encode(self.opening, serializer);
+        <Option<String>>::sse_encode(self.gambit, serializer);
+        <Option<String>>::sse_encode(self.variation, serializer);
+    }
+}
+
+impl SseEncode for crate::api::analyze::AnalysisSummary {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <Option<crate::api::analyze::AnalysisOpening>>::sse_encode(self.opening, serializer);
+        <Option<crate::api::analyze::EloEstimate>>::sse_encode(self.white_elo, serializer);
+        <Option<crate::api::analyze::EloEstimate>>::sse_encode(self.black_elo, serializer);
     }
 }
 
@@ -3962,6 +4667,19 @@ impl SseEncode for crate::api::analyze::AnalysisUpdate {
         <bool>::sse_encode(self.done, serializer);
         <f32>::sse_encode(self.white_accuracy, serializer);
         <f32>::sse_encode(self.black_accuracy, serializer);
+        <Option<crate::api::analyze::AnalysisOpening>>::sse_encode(self.opening, serializer);
+        <Option<crate::api::analyze::EloEstimate>>::sse_encode(self.white_elo, serializer);
+        <Option<crate::api::analyze::EloEstimate>>::sse_encode(self.black_elo, serializer);
+    }
+}
+
+impl SseEncode for crate::api::analyze::AnalyzeGameRequest {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.start_fen, serializer);
+        <Vec<String>>::sse_encode(self.moves, serializer);
+        <u32>::sse_encode(self.depth, serializer);
+        <crate::api::game::GameVariant>::sse_encode(self.variant, serializer);
     }
 }
 
@@ -3980,6 +4698,33 @@ impl SseEncode for crate::api::game::ClockSnapshot {
         <i64>::sse_encode(self.black_ms, serializer);
         <crate::api::game::PieceColor>::sse_encode(self.running, serializer);
         <bool>::sse_encode(self.over, serializer);
+    }
+}
+
+impl SseEncode for crate::api::analyze::EloConfidence {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(
+            match self {
+                crate::api::analyze::EloConfidence::Low => 0,
+                crate::api::analyze::EloConfidence::Medium => 1,
+                crate::api::analyze::EloConfidence::High => 2,
+                _ => {
+                    unimplemented!("");
+                }
+            },
+            serializer,
+        );
+    }
+}
+
+impl SseEncode for crate::api::analyze::EloEstimate {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <u32>::sse_encode(self.elo, serializer);
+        <crate::api::analyze::EloConfidence>::sse_encode(self.confidence, serializer);
+        <u32>::sse_encode(self.analyzed_moves, serializer);
+        <f32>::sse_encode(self.average_cp_loss, serializer);
     }
 }
 
@@ -4242,6 +4987,16 @@ impl SseEncode for Vec<crate::api::game::PieceKind> {
     }
 }
 
+impl SseEncode for Vec<crate::api::net::PlayerProfileWire> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <crate::api::net::PlayerProfileWire>::sse_encode(item, serializer);
+        }
+    }
+}
+
 impl SseEncode for Vec<i32> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -4314,7 +5069,17 @@ impl SseEncode for crate::api::net::NetEvent {
         <i64>::sse_encode(self.black_ms, serializer);
         <bool>::sse_encode(self.draw_accepted, serializer);
         <String>::sse_encode(self.text, serializer);
+        <String>::sse_encode(self.sender, serializer);
         <String>::sse_encode(self.variant, serializer);
+        <bool>::sse_encode(self.is_spectator, serializer);
+        <crate::api::net::PlayerProfileWire>::sse_encode(self.white_profile, serializer);
+        <crate::api::net::PlayerProfileWire>::sse_encode(self.black_profile, serializer);
+        <crate::api::net::PlayerProfileWire>::sse_encode(self.peer_profile, serializer);
+        <u32>::sse_encode(self.white_checks, serializer);
+        <u32>::sse_encode(self.black_checks, serializer);
+        <Vec<u32>>::sse_encode(self.white_hand, serializer);
+        <Vec<u32>>::sse_encode(self.black_hand, serializer);
+        <u64>::sse_encode(self.promoted, serializer);
         <u32>::sse_encode(self.board, serializer);
         <u32>::sse_encode(self.to_board, serializer);
         <u32>::sse_encode(self.to_color, serializer);
@@ -4323,6 +5088,7 @@ impl SseEncode for crate::api::net::NetEvent {
         <u32>::sse_encode(self.winning_team, serializer);
         <Vec<u32>>::sse_encode(self.your_seats, serializer);
         <Vec<String>>::sse_encode(self.seats, serializer);
+        <Vec<crate::api::net::PlayerProfileWire>>::sse_encode(self.seat_profiles, serializer);
     }
 }
 
@@ -4337,17 +5103,19 @@ impl SseEncode for crate::api::net::NetEventKind {
                 crate::api::net::NetEventKind::DrawOffer => 3,
                 crate::api::net::NetEventKind::DrawResponse => 4,
                 crate::api::net::NetEventKind::Chat => 5,
-                crate::api::net::NetEventKind::Disconnected => 6,
-                crate::api::net::NetEventKind::Error => 7,
-                crate::api::net::NetEventKind::BugJoin => 8,
-                crate::api::net::NetEventKind::BugStart => 9,
-                crate::api::net::NetEventKind::BugMove => 10,
-                crate::api::net::NetEventKind::BugPass => 11,
-                crate::api::net::NetEventKind::BugResult => 12,
-                crate::api::net::NetEventKind::FourJoin => 13,
-                crate::api::net::NetEventKind::FourStart => 14,
-                crate::api::net::NetEventKind::FourMove => 15,
-                crate::api::net::NetEventKind::FourResult => 16,
+                crate::api::net::NetEventKind::SpectatorChat => 6,
+                crate::api::net::NetEventKind::Disconnected => 7,
+                crate::api::net::NetEventKind::Error => 8,
+                crate::api::net::NetEventKind::SpectatorJoined => 9,
+                crate::api::net::NetEventKind::BugJoin => 10,
+                crate::api::net::NetEventKind::BugStart => 11,
+                crate::api::net::NetEventKind::BugMove => 12,
+                crate::api::net::NetEventKind::BugPass => 13,
+                crate::api::net::NetEventKind::BugResult => 14,
+                crate::api::net::NetEventKind::FourJoin => 15,
+                crate::api::net::NetEventKind::FourStart => 16,
+                crate::api::net::NetEventKind::FourMove => 17,
+                crate::api::net::NetEventKind::FourResult => 18,
                 _ => {
                     unimplemented!("");
                 }
@@ -4363,6 +5131,11 @@ impl SseEncode for crate::api::net::NetHost {
         <String>::sse_encode(self.name, serializer);
         <String>::sse_encode(self.addr, serializer);
         <String>::sse_encode(self.time_control, serializer);
+        <String>::sse_encode(self.mode, serializer);
+        <String>::sse_encode(self.variant, serializer);
+        <bool>::sse_encode(self.spectators_enabled, serializer);
+        <u32>::sse_encode(self.player_count, serializer);
+        <u32>::sse_encode(self.max_players, serializer);
     }
 }
 
@@ -4372,6 +5145,26 @@ impl SseEncode for Option<String> {
         <bool>::sse_encode(self.is_some(), serializer);
         if let Some(value) = self {
             <String>::sse_encode(value, serializer);
+        }
+    }
+}
+
+impl SseEncode for Option<crate::api::analyze::AnalysisOpening> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.is_some(), serializer);
+        if let Some(value) = self {
+            <crate::api::analyze::AnalysisOpening>::sse_encode(value, serializer);
+        }
+    }
+}
+
+impl SseEncode for Option<crate::api::analyze::EloEstimate> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.is_some(), serializer);
+        if let Some(value) = self {
+            <crate::api::analyze::EloEstimate>::sse_encode(value, serializer);
         }
     }
 }
@@ -4469,6 +5262,14 @@ impl SseEncode for crate::api::game::PieceKind {
             },
             serializer,
         );
+    }
+}
+
+impl SseEncode for crate::api::net::PlayerProfileWire {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.username, serializer);
+        <Vec<u8>>::sse_encode(self.avatar_bytes, serializer);
     }
 }
 

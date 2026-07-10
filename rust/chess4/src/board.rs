@@ -37,7 +37,7 @@ pub fn coord(i: usize) -> Coord {
 /// On the board and not a cut corner.
 #[inline]
 pub fn in_bounds(col: i8, row: i8) -> bool {
-    col >= 0 && col < W && row >= 0 && row < W && VALID[idx(col, row)]
+    (0..W).contains(&col) && (0..W).contains(&row) && VALID[idx(col, row)]
 }
 
 #[derive(Clone)]

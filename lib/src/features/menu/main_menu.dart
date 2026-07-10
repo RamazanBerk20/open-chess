@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 
-import 'package:chess/l10n/app_localizations.dart';
-import 'package:chess/src/features/newgame/new_game_hub_screen.dart';
-import 'package:chess/src/features/puzzles/puzzle_screen.dart';
-import 'package:chess/src/features/saved/resume_screen.dart';
-import 'package:chess/src/features/settings/settings_screen.dart';
-import 'package:chess/src/state/update_service.dart';
-import 'package:chess/src/widgets/update_dialog.dart';
+import 'package:open_chess/l10n/app_localizations.dart';
+import 'package:open_chess/src/features/newgame/new_game_hub_screen.dart';
+import 'package:open_chess/src/features/puzzles/puzzle_screen.dart';
+import 'package:open_chess/src/features/saved/resume_screen.dart';
+import 'package:open_chess/src/features/settings/settings_screen.dart';
+import 'package:open_chess/src/state/update_service.dart';
+import 'package:open_chess/src/widgets/update_dialog.dart';
 
 class MainMenu extends StatefulWidget {
   const MainMenu({super.key});
@@ -30,8 +30,8 @@ class _MainMenuState extends State<MainMenu> {
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
-    void go(Widget screen) => Navigator.of(context)
-        .push(MaterialPageRoute(builder: (_) => screen));
+    void go(Widget screen) =>
+        Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
     return Scaffold(
       appBar: AppBar(title: Text(t.appTitle)),
       body: Center(
@@ -52,25 +52,31 @@ class _MainMenuState extends State<MainMenu> {
                   ),
                 ),
                 const SizedBox(height: 8),
-                Text(t.appTitle,
-                    style: Theme.of(context).textTheme.headlineMedium),
+                Text(
+                  t.appTitle,
+                  style: Theme.of(context).textTheme.headlineMedium,
+                ),
                 const SizedBox(height: 24),
                 _MenuButton(
-                    icon: Icons.play_circle_outline,
-                    label: t.newGame,
-                    onTap: () => go(const NewGameHubScreen())),
+                  icon: Icons.play_circle_outline,
+                  label: t.newGame,
+                  onTap: () => go(const NewGameHubScreen()),
+                ),
                 _MenuButton(
-                    icon: Icons.extension,
-                    label: t.menuPuzzles,
-                    onTap: () => go(const PuzzleScreen())),
+                  icon: Icons.extension,
+                  label: t.menuPuzzles,
+                  onTap: () => go(const PuzzleScreen()),
+                ),
                 _MenuButton(
-                    icon: Icons.history,
-                    label: t.menuResume,
-                    onTap: () => go(const ResumeScreen())),
+                  icon: Icons.history,
+                  label: t.menuResume,
+                  onTap: () => go(const ResumeScreen()),
+                ),
                 _MenuButton(
-                    icon: Icons.settings,
-                    label: t.menuSettings,
-                    onTap: () => go(const SettingsScreen())),
+                  icon: Icons.settings,
+                  label: t.menuSettings,
+                  onTap: () => go(const SettingsScreen()),
+                ),
                 const SizedBox(height: 12),
                 TextButton.icon(
                   onPressed: () => openUrl(sponsorUrl),

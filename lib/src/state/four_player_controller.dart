@@ -2,28 +2,58 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
-import 'package:chess/src/rust/api/four.dart';
-import 'package:chess/src/rust/api/game.dart' show MoveOutcome;
+import 'package:open_chess/src/rust/api/four.dart';
+import 'package:open_chess/src/rust/api/game.dart' show MoveOutcome;
 
-enum FourMode { hotSeat, vsBots, lan }
+enum FourMode { vsBots, lan }
+
+/// Wire-stable local/host AI preset codes shared with the four-player engine.
+const int defaultFourAiDifficultyCode = 2; // Normal
+const int fourAiDifficultyCodeCount = 6;
+
+int normalizedFourAiDifficultyCode(int code) =>
+    code >= 0 && code < fourAiDifficultyCodeCount
+    ? code
+    : defaultFourAiDifficultyCode;
 
 class FourConfig {
   final FourMode mode;
   final FourFormat format;
 
-  /// Seats a human controls (all four in hot-seat; the chosen ones in vs-bots;
-  /// the seats assigned to this device in LAN).
+  /// Seats controlled by this device. Local bot games configure exactly one;
+  /// LAN seats are assigned by the host authority.
   final Set<FourPlayer> humanSeats;
 
   /// LAN: send a seat-tagged move to the host authority.
   final void Function(int seat, String uci)? lanSend;
+
+  /// A live LAN spectator mirrors host-authoritative moves but never selects,
+  /// premoves, promotes, or sends a command.
+  final bool isSpectator;
+
+  /// Local four-player bot strength: 0=Very Easy through 5=Impossible.
+  final int aiDifficultyCode;
 
   const FourConfig({
     required this.mode,
     required this.format,
     required this.humanSeats,
     this.lanSend,
+    this.isSpectator = false,
+    this.aiDifficultyCode = defaultFourAiDifficultyCode,
   });
+}
+
+/// Chooses the local army's natural bottom-of-board perspective. Spectators
+/// start in the canonical Red view; the live screen can then change their
+/// perspective without changing the authoritative game state. An empty or
+/// malformed seat set falls back to the same stable orientation.
+FourPlayer fourPerspectiveForConfig(FourConfig config) {
+  if (config.isSpectator) return FourPlayer.red;
+  for (final player in FourPlayer.values) {
+    if (config.humanSeats.contains(player)) return player;
+  }
+  return FourPlayer.red;
 }
 
 const _seatIndex = {
@@ -33,7 +63,7 @@ const _seatIndex = {
   FourPlayer.green: 3,
 };
 
-/// Drives one 4-player game (hot-seat or vs-bots); turn rotation lives in the
+/// Drives one 4-player game (vs-bots or LAN); turn rotation lives in the
 /// engine. Owned by the screen (ChangeNotifier), bypassing the single-game
 /// Riverpod providers.
 class FourPlayerController extends ChangeNotifier {
@@ -64,8 +94,7 @@ class FourPlayerController extends ChangeNotifier {
   String resultString() => netResult ?? _game.view().result;
   bool get isOver => resultString() != 'ongoing';
 
-  bool _isHuman(FourPlayer p) =>
-      config.mode == FourMode.hotSeat || config.humanSeats.contains(p);
+  bool _isHuman(FourPlayer p) => config.humanSeats.contains(p);
 
   bool humanToMove() {
     final v = _game.view();
@@ -73,7 +102,7 @@ class FourPlayerController extends ChangeNotifier {
   }
 
   void tapSquare(int sq) {
-    if (isOver || pendingPromo != null) return;
+    if (config.isSpectator || isOver || pendingPromo != null) return;
     final v = _game.view();
     if (!_isHuman(v.turn)) {
       _premoveTap(sq); // a bot/remote is to move → queue a premove
@@ -107,7 +136,7 @@ class FourPlayerController extends ChangeNotifier {
   }
 
   void dragMove(int from, int to) {
-    if (isOver || pendingPromo != null) return;
+    if (config.isSpectator || isOver || pendingPromo != null) return;
     final v = _game.view();
     if (!_isHuman(v.turn)) {
       _premoveDrag(from, to); // a bot/remote is to move → queue a premove
@@ -202,7 +231,11 @@ class FourPlayerController extends ChangeNotifier {
 
   Set<int> _premoveTargetsAfter(int sq) => _game
       .premoveTargetsAfter(
-          premoves: [for (final (f, t) in premoves) ...[f, t]], from: sq)
+        premoves: [
+          for (final (f, t) in premoves) ...[f, t],
+        ],
+        from: sq,
+      )
       .toSet();
 
   void _clearPremoves() {
@@ -294,7 +327,11 @@ class FourPlayerController extends ChangeNotifier {
     }
     var outcome = _game.play(from: pm.$1, to: pm.$2, promotion: null);
     if (outcome == MoveOutcome.needsPromotion) {
-      outcome = _game.play(from: pm.$1, to: pm.$2, promotion: FourPieceKind.queen);
+      outcome = _game.play(
+        from: pm.$1,
+        to: pm.$2,
+        promotion: FourPieceKind.queen,
+      );
     }
     if (outcome == MoveOutcome.played) {
       premoves = rest;
@@ -344,7 +381,10 @@ class FourPlayerController extends ChangeNotifier {
       return;
     }
     final seed = DateTime.now().millisecondsSinceEpoch & 0x7fffffff;
-    final uci = _game.botMove(seed: BigInt.from(seed));
+    final uci = _game.botMove(
+      seed: BigInt.from(seed),
+      difficultyCode: normalizedFourAiDifficultyCode(config.aiDifficultyCode),
+    );
     if (uci != null) {
       _game.playUci(uci: uci);
       _afterMove();
@@ -386,6 +426,19 @@ class FourPlayerController extends ChangeNotifier {
   /// Apply the host's match result (forfeit/disconnect override).
   void applyResult(String result) {
     netResult = result;
+    notifyListeners();
+  }
+
+  /// End a LAN mirror if its authority disappears. This deliberately leaves a
+  /// completed result intact, but prevents any more selection or move input
+  /// while rendering the standard disconnected result.
+  void markConnectionLost() {
+    if (isOver) return;
+    _botTimer?.cancel();
+    pendingPromo = null;
+    _clear();
+    _clearPremoves();
+    netResult = 'connection_lost';
     notifyListeners();
   }
 

@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 
-import 'package:chess/l10n/app_localizations.dart';
-import 'package:chess/src/state/difficulty.dart';
-import 'package:chess/src/state/l10n_labels.dart';
-import 'package:chess/src/theme/spacing.dart';
+import 'package:open_chess/l10n/app_localizations.dart';
+import 'package:open_chess/src/state/difficulty.dart';
+import 'package:open_chess/src/state/l10n_labels.dart';
+import 'package:open_chess/src/theme/spacing.dart';
 
-/// Difficulty selector: preset chips + a Custom option exposing the five engine
-/// weakening sliders. Emits the effective [Difficulty] via [onChanged].
-/// Lifted from the old single-player setup so vs-Computer and Bughouse share it.
+/// Difficulty selector: preset chips + a Custom option exposing bounded
+/// inaccuracy controls. Emits the effective [Difficulty] via [onChanged].
+/// Used by the on-device computer setup.
 class DifficultyPicker extends StatefulWidget {
   final Difficulty initial;
   final ValueChanged<Difficulty> onChanged;
@@ -24,8 +24,8 @@ class DifficultyPicker extends StatefulWidget {
 class _DifficultyPickerState extends State<DifficultyPicker> {
   late Difficulty _preset;
   bool _custom = false;
-  int _depth = 5, _timeMs = 800, _topN = 2, _noise = 20;
-  double _blunder = 0.05;
+  int _depth = 5, _timeMs = 800, _maxLoss = 90;
+  double _variety = 0.20;
 
   @override
   void initState() {
@@ -34,12 +34,14 @@ class _DifficultyPickerState extends State<DifficultyPicker> {
   }
 
   Difficulty get _effective => _custom
-      ? Difficulty('Custom',
+      ? Difficulty(
+          'Custom',
           maxDepth: _depth,
           moveTimeMs: _timeMs,
-          evalNoise: _noise,
-          blunderChance: _blunder,
-          topNRandom: _topN)
+          maxEvalLossCp: _maxLoss,
+          randomMoveChance: _variety,
+          candidateDepth: _depth.clamp(1, 5),
+        )
       : _preset;
 
   void _emit() => widget.onChanged(_effective);
@@ -78,27 +80,24 @@ class _DifficultyPickerState extends State<DifficultyPicker> {
         ),
         if (_custom) ...[
           AppSpacing.gap,
-          _slider(t.searchDepth, _depth.toDouble(), 1, 12, '$_depth',
-              (v) {
+          _slider(t.searchDepth, _depth.toDouble(), 1, 18, '$_depth', (v) {
             setState(() => _depth = v.round());
             _emit();
           }),
-          _slider(t.timePerMove, _timeMs.toDouble(), 100, 5000, '$_timeMs',
-              (v) {
+          _slider(t.timePerMove, _timeMs.toDouble(), 100, 10000, '$_timeMs', (
+            v,
+          ) {
             setState(() => _timeMs = v.round());
             _emit();
           }),
-          _slider(t.topNRandom, _topN.toDouble(), 1, 5, '$_topN', (v) {
-            setState(() => _topN = v.round());
+          _slider(t.maxEvalLoss, _maxLoss.toDouble(), 0, 500, '$_maxLoss', (v) {
+            setState(() => _maxLoss = v.round());
             _emit();
           }),
-          _slider(t.blunderChance, _blunder, 0, 0.6,
-              _blunder.toStringAsFixed(2), (v) {
-            setState(() => _blunder = v);
-            _emit();
-          }),
-          _slider(t.evalNoise, _noise.toDouble(), 0, 200, '$_noise', (v) {
-            setState(() => _noise = v.round());
+          _slider(t.moveVariety, _variety, 0, 1, _variety.toStringAsFixed(2), (
+            v,
+          ) {
+            setState(() => _variety = v);
             _emit();
           }),
         ],
@@ -106,8 +105,14 @@ class _DifficultyPickerState extends State<DifficultyPicker> {
     );
   }
 
-  Widget _slider(String label, double value, double min, double max,
-      String display, ValueChanged<double> onChanged) {
+  Widget _slider(
+    String label,
+    double value,
+    double min,
+    double max,
+    String display,
+    ValueChanged<double> onChanged,
+  ) {
     return Row(
       children: [
         SizedBox(width: 130, child: Text('$label: $display')),

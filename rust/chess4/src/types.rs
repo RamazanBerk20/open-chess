@@ -49,7 +49,7 @@ impl Player {
     /// The pawn-advance vector (toward the centre) for this army.
     pub fn forward(self) -> (i8, i8) {
         match self {
-            Player::Red => (0, 1),    // bottom edge → up
+            Player::Red => (0, 1),     // bottom edge → up
             Player::Yellow => (0, -1), // top edge → down
             Player::Blue => (1, 0),    // left edge → right
             Player::Green => (-1, 0),  // right edge → left

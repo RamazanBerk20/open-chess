@@ -21,6 +21,21 @@ abstract class ChessGame implements RustOpaqueInterface {
   static ChessGame fromFen({required String fen}) =>
       RustLib.instance.api.crateApiGameChessGameFromFen(fen: fen);
 
+  /// Restore a position with explicit rules and time control. FEN does not
+  /// carry the app's variant state, so callers restoring saves, analysis, or
+  /// LAN spectator snapshots must provide it separately.
+  static ChessGame fromFenVariant({
+    required String fen,
+    required GameVariant variant,
+    required int baseMinutes,
+    required int incrementSeconds,
+  }) => RustLib.instance.api.crateApiGameChessGameFromFenVariant(
+    fen: fen,
+    variant: variant,
+    baseMinutes: baseMinutes,
+    incrementSeconds: incrementSeconds,
+  );
+
   /// Bughouse: receive a piece passed from the partner's board into `color`'s
   /// reserve. Refreshes status (a fed piece can create a drop-mate escape).
   void giveToHand({required PieceColor color, required PieceKind piece});
@@ -88,6 +103,17 @@ abstract class ChessGame implements RustOpaqueInterface {
   Uint32List premoveTargetsAfter({
     required List<int> premoves,
     required int from,
+  });
+
+  /// Restore rule state that a regular FEN cannot encode. LAN spectators use
+  /// this immediately after [`from_fen_variant`] so live Three-check and
+  /// Crazyhouse positions remain legal and terminal checks stay accurate.
+  void restoreVariantState({
+    required int whiteChecks,
+    required int blackChecks,
+    required List<int> whiteHand,
+    required List<int> blackHand,
+    required BigInt promoted,
   });
 
   /// Reconcile the clock from a LAN peer's move message.

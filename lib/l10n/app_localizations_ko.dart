@@ -9,7 +9,7 @@ class AppLocalizationsKo extends AppLocalizations {
   AppLocalizationsKo([String locale = 'ko']) : super(locale);
 
   @override
-  String get appTitle => '체스';
+  String get appTitle => 'Open Chess';
 
   @override
   String get menuSinglePlayer => '1인 플레이';
@@ -180,6 +180,33 @@ class AppLocalizationsKo extends AppLocalizations {
   String get analysis => '분석';
 
   @override
+  String get opening => '오프닝';
+
+  @override
+  String get openingGambit => '갬빗';
+
+  @override
+  String get openingVariation => '변형';
+
+  @override
+  String get openingNone => '이름 있는 오프닝 없음';
+
+  @override
+  String get ratingEstimate => '추정 레이팅';
+
+  @override
+  String get ratingConfidenceLow => '낮은 신뢰도';
+
+  @override
+  String get ratingConfidenceMedium => '보통 신뢰도';
+
+  @override
+  String get ratingConfidenceHigh => '높은 신뢰도';
+
+  @override
+  String get ratingUnavailable => '레이팅 추정을 사용할 수 없음';
+
+  @override
   String get white => '백';
 
   @override
@@ -260,6 +287,27 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get settings => '설정';
+
+  @override
+  String get profile => '프로필';
+
+  @override
+  String get profileUsername => '사용자 이름';
+
+  @override
+  String get profileUsernameHint => '사용자 이름을 입력하세요';
+
+  @override
+  String get profileAvatar => '아바타';
+
+  @override
+  String get profileChangeAvatar => '아바타 변경';
+
+  @override
+  String get profileRemoveAvatar => '아바타 삭제';
+
+  @override
+  String get profileImageError => '이 이미지를 사용할 수 없습니다.';
 
   @override
   String get appearance => '외관';
@@ -355,6 +403,12 @@ class AppLocalizationsKo extends AppLocalizations {
   String get lanGame => 'LAN 게임';
 
   @override
+  String get lanAllowSpectators => '관전자 허용';
+
+  @override
+  String get lanSpectate => '대국 관전';
+
+  @override
   String get chat => '채팅';
 
   @override
@@ -440,16 +494,28 @@ class AppLocalizationsKo extends AppLocalizations {
   String get diffBeginner => '입문';
 
   @override
+  String get diffVeryEasy => '매우 쉬움';
+
+  @override
   String get diffEasy => '쉬움';
 
   @override
   String get diffMedium => '보통';
 
   @override
+  String get diffNormal => '일반';
+
+  @override
   String get diffHard => '어려움';
 
   @override
   String get diffExpert => '전문가';
+
+  @override
+  String get diffVeryHard => '매우 어려움';
+
+  @override
+  String get diffImpossible => '불가능';
 
   @override
   String get baseMinutes => '기본 시간(분)';
@@ -474,6 +540,12 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get evalNoise => '평가 노이즈(cp)';
+
+  @override
+  String get maxEvalLoss => '최대 평가 손실(cp)';
+
+  @override
+  String get moveVariety => '수 선택 다양성';
 
   @override
   String puzzlesSolved(Object solved, Object total) {
@@ -612,6 +684,12 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get fourVsBots => '봇 대전';
+
+  @override
+  String get fourSeatAi => 'AI';
+
+  @override
+  String get fourPerspective => '관점';
 
   @override
   String get fourYourSeats => '내 자리';

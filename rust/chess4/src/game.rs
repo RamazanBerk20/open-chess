@@ -43,29 +43,61 @@ fn castle_info(player: Player) -> CastleInfo {
         Player::Red => CastleInfo {
             king: c(7, 0),
             sides: [
-                CastleSide { rook: c(10, 0), king_to: c(9, 0), rook_to: c(8, 0) },
-                CastleSide { rook: c(3, 0), king_to: c(5, 0), rook_to: c(6, 0) },
+                CastleSide {
+                    rook: c(10, 0),
+                    king_to: c(9, 0),
+                    rook_to: c(8, 0),
+                },
+                CastleSide {
+                    rook: c(3, 0),
+                    king_to: c(5, 0),
+                    rook_to: c(6, 0),
+                },
             ],
         },
         Player::Yellow => CastleInfo {
             king: c(6, 13),
             sides: [
-                CastleSide { rook: c(10, 13), king_to: c(8, 13), rook_to: c(7, 13) },
-                CastleSide { rook: c(3, 13), king_to: c(4, 13), rook_to: c(5, 13) },
+                CastleSide {
+                    rook: c(10, 13),
+                    king_to: c(8, 13),
+                    rook_to: c(7, 13),
+                },
+                CastleSide {
+                    rook: c(3, 13),
+                    king_to: c(4, 13),
+                    rook_to: c(5, 13),
+                },
             ],
         },
         Player::Blue => CastleInfo {
             king: c(0, 7),
             sides: [
-                CastleSide { rook: c(0, 10), king_to: c(0, 9), rook_to: c(0, 8) },
-                CastleSide { rook: c(0, 3), king_to: c(0, 5), rook_to: c(0, 6) },
+                CastleSide {
+                    rook: c(0, 10),
+                    king_to: c(0, 9),
+                    rook_to: c(0, 8),
+                },
+                CastleSide {
+                    rook: c(0, 3),
+                    king_to: c(0, 5),
+                    rook_to: c(0, 6),
+                },
             ],
         },
         Player::Green => CastleInfo {
             king: c(13, 6),
             sides: [
-                CastleSide { rook: c(13, 10), king_to: c(13, 8), rook_to: c(13, 7) },
-                CastleSide { rook: c(13, 3), king_to: c(13, 4), rook_to: c(13, 5) },
+                CastleSide {
+                    rook: c(13, 10),
+                    king_to: c(13, 8),
+                    rook_to: c(13, 7),
+                },
+                CastleSide {
+                    rook: c(13, 3),
+                    king_to: c(13, 4),
+                    rook_to: c(13, 5),
+                },
             ],
         },
     }
@@ -132,7 +164,45 @@ impl FourGame {
                 out.push(m.to);
             }
         }
+        // `pseudo_moves` intentionally excludes castling because it needs
+        // game-level rights. A premove still needs to show the king's castle
+        // destination while another army is to move, so add its geometric
+        // target here. The real move is checked again when it reaches the
+        // host authority, including check/path safety at that later position.
+        self.premove_castling_targets(board, owner, from, &mut out);
         out
+    }
+
+    fn premove_castling_targets(
+        &self,
+        board: &Board,
+        player: Player,
+        from: Coord,
+        out: &mut Vec<Coord>,
+    ) {
+        if !self.is_active(player) {
+            return;
+        }
+        let info = castle_info(player);
+        if from != info.king
+            || board.get(info.king.col, info.king.row) != Some((player, Piece::King))
+        {
+            return;
+        }
+        for side in 0..2 {
+            if !self.castling[player.index()][side] {
+                continue;
+            }
+            let castle = &info.sides[side];
+            if board.get(castle.rook.col, castle.rook.row) != Some((player, Piece::Rook))
+                || !Self::between_empty_on(board, info.king, castle.rook)
+            {
+                continue;
+            }
+            if !out.contains(&castle.king_to) {
+                out.push(castle.king_to);
+            }
+        }
     }
 
     pub fn is_active(&self, player: Player) -> bool {
@@ -184,25 +254,12 @@ impl FourGame {
         out
     }
 
-    /// Whether any ACTIVE foe attacks `sq`.
-    fn square_attacked(&self, sq: Coord, player: Player) -> bool {
-        for enemy in Player::ALL {
-            if !self.is_foe(player, enemy) || !self.is_active(enemy) {
-                continue;
-            }
-            if attacks_square(&self.board, enemy, sq) {
-                return true;
-            }
-        }
-        false
-    }
-
-    fn between_empty(&self, a: Coord, b: Coord) -> bool {
+    fn between_empty_on(board: &Board, a: Coord, b: Coord) -> bool {
         let dc = (b.col - a.col).signum();
         let dr = (b.row - a.row).signum();
         let (mut c, mut r) = (a.col + dc, a.row + dr);
         while (c, r) != (b.col, b.row) {
-            if self.board.get(c, r).is_some() {
+            if board.get(c, r).is_some() {
                 return false;
             }
             c += dc;
@@ -211,17 +268,37 @@ impl FourGame {
         true
     }
 
-    fn king_path_safe(&self, player: Player, from: Coord, to: Coord) -> bool {
+    /// Check the king's castling path on the board positions the king actually
+    /// occupies. Testing the original board for every square is subtly wrong:
+    /// the king can be shielding an enemy slider from its transit square, and
+    /// the relocated rook can shield the final square.
+    fn king_path_safe(
+        &self,
+        player: Player,
+        from: Coord,
+        to: Coord,
+        rook_from: Coord,
+        rook_to: Coord,
+    ) -> bool {
         let dc = (to.col - from.col).signum();
         let dr = (to.row - from.row).signum();
+        let mut board = self.board.clone();
         let (mut c, mut r) = (from.col, from.row);
         loop {
-            if self.square_attacked(Coord::new(c, r), player) {
+            let king_square = Coord::new(c, r);
+            board.clear(from.col, from.row);
+            board.put(king_square.col, king_square.row, player, Piece::King);
+            if king_square == to {
+                board.clear(rook_from.col, rook_from.row);
+                board.put(rook_to.col, rook_to.row, player, Piece::Rook);
+            }
+            if self.king_attacked_on(&board, player) {
                 return false;
             }
-            if (c, r) == (to.col, to.row) {
+            if king_square == to {
                 return true;
             }
+            board.clear(king_square.col, king_square.row);
             c += dc;
             r += dr;
         }
@@ -244,10 +321,10 @@ impl FourGame {
             if self.board.get(s.rook.col, s.rook.row) != Some((player, Piece::Rook)) {
                 continue;
             }
-            if !self.between_empty(info.king, s.rook) {
+            if !Self::between_empty_on(&self.board, info.king, s.rook) {
                 continue;
             }
-            if !self.king_path_safe(player, info.king, s.king_to) {
+            if !self.king_path_safe(player, info.king, s.king_to, s.rook, s.rook_to) {
                 continue;
             }
             out.push(Move4::castling(info.king, s.king_to));
@@ -280,7 +357,7 @@ impl FourGame {
         if self.ended || !self.is_active(self.turn) {
             return false;
         }
-        if !self.legal_moves().iter().any(|x| *x == m) {
+        if !self.legal_moves().contains(&m) {
             return false;
         }
         self.apply(m);
@@ -302,7 +379,8 @@ impl FourGame {
             let side = if m.to == info.sides[0].king_to { 0 } else { 1 };
             let s = &info.sides[side];
             self.board.clear(s.rook.col, s.rook.row);
-            self.board.put(s.rook_to.col, s.rook_to.row, mover, Piece::Rook);
+            self.board
+                .put(s.rook_to.col, s.rook_to.row, mover, Piece::Rook);
         }
         self.revoke_castling(m.from, m.to);
         self.last = Some((m.from, m.to));

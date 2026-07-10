@@ -9,7 +9,7 @@ class AppLocalizationsDe extends AppLocalizations {
   AppLocalizationsDe([String locale = 'de']) : super(locale);
 
   @override
-  String get appTitle => 'Schach';
+  String get appTitle => 'Open Chess';
 
   @override
   String get menuSinglePlayer => 'Einzelspieler';
@@ -181,6 +181,33 @@ class AppLocalizationsDe extends AppLocalizations {
   String get analysis => 'Analyse';
 
   @override
+  String get opening => 'Eröffnung';
+
+  @override
+  String get openingGambit => 'Gambit';
+
+  @override
+  String get openingVariation => 'Variante';
+
+  @override
+  String get openingNone => 'Keine benannte Eröffnung';
+
+  @override
+  String get ratingEstimate => 'Geschätzte Wertungszahl';
+
+  @override
+  String get ratingConfidenceLow => 'Niedrige Zuverlässigkeit';
+
+  @override
+  String get ratingConfidenceMedium => 'Mittlere Zuverlässigkeit';
+
+  @override
+  String get ratingConfidenceHigh => 'Hohe Zuverlässigkeit';
+
+  @override
+  String get ratingUnavailable => 'Wertungsschätzung nicht verfügbar';
+
+  @override
   String get white => 'Weiß';
 
   @override
@@ -261,6 +288,27 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get settings => 'Einstellungen';
+
+  @override
+  String get profile => 'Profil';
+
+  @override
+  String get profileUsername => 'Benutzername';
+
+  @override
+  String get profileUsernameHint => 'Wähle einen Benutzernamen';
+
+  @override
+  String get profileAvatar => 'Avatar';
+
+  @override
+  String get profileChangeAvatar => 'Avatar ändern';
+
+  @override
+  String get profileRemoveAvatar => 'Avatar entfernen';
+
+  @override
+  String get profileImageError => 'Dieses Bild konnte nicht verwendet werden.';
 
   @override
   String get appearance => 'Darstellung';
@@ -356,6 +404,12 @@ class AppLocalizationsDe extends AppLocalizations {
   String get lanGame => 'LAN-Partie';
 
   @override
+  String get lanAllowSpectators => 'Zuschauer erlauben';
+
+  @override
+  String get lanSpectate => 'Partie ansehen';
+
+  @override
   String get chat => 'Chat';
 
   @override
@@ -442,16 +496,28 @@ class AppLocalizationsDe extends AppLocalizations {
   String get diffBeginner => 'Anfänger';
 
   @override
+  String get diffVeryEasy => 'Sehr leicht';
+
+  @override
   String get diffEasy => 'Leicht';
 
   @override
   String get diffMedium => 'Mittel';
 
   @override
+  String get diffNormal => 'Normal';
+
+  @override
   String get diffHard => 'Schwer';
 
   @override
   String get diffExpert => 'Experte';
+
+  @override
+  String get diffVeryHard => 'Sehr schwer';
+
+  @override
+  String get diffImpossible => 'Unmöglich';
 
   @override
   String get baseMinutes => 'Grundzeit (Minuten)';
@@ -476,6 +542,12 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get evalNoise => 'Bewertungsrauschen (cp)';
+
+  @override
+  String get maxEvalLoss => 'Maximaler Bewertungsverlust (cp)';
+
+  @override
+  String get moveVariety => 'Zugvielfalt';
 
   @override
   String puzzlesSolved(Object solved, Object total) {
@@ -615,6 +687,12 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get fourVsBots => 'gegen Bots';
+
+  @override
+  String get fourSeatAi => 'KI';
+
+  @override
+  String get fourPerspective => 'Perspektive';
 
   @override
   String get fourYourSeats => 'Deine Plätze';

@@ -1,8 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:chess/src/rust/api/game.dart';
-import 'package:chess/src/state/puzzle_model.dart';
-import 'package:chess/src/state/puzzle_progress.dart';
+import 'package:open_chess/src/rust/api/game.dart';
+import 'package:open_chess/src/state/puzzle_model.dart';
+import 'package:open_chess/src/state/puzzle_progress.dart';
 
 enum PuzzleStatus { solving, wrong, solved }
 
@@ -39,7 +39,9 @@ class PuzzleUiState {
 }
 
 final puzzleControllerProvider =
-    AsyncNotifierProvider<PuzzleController, PuzzleUiState>(PuzzleController.new);
+    AsyncNotifierProvider<PuzzleController, PuzzleUiState>(
+      PuzzleController.new,
+    );
 
 class PuzzleController extends AsyncNotifier<PuzzleUiState> {
   late List<Puzzle> _puzzles;
@@ -109,8 +111,13 @@ class PuzzleController extends AsyncNotifier<PuzzleUiState> {
 
     if (sel == null) {
       if (piece != null && piece.color == _playerColor) {
-        state = AsyncData(_build(PuzzleStatus.solving,
-            selected: sq, targets: _game!.legalTargets(from: sq).toSet()));
+        state = AsyncData(
+          _build(
+            PuzzleStatus.solving,
+            selected: sq,
+            targets: _game!.legalTargets(from: sq).toSet(),
+          ),
+        );
       }
       return;
     }
@@ -123,8 +130,13 @@ class PuzzleController extends AsyncNotifier<PuzzleUiState> {
       return;
     }
     if (piece != null && piece.color == _playerColor) {
-      state = AsyncData(_build(PuzzleStatus.solving,
-          selected: sq, targets: _game!.legalTargets(from: sq).toSet()));
+      state = AsyncData(
+        _build(
+          PuzzleStatus.solving,
+          selected: sq,
+          targets: _game!.legalTargets(from: sq).toSet(),
+        ),
+      );
     } else {
       state = AsyncData(_build(PuzzleStatus.solving));
     }
@@ -137,8 +149,13 @@ class PuzzleController extends AsyncNotifier<PuzzleUiState> {
     final piece = _game!.view().board[from];
     if (piece == null || piece.color != _playerColor) return;
     if (!_game!.legalTargets(from: from).contains(to)) {
-      state = AsyncData(_build(PuzzleStatus.solving,
-          selected: from, targets: _game!.legalTargets(from: from).toSet()));
+      state = AsyncData(
+        _build(
+          PuzzleStatus.solving,
+          selected: from,
+          targets: _game!.legalTargets(from: from).toSet(),
+        ),
+      );
       return;
     }
     _attempt(from, to);
@@ -185,7 +202,8 @@ class PuzzleController extends AsyncNotifier<PuzzleUiState> {
   }
 
   void _scheduleOpponentReply() {
-    final epoch = _epoch; // bail if the puzzle reloads/retries/changes meanwhile
+    final epoch =
+        _epoch; // bail if the puzzle reloads/retries/changes meanwhile
     Future.delayed(const Duration(milliseconds: 300), () {
       if (_epoch != epoch || _game == null) return;
       if (_moveIndex >= _cur.solution.length) return;
@@ -229,10 +247,17 @@ class PuzzleController extends AsyncNotifier<PuzzleUiState> {
     final from = _sq(expected, 0);
     if (level == 1) {
       state = AsyncData(
-          _build(PuzzleStatus.solving, selected: from, hintLevel: 1));
+        _build(PuzzleStatus.solving, selected: from, hintLevel: 1),
+      );
     } else {
-      state = AsyncData(_build(PuzzleStatus.solving,
-          selected: from, targets: {_sq(expected, 2)}, hintLevel: 2));
+      state = AsyncData(
+        _build(
+          PuzzleStatus.solving,
+          selected: from,
+          targets: {_sq(expected, 2)},
+          hintLevel: 2,
+        ),
+      );
     }
   }
 
@@ -258,10 +283,10 @@ class PuzzleController extends AsyncNotifier<PuzzleUiState> {
       (uci.codeUnitAt(i + 1) - 49) * 8 + (uci.codeUnitAt(i) - 97);
 
   static PieceKind? _promo(String c) => switch (c) {
-        'q' => PieceKind.queen,
-        'r' => PieceKind.rook,
-        'b' => PieceKind.bishop,
-        'n' => PieceKind.knight,
-        _ => null,
-      };
+    'q' => PieceKind.queen,
+    'r' => PieceKind.rook,
+    'b' => PieceKind.bishop,
+    'n' => PieceKind.knight,
+    _ => null,
+  };
 }

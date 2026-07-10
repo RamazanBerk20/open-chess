@@ -1,3 +1,12 @@
+import java.io.FileInputStream
+import java.util.Properties
+
+val signingProperties = Properties()
+val signingPropertiesFile = rootProject.file("key.properties")
+if (signingPropertiesFile.exists()) {
+    FileInputStream(signingPropertiesFile).use(signingProperties::load)
+}
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
@@ -5,7 +14,7 @@ plugins {
 }
 
 android {
-    namespace = "com.ramazan.chess"
+    namespace = "com.ramazan.openchess"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = "28.2.13676358" // pinned to the installed NDK
 
@@ -15,8 +24,7 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.ramazan.chess"
+        applicationId = "com.ramazan.openchess"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
@@ -25,11 +33,25 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        create("release") {
+            val storePath = signingProperties.getProperty("storeFile")
+            if (storePath != null) {
+                storeFile = rootProject.file(storePath)
+                storePassword = signingProperties.getProperty("storePassword")
+                keyAlias = signingProperties.getProperty("keyAlias")
+                keyPassword = signingProperties.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            // This empty config is valid during Gradle configuration so local
+            // debug builds do not require release credentials. AGP validates
+            // the required signing fields when a release task is actually run;
+            // CI additionally checks all four secrets before invoking it.
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 }

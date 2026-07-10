@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 
-import 'package:chess/l10n/app_localizations.dart';
+import 'package:open_chess/l10n/app_localizations.dart';
 
 /// Bottom sheet showing a game's PGN with copy + share actions.
 Future<void> showPgnExport(BuildContext context, String pgn) async {
@@ -57,7 +57,7 @@ Future<void> showPgnExport(BuildContext context, String pgn) async {
                     label: Text(t.share),
                     onPressed: () {
                       Navigator.pop(ctx);
-                      Share.share(pgn);
+                      SharePlus.instance.share(ShareParams(text: pgn));
                     },
                   ),
                 ),

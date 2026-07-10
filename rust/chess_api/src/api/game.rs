@@ -178,7 +178,10 @@ impl ChessGame {
             // is playable. ("0+0" is blocked by the setup UI.)
             base_ms = increment_ms;
         }
-        let tc = TimeControl::Fischer { base_ms, increment_ms };
+        let tc = TimeControl::Fischer {
+            base_ms,
+            increment_ms,
+        };
         ChessGame::with_clock(Game::new(), Clock::new(tc))
     }
 
@@ -198,6 +201,7 @@ impl ChessGame {
             Game::new()
         };
         game.pos.variant = to_variant(variant);
+        game.pos.hash = game.pos.compute_hash();
         let clock = if base_minutes == 0 && increment_seconds == 0 {
             Clock::new(TimeControl::Infinite)
         } else {
@@ -206,15 +210,82 @@ impl ChessGame {
             if base_ms == 0 {
                 base_ms = increment_ms;
             }
-            Clock::new(TimeControl::Fischer { base_ms, increment_ms })
+            Clock::new(TimeControl::Fischer {
+                base_ms,
+                increment_ms,
+            })
         };
         ChessGame::with_clock(game, clock)
     }
 
     #[frb(sync)]
     pub fn from_fen(fen: String) -> Result<ChessGame, String> {
-        let game = Game::from_fen(&fen).map_err(|e| e.to_string())?;
-        Ok(ChessGame::with_clock(game, Clock::new(TimeControl::Infinite)))
+        ChessGame::from_fen_variant(fen, GameVariant::Standard, 0, 0)
+    }
+
+    /// Restore a position with explicit rules and time control. FEN does not
+    /// carry the app's variant state, so callers restoring saves, analysis, or
+    /// LAN spectator snapshots must provide it separately.
+    #[frb(sync)]
+    pub fn from_fen_variant(
+        fen: String,
+        variant: GameVariant,
+        base_minutes: u32,
+        increment_seconds: u32,
+    ) -> Result<ChessGame, String> {
+        let mut game = Game::from_fen(&fen).map_err(|e| e.to_string())?;
+        game.pos.variant = to_variant(variant);
+        game.pos.hash = game.pos.compute_hash();
+        let clock = if base_minutes == 0 && increment_seconds == 0 {
+            Clock::new(TimeControl::Infinite)
+        } else {
+            let increment_ms = increment_seconds as u64 * 1_000;
+            let base_ms = (base_minutes as u64 * 60_000).max(increment_ms);
+            Clock::new(TimeControl::Fischer {
+                base_ms,
+                increment_ms,
+            })
+        };
+        Ok(ChessGame::with_clock(game, clock))
+    }
+
+    /// Restore rule state that a regular FEN cannot encode. LAN spectators use
+    /// this immediately after [`from_fen_variant`] so live Three-check and
+    /// Crazyhouse positions remain legal and terminal checks stay accurate.
+    #[frb(sync)]
+    pub fn restore_variant_state(
+        &mut self,
+        white_checks: u32,
+        black_checks: u32,
+        white_hand: Vec<u32>,
+        black_hand: Vec<u32>,
+        promoted: u64,
+    ) -> Result<(), String> {
+        if white_hand.len() != 5 || black_hand.len() != 5 {
+            return Err("variant reserve state must contain five piece counts per side".into());
+        }
+        let checks = [
+            u8::try_from(white_checks)
+                .map_err(|_| "white check counter exceeds supported range")?,
+            u8::try_from(black_checks)
+                .map_err(|_| "black check counter exceeds supported range")?,
+        ];
+        let mut hand = [[0u8; 5]; 2];
+        for (index, count) in white_hand.iter().enumerate() {
+            hand[Color::White.index()][index] =
+                u8::try_from(*count).map_err(|_| "white reserve count exceeds supported range")?;
+        }
+        for (index, count) in black_hand.iter().enumerate() {
+            hand[Color::Black.index()][index] =
+                u8::try_from(*count).map_err(|_| "black reserve count exceeds supported range")?;
+        }
+        self.game.pos.checks = checks;
+        self.game.pos.hand = hand;
+        self.game.pos.promoted = promoted;
+        self.game.pos.hash = self.game.pos.compute_hash();
+        self.game.reset_history();
+        self.status = self.game.status();
+        Ok(())
     }
 
     fn with_clock(mut game: Game, clock: Clock) -> ChessGame {
@@ -380,7 +451,9 @@ impl ChessGame {
     /// reserve. Refreshes status (a fed piece can create a drop-mate escape).
     #[frb(sync)]
     pub fn give_to_hand(&mut self, color: PieceColor, piece: PieceKind) {
-        self.game.pos.add_to_hand(from_color(color), from_kind(piece));
+        self.game
+            .pos
+            .add_to_hand(from_color(color), from_kind(piece));
         self.status = self.game.status();
     }
 
@@ -399,8 +472,7 @@ impl ChessGame {
     /// Record + apply a legal move, updating clock and cached status.
     fn apply(&mut self, m: Move) {
         let mover = self.game.pos.side;
-        self.last_explosion =
-            self.game.pos.variant == Variant::Atomic && m.is_capture();
+        self.last_explosion = self.game.pos.variant == Variant::Atomic && m.is_capture();
         // Bughouse: which piece this move makes available to pass to the partner
         // (computed before the move; a promoted piece is demoted to a pawn).
         self.last_passable = passable_capture(&self.game.pos, m);
@@ -575,19 +647,27 @@ fn premove_targets_on(pos: &Position, from: u8) -> Vec<u32> {
             Color::White => (CR::WK, CR::WQ),
             Color::Black => (CR::BK, CR::BQ),
         };
-        let mut offer = |has: bool, dest: u8, out: &mut Vec<u32>| {
+        let offer = |has: bool, dest: u8, out: &mut Vec<u32>| {
             if has && !out.contains(&(dest as u32)) {
                 out.push(dest as u32);
             }
         };
         offer(
             pos.castling.has(kr),
-            if is960 { pos.castle_rook_sq[ci][0] } else { rank8 + 6 },
+            if is960 {
+                pos.castle_rook_sq[ci][0]
+            } else {
+                rank8 + 6
+            },
             &mut out,
         );
         offer(
             pos.castling.has(qr),
-            if is960 { pos.castle_rook_sq[ci][1] } else { rank8 + 2 },
+            if is960 {
+                pos.castle_rook_sq[ci][1]
+            } else {
+                rank8 + 2
+            },
             &mut out,
         );
     }
@@ -692,10 +772,18 @@ fn from_kind(k: PieceKind) -> Piece {
 fn to_outcome(s: GameStatus) -> GameOutcome {
     match s {
         GameStatus::Ongoing => GameOutcome::Ongoing,
-        GameStatus::Checkmate { winner: Color::White } => GameOutcome::WhiteWins,
-        GameStatus::Checkmate { winner: Color::Black } => GameOutcome::BlackWins,
-        GameStatus::VariantWin { winner: Color::White } => GameOutcome::WhiteWins,
-        GameStatus::VariantWin { winner: Color::Black } => GameOutcome::BlackWins,
+        GameStatus::Checkmate {
+            winner: Color::White,
+        } => GameOutcome::WhiteWins,
+        GameStatus::Checkmate {
+            winner: Color::Black,
+        } => GameOutcome::BlackWins,
+        GameStatus::VariantWin {
+            winner: Color::White,
+        } => GameOutcome::WhiteWins,
+        GameStatus::VariantWin {
+            winner: Color::Black,
+        } => GameOutcome::BlackWins,
         GameStatus::Stalemate => GameOutcome::Stalemate,
         GameStatus::DrawFiftyMove => GameOutcome::DrawFiftyMove,
         GameStatus::DrawThreefold => GameOutcome::DrawThreefold,
@@ -761,4 +849,26 @@ fn captured(pos: &Position) -> (Vec<PieceKind>, Vec<PieceKind>) {
         }
     }
     (cap_w, cap_b)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn restored_variant_state_resets_repetition_history() {
+        let mut game = ChessGame::from_fen_variant(
+            chess_core::START_FEN.to_string(),
+            GameVariant::ThreeCheck,
+            0,
+            0,
+        )
+        .unwrap();
+        let before = game.game.hash_history();
+        game.restore_variant_state(2, 1, vec![0; 5], vec![0; 5], 0)
+            .unwrap();
+
+        assert_ne!(before[0], game.game.pos.hash);
+        assert_eq!(game.game.hash_history(), vec![game.game.pos.hash]);
+    }
 }
