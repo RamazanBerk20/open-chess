@@ -1,6 +1,6 @@
 name: Release
 
-# Tag a version (e.g. `git tag v1.1.0 && git push --tags`) to build installers
+# Tag a version (e.g. `git tag v1.2.0 && git push --tags`) to build installers
 # for Android, Linux and Windows and attach them to a GitHub Release.
 on:
   push:
