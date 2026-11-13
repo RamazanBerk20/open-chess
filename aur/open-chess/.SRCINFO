@@ -23,6 +23,6 @@ pkgbase = open-chess
 	options = !strip
 	options = !debug
 	source = open-chess-1.2.0.tar.gz::https://github.com/RamazanBerk20/open-chess/archive/refs/tags/v1.2.0.tar.gz
-	sha256sums = SKIP
+	sha256sums = 32cffd576a7a62d824aaee4156d72ccb8b41bfc6d883d63ac5b9ed85beeea8a2
 
 pkgname = open-chess

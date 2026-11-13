@@ -13,7 +13,7 @@ conflicts=('chess' 'chess-bin' 'chess-git' 'open-chess-bin' 'open-chess-git')
 replaces=('chess')
 options=('!strip' '!debug')
 source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
-sha256sums=('SKIP')
+sha256sums=('32cffd576a7a62d824aaee4156d72ccb8b41bfc6d883d63ac5b9ed85beeea8a2')
 
 build() {
   cd "$srcdir/$pkgname-$pkgver"
