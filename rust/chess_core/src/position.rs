@@ -188,10 +188,7 @@ impl Position {
             return true;
         }
         let rooks = self.pieces(by, Piece::Rook) | self.pieces(by, Piece::Queen);
-        if rook_attacks(sq, self.all) & rooks != 0 {
-            return true;
-        }
-        false
+        rook_attacks(sq, self.all) & rooks != 0
     }
 
     #[inline]
@@ -217,10 +214,7 @@ impl Position {
             return true;
         }
         let rooks = self.pieces(by, Piece::Rook) | self.pieces(by, Piece::Queen);
-        if rook_attacks(sq, self.all) & rooks != 0 {
-            return true;
-        }
-        false
+        rook_attacks(sq, self.all) & rooks != 0
     }
 
     /// Apply `mv`, returning state needed to [`unmake_move`](Self::unmake_move).
@@ -450,10 +444,8 @@ impl Position {
 
         // Atomic: restore the pieces destroyed by the explosion first, so the
         // standard reversal below finds our capturing piece back on `to`.
-        for i in 0..undo.exploded_len as usize {
-            if let Some((cc, cp, sq)) = undo.exploded[i] {
-                self.put_piece(cc, cp, sq);
-            }
+        for &(cc, cp, sq) in undo.exploded[..undo.exploded_len as usize].iter().flatten() {
+            self.put_piece(cc, cp, sq);
         }
 
         let from = mv.from();
