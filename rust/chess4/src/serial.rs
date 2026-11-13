@@ -1,7 +1,7 @@
 //! 14×14 coordinate notation (files a..n, ranks 1..14) + UCI-like moves.
 
 use crate::movegen::Move4;
-use crate::types::{Coord, Piece};
+use crate::types::{Coord, Piece, Player};
 
 pub fn coord_to_str(c: Coord) -> String {
     let file = (b'a' + c.col as u8) as char;
@@ -30,6 +30,31 @@ fn read_coord(b: &[u8], i: &mut usize) -> Option<Coord> {
         Some(Coord::new(col, row))
     } else {
         None
+    }
+}
+
+const RESIGN_PREFIX: &str = "resign:";
+
+/// Wire/mirror token for "`player` resigned", carried in a move slot so a
+/// mirrored game applies it in order with the moves (`resign:blue`).
+pub fn resign_token(player: Player) -> String {
+    let code = match player {
+        Player::Red => "red",
+        Player::Blue => "blue",
+        Player::Yellow => "yellow",
+        Player::Green => "green",
+    };
+    format!("{RESIGN_PREFIX}{code}")
+}
+
+/// Inverse of [`resign_token`].
+pub fn parse_resign_token(s: &str) -> Option<Player> {
+    match s.strip_prefix(RESIGN_PREFIX)? {
+        "red" => Some(Player::Red),
+        "blue" => Some(Player::Blue),
+        "yellow" => Some(Player::Yellow),
+        "green" => Some(Player::Green),
+        _ => None,
     }
 }
 

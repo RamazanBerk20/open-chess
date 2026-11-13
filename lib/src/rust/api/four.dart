@@ -7,7 +7,7 @@ import '../frb_generated.dart';
 import 'game.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `from_format`, `from_kind`, `from_piece`, `from_player`, `from_status`, `piece_idx`, `player_code`, `result_str`, `to_format`
+// These functions are ignored because they are not marked as `pub`: `cell`, `from_format`, `from_kind`, `from_piece`, `from_player`, `from_status`, `piece_idx`, `player_code`, `result_str`, `to_format`
 // These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`
 
 // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<FourGame>>
@@ -15,7 +15,7 @@ abstract class FourGame implements RustOpaqueInterface {
   /// The requested-difficulty bot move (UCI form) for the side to move, or
   /// None if none. Unknown codes deliberately fall back to Normal so a stale
   /// local setting can never make the four-player bot unavailable.
-  String? botMove({required BigInt seed, required int difficultyCode});
+  Future<String?> botMove({required BigInt seed, required int difficultyCode});
 
   /// Destination squares (row*14+col) of every legal move from `from`.
   Uint32List legalTargets({required int from});

@@ -113,10 +113,7 @@ impl Game {
                 GameStatus::Stalemate
             };
         }
-        // Crazyhouse/Bughouse never draw on material — pieces return via drops.
-        if !matches!(self.pos.variant, Variant::Crazyhouse | Variant::Bughouse)
-            && self.is_insufficient_material()
-        {
+        if self.is_insufficient_material() {
             return GameStatus::DrawInsufficientMaterial;
         }
         if self.pos.halfmove >= 100 {
@@ -128,42 +125,195 @@ impl Game {
         GameStatus::Ongoing
     }
 
-    /// FIDE insufficient-material draws: KvK, KNvK, KBvK, and only-same-colour
-    /// bishops remaining (covers KB vs KB same colour).
+    /// Draw by insufficient material for the active variant: neither side
+    /// can ever win. Variants where a bare king can still win or material can
+    /// come back (King of the Hill, Crazyhouse, Bughouse, Fog of War) never
+    /// draw this way.
     pub fn is_insufficient_material(&self) -> bool {
         let p = &self.pos;
-        for c in [Color::White, Color::Black] {
-            if p.pieces(c, Piece::Pawn) != 0
-                || p.pieces(c, Piece::Rook) != 0
-                || p.pieces(c, Piece::Queen) != 0
-            {
-                return false;
+        match p.variant {
+            Variant::Standard | Variant::Chess960 => fide_dead_material(p),
+            // Any piece can deliver checks, so only bare kings are a draw.
+            Variant::ThreeCheck => {
+                p.insufficient_to_mate(Color::White) && p.insufficient_to_mate(Color::Black)
             }
+            // Kings cannot capture, so nothing can explode a bare king; a single
+            // minor cannot mate a bare king either and has nothing to capture.
+            Variant::Atomic => {
+                let others = p.all
+                    & !(p.pieces(Color::White, Piece::King) | p.pieces(Color::Black, Piece::King));
+                let minors = p.pieces(Color::White, Piece::Knight)
+                    | p.pieces(Color::Black, Piece::Knight)
+                    | p.pieces(Color::White, Piece::Bishop)
+                    | p.pieces(Color::Black, Piece::Bishop);
+                others == 0 || (others.count_ones() == 1 && others & minors != 0)
+            }
+            Variant::KingOfTheHill
+            | Variant::Crazyhouse
+            | Variant::Bughouse
+            | Variant::FogOfWar => false,
         }
-        let knights = (p.pieces(Color::White, Piece::Knight)
-            | p.pieces(Color::Black, Piece::Knight))
-        .count_ones();
-        let bishops_bb =
-            p.pieces(Color::White, Piece::Bishop) | p.pieces(Color::Black, Piece::Bishop);
-        let bishops = bishops_bb.count_ones();
+    }
 
-        if knights == 0 && bishops == 0 {
-            return true; // KvK
+    /// The single terminal state of this game (move-derived results only;
+    /// clock/resign/agreement results are layered on by the caller).
+    pub fn termination(&mut self) -> Termination {
+        self.status().into()
+    }
+}
+
+/// FIDE dead-position material: KvK, KNvK, KBvK, or only same-coloured bishops.
+fn fide_dead_material(p: &Position) -> bool {
+    for c in [Color::White, Color::Black] {
+        if p.pieces(c, Piece::Pawn) != 0
+            || p.pieces(c, Piece::Rook) != 0
+            || p.pieces(c, Piece::Queen) != 0
+        {
+            return false;
         }
-        if knights == 1 && bishops == 0 {
-            return true; // KNvK
-        }
-        if knights == 0 && bishops >= 1 {
-            // All bishops on a single square colour cannot force mate.
-            let mut bb = bishops_bb;
-            let mut colors = 0u8;
-            while bb != 0 {
-                let sq = crate::bitboard::pop_lsb(&mut bb);
-                colors |= 1 << ((file_of(sq) + rank_of(sq)) & 1);
+    }
+    let knights = (p.pieces(Color::White, Piece::Knight) | p.pieces(Color::Black, Piece::Knight))
+        .count_ones();
+    let bishops_bb = p.pieces(Color::White, Piece::Bishop) | p.pieces(Color::Black, Piece::Bishop);
+    if knights == 0 && bishops_bb == 0 {
+        return true; // KvK
+    }
+    if knights == 1 && bishops_bb == 0 {
+        return true; // KNvK
+    }
+    if knights == 0 {
+        return single_square_colour(bishops_bb);
+    }
+    false
+}
+
+fn single_square_colour(mut bb: crate::bitboard::Bitboard) -> bool {
+    let mut colors = 0u8;
+    while bb != 0 {
+        let sq = crate::bitboard::pop_lsb(&mut bb);
+        colors |= 1 << ((file_of(sq) + rank_of(sq)) & 1);
+    }
+    colors != 0b11
+}
+
+impl Position {
+    /// Whether `side` can never win by any sequence under this variant (used
+    /// for the "flag fall against insufficient material is a draw" rule).
+    pub fn insufficient_to_mate(&self, side: Color) -> bool {
+        let own = |p: Piece| self.pieces(side, p);
+        let bare_king = self.occ[side.index()] == own(Piece::King);
+        match self.variant {
+            Variant::Standard | Variant::Chess960 => {
+                if own(Piece::Pawn) | own(Piece::Rook) | own(Piece::Queen) != 0 {
+                    return false;
+                }
+                let knights = own(Piece::Knight).count_ones();
+                let bishops = own(Piece::Bishop);
+                (knights + bishops.count_ones() <= 1)
+                    || (knights == 0 && single_square_colour(bishops))
             }
-            return colors != 0b11; // only one square colour present
+            // A bare king can neither give check nor capture (Atomic).
+            Variant::ThreeCheck | Variant::Atomic => bare_king,
+            // The king can walk to the hill, captures refill the hand, and in
+            // Fog of War a king can capture the enemy king.
+            Variant::KingOfTheHill
+            | Variant::Crazyhouse
+            | Variant::Bughouse
+            | Variant::FogOfWar => false,
         }
-        false
+    }
+}
+
+/// Why a game was won.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum WinReason {
+    Checkmate,
+    /// Three checks, king on the hill, king exploded or captured.
+    Variant,
+    Time,
+    Resign,
+    Forfeit,
+}
+
+/// Why a game was drawn.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum DrawReason {
+    Stalemate,
+    FiftyMove,
+    Threefold,
+    Insufficient,
+    Agreement,
+    /// A flag fell but the opponent could never have won.
+    TimeVsInsufficient,
+}
+
+/// The one terminal state of a game. Every string or flattened enum on the
+/// bridge is formatted from this, so contradictory combinations (a timeout
+/// together with a checkmate, say) cannot be represented.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Termination {
+    Ongoing,
+    Decisive { winner: Color, reason: WinReason },
+    Draw(DrawReason),
+}
+
+impl Termination {
+    pub fn is_over(self) -> bool {
+        self != Termination::Ongoing
+    }
+
+    /// Result of `flagged` running out of time in `pos`.
+    pub fn on_time(pos: &Position, flagged: Color) -> Termination {
+        if pos.insufficient_to_mate(flagged.opp()) {
+            Termination::Draw(DrawReason::TimeVsInsufficient)
+        } else {
+            Termination::Decisive {
+                winner: flagged.opp(),
+                reason: WinReason::Time,
+            }
+        }
+    }
+
+    /// Stable LAN wire code for a move-derived result (`game_over:<code>`).
+    pub fn code(self) -> &'static str {
+        match self {
+            Termination::Ongoing => "ongoing",
+            Termination::Decisive {
+                winner: Color::White,
+                ..
+            } => "white_wins",
+            Termination::Decisive {
+                winner: Color::Black,
+                ..
+            } => "black_wins",
+            Termination::Draw(DrawReason::Stalemate) => "stalemate",
+            Termination::Draw(DrawReason::FiftyMove) => "draw_fifty",
+            Termination::Draw(DrawReason::Threefold) => "draw_threefold",
+            Termination::Draw(DrawReason::Insufficient | DrawReason::TimeVsInsufficient) => {
+                "draw_insufficient"
+            }
+            Termination::Draw(DrawReason::Agreement) => "draw_agreement",
+        }
+    }
+}
+
+impl From<GameStatus> for Termination {
+    fn from(s: GameStatus) -> Termination {
+        match s {
+            GameStatus::Ongoing => Termination::Ongoing,
+            GameStatus::Checkmate { winner } => Termination::Decisive {
+                winner,
+                reason: WinReason::Checkmate,
+            },
+            GameStatus::VariantWin { winner } => Termination::Decisive {
+                winner,
+                reason: WinReason::Variant,
+            },
+            GameStatus::Stalemate => Termination::Draw(DrawReason::Stalemate),
+            GameStatus::DrawFiftyMove => Termination::Draw(DrawReason::FiftyMove),
+            GameStatus::DrawThreefold => Termination::Draw(DrawReason::Threefold),
+            GameStatus::DrawInsufficientMaterial => Termination::Draw(DrawReason::Insufficient),
+        }
     }
 }
 

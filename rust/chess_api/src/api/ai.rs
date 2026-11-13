@@ -6,11 +6,12 @@
 //! update. `ai_cancel(id)` flips a shared flag the search polls.
 
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
+use std::time::{Duration, Instant};
 
 use chess_ai::{warm_opening_book, AiConfig, Engine, SearchInfo};
-use chess_core::parse_fen;
+use chess_core::{parse_fen_variant, VariantExtras};
 use flutter_rust_bridge::frb;
 
 use crate::frb_generated::StreamSink;
@@ -55,27 +56,115 @@ pub struct AiSearchRequest {
     pub promoted: u64,
 }
 
-fn registry() -> &'static Mutex<HashMap<u64, Arc<AtomicBool>>> {
-    static R: OnceLock<Mutex<HashMap<u64, Arc<AtomicBool>>>> = OnceLock::new();
+/// Lifecycle of one search id. A cancel that arrives before the worker has
+/// registered leaves a short-lived `Cancelled` tombstone, so the search that
+/// registers afterwards stops immediately instead of running to its deadline.
+enum SearchSlot {
+    /// Registered and searching; `token` tells two searches with one id apart.
+    Searching { token: u64, flag: Arc<AtomicBool> },
+    /// Cancelled before registration (expires: Dart may reuse ids later).
+    Cancelled { at: Instant },
+}
+
+/// A tombstone only has to bridge the FRB dispatch delay.
+const TOMBSTONE_TTL: Duration = Duration::from_secs(5);
+
+type Registry = HashMap<u64, SearchSlot>;
+
+fn registry() -> &'static Mutex<Registry> {
+    static R: OnceLock<Mutex<Registry>> = OnceLock::new();
     R.get_or_init(|| Mutex::new(HashMap::new()))
 }
 
 /// Lock the registry, recovering from a poisoned mutex (a prior search panic)
 /// instead of cascading the panic — the map itself is always in a valid state.
-fn reg() -> std::sync::MutexGuard<'static, HashMap<u64, Arc<AtomicBool>>> {
+fn reg() -> std::sync::MutexGuard<'static, Registry> {
     registry().lock().unwrap_or_else(|e| e.into_inner())
 }
 
-/// Removes a search's cancel flag on drop, so the registry entry is cleared on
-/// every exit path — normal return, early `?`, or an unwinding panic in the
-/// search — preventing leaked flags and stale-id cancellation.
+fn prune_tombstones(map: &mut Registry) {
+    map.retain(|_, slot| match slot {
+        SearchSlot::Cancelled { at } => at.elapsed() < TOMBSTONE_TTL,
+        SearchSlot::Searching { .. } => true,
+    });
+}
+
+/// Register a search. Returns `None` when a fresh cancel tombstone was waiting.
+fn register(id: u64) -> Option<(u64, Arc<AtomicBool>)> {
+    static NEXT_TOKEN: AtomicU64 = AtomicU64::new(1);
+    let mut map = reg();
+    prune_tombstones(&mut map);
+    if matches!(map.get(&id), Some(SearchSlot::Cancelled { .. })) {
+        map.remove(&id);
+        return None;
+    }
+    let token = NEXT_TOKEN.fetch_add(1, Ordering::Relaxed);
+    let flag = Arc::new(AtomicBool::new(false));
+    // A duplicate id replaces the older search's slot; the older guard then
+    // leaves this one alone because the token differs.
+    if let Some(SearchSlot::Searching { flag: old, .. }) = map.insert(
+        id,
+        SearchSlot::Searching {
+            token,
+            flag: flag.clone(),
+        },
+    ) {
+        old.store(true, Ordering::Relaxed);
+    }
+    Some((token, flag))
+}
+
+/// Removes a search's slot on drop (normal return, `?`, or a panic), but only
+/// while the slot still belongs to this search.
 struct RegistryGuard {
     id: u64,
+    token: u64,
 }
 
 impl Drop for RegistryGuard {
     fn drop(&mut self) {
-        reg().remove(&self.id);
+        let mut map = reg();
+        if matches!(map.get(&self.id), Some(SearchSlot::Searching { token, .. }) if *token == self.token)
+        {
+            map.remove(&self.id);
+        }
+    }
+}
+
+/// One engine (and its transposition table) is reused across searches of the
+/// same variant and size instead of allocating up to 48 MB per move. A search
+/// running concurrently with another simply builds its own.
+type CachedEngine = (u32, chess_core::Variant, Engine);
+
+fn engine_cache() -> &'static Mutex<Option<CachedEngine>> {
+    static E: OnceLock<Mutex<Option<CachedEngine>>> = OnceLock::new();
+    E.get_or_init(|| Mutex::new(None))
+}
+
+fn take_engine(bits: u32, variant: chess_core::Variant) -> Engine {
+    let cached = engine_cache()
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .take();
+    match cached {
+        // Hashes do not encode the variant, so a table is only reused within one.
+        Some((b, v, eng)) if b == bits && v == variant => eng,
+        _ => Engine::new(bits),
+    }
+}
+
+fn return_engine(bits: u32, variant: chess_core::Variant, eng: Engine) {
+    *engine_cache().lock().unwrap_or_else(|e| e.into_inner()) = Some((bits, variant, eng));
+}
+
+fn done_update(info: &SearchInfo) -> AiUpdate {
+    AiUpdate {
+        depth: info.depth as u32,
+        score_cp: info.score_cp,
+        best_uci: info.best.map(|m| m.to_uci()).unwrap_or_default(),
+        pv: info.pv.iter().map(|m| m.to_uci()).collect(),
+        nodes: info.nodes,
+        done: true,
     }
 }
 
@@ -85,33 +174,50 @@ pub fn ai_search(request: AiSearchRequest, sink: StreamSink<AiUpdate>) -> Result
     // The full corpus parses in a background thread. Search-side lookup skips
     // it until ready, keeping a first AI move inside its configured deadline.
     warm_opening_book();
-    let mut pos = parse_fen(&request.fen).map_err(|e| e.to_string())?;
     // The FEN carries no variant/reserve info; restore it so the engine plays by
     // the variant's rules (three-check counts, Crazyhouse hand + promoted mask).
-    pos.variant = crate::api::game::to_variant(request.variant);
-    pos.checks = [request.white_checks as u8, request.black_checks as u8];
+    let mut hand = [[0u8; 5]; 2];
     if request.white_hand.len() == 5 && request.black_hand.len() == 5 {
-        for i in 0..5 {
-            pos.hand[0][i] = request.white_hand[i] as u8;
-            pos.hand[1][i] = request.black_hand[i] as u8;
+        for (side, counts) in [&request.white_hand, &request.black_hand]
+            .into_iter()
+            .enumerate()
+        {
+            for (slot, &count) in hand[side].iter_mut().zip(counts) {
+                *slot = u8::try_from(count).map_err(|_| "reserve count out of range")?;
+            }
         }
     }
-    pos.promoted = request.promoted;
-    // Re-derive the hash so it matches the game's (includes check/hand keys) —
-    // keeps transposition + repetition detection consistent with the history.
-    pos.hash = pos.compute_hash();
+    let extras = VariantExtras {
+        checks: [
+            u8::try_from(request.white_checks).map_err(|_| "check counter out of range")?,
+            u8::try_from(request.black_checks).map_err(|_| "check counter out of range")?,
+        ],
+        hand,
+        promoted: request.promoted,
+    };
+    let pos = parse_fen_variant(
+        &request.fen,
+        crate::api::game::to_variant(request.variant),
+        &extras,
+    )
+    .map_err(|e| e.to_string())?;
 
-    let flag = Arc::new(AtomicBool::new(false));
-    reg().insert(request.search_id, flag.clone());
+    let Some((token, flag)) = register(request.search_id) else {
+        // Cancelled before it started: finish the stream without searching.
+        let _ = sink.add(done_update(&SearchInfo::default()));
+        return Ok(());
+    };
     let _guard = RegistryGuard {
         id: request.search_id,
+        token,
     };
 
-    let mut eng = Engine::new(if request.config.max_depth >= 11 {
+    let bits = if request.config.max_depth >= 11 {
         21
     } else {
         19
-    });
+    };
+    let mut eng = take_engine(bits, pos.variant);
     eng.set_game_history(&request.history);
     // Fog of War searches pseudo-legal moves (no king-safety filter), so the
     // branching factor is much larger — cap depth/time so moves stay snappy.
@@ -157,15 +263,9 @@ pub fn ai_search(request: AiSearchRequest, sink: StreamSink<AiUpdate>) -> Result
     };
 
     let result = eng.search_with_config(&pos, cfg, &cancel, on_info);
+    return_engine(bits, pos.variant, eng);
 
-    let _ = sink.add(AiUpdate {
-        depth: result.depth as u32,
-        score_cp: result.score_cp,
-        best_uci: result.best.map(|m| m.to_uci()).unwrap_or_default(),
-        pv: result.pv.iter().map(|m| m.to_uci()).collect(),
-        nodes: result.nodes,
-        done: true,
-    });
+    let _ = sink.add(done_update(&result));
 
     Ok(())
 }
@@ -173,7 +273,44 @@ pub fn ai_search(request: AiSearchRequest, sink: StreamSink<AiUpdate>) -> Result
 /// Request cancellation of the search with `search_id`.
 #[frb(sync)]
 pub fn ai_cancel(search_id: u64) {
-    if let Some(f) = reg().get(&search_id) {
-        f.store(true, Ordering::Relaxed);
+    let mut map = reg();
+    prune_tombstones(&mut map);
+    match map.get(&search_id) {
+        Some(SearchSlot::Searching { flag, .. }) => flag.store(true, Ordering::Relaxed),
+        // Not registered yet (or already finished): leave a tombstone.
+        _ => {
+            map.insert(search_id, SearchSlot::Cancelled { at: Instant::now() });
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn cancel_before_register_is_not_lost() {
+        let id = u64::MAX - 7;
+        ai_cancel(id);
+        assert!(register(id).is_none());
+        // The tombstone is consumed: a later search with the id runs.
+        let (token, _) = register(id).unwrap();
+        drop(RegistryGuard { id, token });
+        assert!(reg().get(&id).is_none());
+    }
+
+    #[test]
+    fn duplicate_ids_do_not_clobber_each_other() {
+        let id = u64::MAX - 8;
+        let (first, first_flag) = register(id).unwrap();
+        let (second, second_flag) = register(id).unwrap();
+        assert!(
+            first_flag.load(Ordering::Relaxed),
+            "older search is stopped"
+        );
+        drop(RegistryGuard { id, token: first });
+        ai_cancel(id);
+        assert!(second_flag.load(Ordering::Relaxed), "newer slot survived");
+        drop(RegistryGuard { id, token: second });
     }
 }

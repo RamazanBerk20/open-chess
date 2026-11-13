@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart' show setEquals;
 import 'package:flutter/material.dart';
 
+import 'package:open_chess/l10n/app_localizations.dart';
+
 import 'package:open_chess/src/rust/api/game.dart';
 import 'package:open_chess/src/widgets/pieces.dart';
 
@@ -235,7 +237,12 @@ class BoardWidget extends StatelessWidget {
                           flipped: flipped,
                           upsideDown: upsideDown,
                           isLastTo: view.lastTo == sq,
-                          lastFrom: view.lastFrom,
+                          // Fog of War: never slide in from a hidden square.
+                          lastFrom:
+                              fogMask != null &&
+                                  !fogMask!.contains(view.lastFrom)
+                              ? null
+                              : view.lastFrom,
                           moveSerial: view.sanMoves.length,
                           animate: animate,
                           animMs: animMs,
@@ -399,7 +406,7 @@ class _Cell extends StatelessWidget {
     }
 
     return Semantics(
-      label: _semanticLabel(),
+      label: _semanticLabel(AppLocalizations.of(context)),
       button: true,
       container: true,
       child: DragTarget<int>(
@@ -421,13 +428,21 @@ class _Cell extends StatelessWidget {
 
   /// Screen-reader label: square name plus the piece on it (e.g. "e4, white
   /// pawn"), so the board is navigable with TalkBack/VoiceOver.
-  String _semanticLabel() {
+  String _semanticLabel(AppLocalizations t) {
     final file = String.fromCharCode(97 + square % 8);
     final rank = square ~/ 8 + 1;
     final p = piece;
     if (p == null) return '$file$rank';
-    final color = p.color == PieceColor.white ? 'white' : 'black';
-    return '$file$rank, $color ${p.kind.name}';
+    final color = p.color == PieceColor.white ? t.white : t.black;
+    final kind = switch (p.kind) {
+      PieceKind.pawn => t.piecePawn,
+      PieceKind.knight => t.pieceKnight,
+      PieceKind.bishop => t.pieceBishop,
+      PieceKind.rook => t.pieceRook,
+      PieceKind.queen => t.pieceQueen,
+      PieceKind.king => t.pieceKing,
+    };
+    return t.squarePieceLabel('$file$rank', color, kind);
   }
 }
 

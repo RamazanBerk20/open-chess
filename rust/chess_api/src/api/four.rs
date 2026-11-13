@@ -81,8 +81,11 @@ impl FourGame {
     /// turn it is (for premove highlighting). Re-validated when it executes.
     #[frb(sync)]
     pub fn premove_targets(&self, from: u32) -> Vec<u32> {
+        let Some(from) = cell(from) else {
+            return Vec::new();
+        };
         self.inner
-            .premove_targets(coord(from as usize))
+            .premove_targets(from)
             .iter()
             .map(|p| idx(p.col, p.row) as u32)
             .collect()
@@ -92,14 +95,15 @@ impl FourGame {
     /// [f0,t0,f1,t1,…]) are applied as raw relocations — for premove chains.
     #[frb(sync)]
     pub fn premove_targets_after(&self, premoves: Vec<u32>, from: u32) -> Vec<u32> {
-        let mut pairs = Vec::new();
-        let mut i = 0;
-        while i + 1 < premoves.len() {
-            pairs.push((coord(premoves[i] as usize), coord(premoves[i + 1] as usize)));
-            i += 2;
-        }
+        let Some(from) = cell(from) else {
+            return Vec::new();
+        };
+        let pairs: Vec<_> = premoves
+            .chunks_exact(2)
+            .filter_map(|pair| Some((cell(pair[0])?, cell(pair[1])?)))
+            .collect();
         self.inner
-            .premove_targets_after(&pairs, coord(from as usize))
+            .premove_targets_after(&pairs, from)
             .iter()
             .map(|p| idx(p.col, p.row) as u32)
             .collect()
@@ -108,7 +112,9 @@ impl FourGame {
     /// Destination squares (row*14+col) of every legal move from `from`.
     #[frb(sync)]
     pub fn legal_targets(&self, from: u32) -> Vec<u32> {
-        let c = coord(from as usize);
+        let Some(c) = cell(from) else {
+            return Vec::new();
+        };
         let mut out = Vec::new();
         for m in self.inner.legal_moves() {
             if m.from == c {
@@ -126,7 +132,9 @@ impl FourGame {
         if self.inner.ended {
             return MoveOutcome::Illegal;
         }
-        let (f, t) = (coord(from as usize), coord(to as usize));
+        let (Some(f), Some(t)) = (cell(from), cell(to)) else {
+            return MoveOutcome::Illegal;
+        };
         let mut needs_promo = false;
         let legal = self.inner.legal_moves();
         for m in &legal {
@@ -156,6 +164,10 @@ impl FourGame {
     /// Apply a move in coordinate form ("d1d2", "d2d3q"); for bot/remote moves.
     #[frb(sync)]
     pub fn play_uci(&mut self, uci: String) -> bool {
+        // A LAN host relays a resignation in move order as `resign:<colour>`.
+        if let Some(player) = chess4::serial::parse_resign_token(&uci) {
+            return self.inner.resign(player);
+        }
         let Some((f, t, promo)) = chess4::serial::parse_uci(&uci) else {
             return false;
         };
@@ -171,7 +183,6 @@ impl FourGame {
     /// The requested-difficulty bot move (UCI form) for the side to move, or
     /// None if none. Unknown codes deliberately fall back to Normal so a stale
     /// local setting can never make the four-player bot unavailable.
-    #[frb(sync)]
     pub fn bot_move(&self, seed: u64, difficulty_code: i32) -> Option<String> {
         let difficulty = chess4::bot::BotDifficulty::from_code(difficulty_code)
             .unwrap_or(chess4::bot::BotDifficulty::Normal);
@@ -209,6 +220,12 @@ impl FourGame {
             result: result_str(self.inner.result()),
         }
     }
+}
+
+/// A playable cell index (row*14+col) from the bridge, or None.
+fn cell(i: u32) -> Option<chess4::Coord> {
+    let i = i as usize;
+    (i < VALID.len() && VALID[i]).then(|| coord(i))
 }
 
 fn result_str(r: FourResult) -> String {
@@ -301,5 +318,47 @@ mod tests {
         assert_eq!(game.bot_move(41, 99), normal);
         assert!(game.bot_move(41, 0).is_some());
         assert!(game.bot_move(41, 5).is_some());
+    }
+
+    #[test]
+    fn four_bot_is_deterministic_for_every_level() {
+        let game = FourGame::new_game(FourFormat::Teams);
+        for level in 0..=5 {
+            let first = game.bot_move(7, level);
+            for _ in 0..3 {
+                assert_eq!(game.bot_move(7, level), first, "level {level}");
+            }
+        }
+    }
+
+    #[test]
+    fn out_of_range_cells_are_rejected_not_wrapped() {
+        let mut game = FourGame::new_game(FourFormat::FreeForAll);
+        // Row 257 used to wrap to i8 row 1 (a Red pawn cell).
+        let wrapped = 14 * 256 + 18_u32;
+        assert!(game.legal_targets(wrapped).is_empty());
+        assert!(game.premove_targets(10_000).is_empty());
+        assert!(
+            game.premove_targets_after(vec![18, 10_000, 9_999, 18], 18)
+                .len()
+                <= 2
+        );
+        assert_eq!(
+            game.play(wrapped, 3 * 14 + 4, None),
+            crate::api::game::MoveOutcome::Illegal
+        );
+    }
+
+    #[test]
+    fn resign_token_removes_only_that_player() {
+        let mut game = FourGame::new_game(FourFormat::FreeForAll);
+        assert!(game.play_uci("resign:blue".into()));
+        let view = game.view();
+        assert_eq!(view.result, "ongoing");
+        assert_eq!(view.players[1].status, super::FourPlayerStatus::Resigned);
+        assert!(!game.play_uci("resign:blue".into()), "already out");
+        // Red to move; after Red, Blue is skipped.
+        assert!(game.play_uci("d2d3".into()));
+        assert_eq!(game.view().turn, super::FourPlayer::Yellow);
     }
 }

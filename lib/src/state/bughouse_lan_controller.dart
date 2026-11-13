@@ -4,14 +4,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:open_chess/src/rust/api/net.dart';
 import 'package:open_chess/src/state/bughouse_controller.dart';
+import 'package:open_chess/src/state/l10n_labels.dart';
 import 'package:open_chess/src/state/lan_profile.dart';
+import 'package:open_chess/src/state/multi_board_session.dart';
+import 'package:open_chess/src/state/multicast_lock.dart';
 import 'package:open_chess/src/state/player_profile.dart';
 
 /// Lobby + live-session state for a networked Bughouse match.
 class BughouseLanState {
-  final bool active; // a host/join session is running
+  final MultiBoardSession session; // a host/join session is running
   final bool isHost;
-  final bool started; // BugStart received → match underway
   final List<String>
   joiners; // host lobby: joined player names (connection order)
   final List<PlayerProfile> joinerProfiles;
@@ -21,9 +23,8 @@ class BughouseLanState {
   final String? error;
 
   const BughouseLanState({
-    this.active = false,
+    this.session = const MbIdle(),
     this.isHost = false,
-    this.started = false,
     this.joiners = const [],
     this.joinerProfiles = const [],
     this.mySeats = const [],
@@ -32,10 +33,12 @@ class BughouseLanState {
     this.error,
   });
 
+  bool get active => session is! MbIdle;
+  bool get started => matchStarted(session);
+
   BughouseLanState copyWith({
-    bool? active,
+    MultiBoardSession? session,
     bool? isHost,
-    bool? started,
     List<String>? joiners,
     List<PlayerProfile>? joinerProfiles,
     List<int>? mySeats,
@@ -43,9 +46,8 @@ class BughouseLanState {
     List<PlayerProfile>? seatProfiles,
     String? error,
   }) => BughouseLanState(
-    active: active ?? this.active,
+    session: session ?? this.session,
     isHost: isHost ?? this.isHost,
-    started: started ?? this.started,
     joiners: joiners ?? this.joiners,
     joinerProfiles: joinerProfiles ?? this.joinerProfiles,
     mySeats: mySeats ?? this.mySeats,
@@ -76,7 +78,17 @@ class BughouseLanController extends Notifier<BughouseLanState> {
     return const BughouseLanState();
   }
 
+  bool _advertising = false; // multicast lock held while the lobby is open
+
+  void _stopAdvertising() {
+    if (_advertising) releaseMulticast();
+    _advertising = false;
+  }
+
   void host(PlayerProfile profile) {
+    _stopAdvertising();
+    acquireMulticast();
+    _advertising = true;
     _listen(
       netHostBughouse(
         profile: lanProfileWire(profile),
@@ -96,7 +108,7 @@ class BughouseLanController extends Notifier<BughouseLanState> {
 
   void _listen(Stream<NetEvent> stream, {required bool isHost}) {
     _sub?.cancel();
-    state = BughouseLanState(active: true, isHost: isHost);
+    state = BughouseLanState(session: const MbLobby(), isHost: isHost);
     _sub = stream.listen(
       _onEvent,
       onError: (e) => state = state.copyWith(error: '$e'),
@@ -134,8 +146,9 @@ class BughouseLanController extends Notifier<BughouseLanState> {
           joinerProfiles: [...state.joinerProfiles, profile],
         );
       case NetEventKind.bugStart:
+        _stopAdvertising();
         state = state.copyWith(
-          started: true,
+          session: reduceMultiBoard(state.session, const MbStarted()),
           mySeats: e.yourSeats.map((x) => x.toInt()).toList(),
           seatNames: e.seats,
           seatProfiles: e.seatProfiles.map(lanProfileFromWire).toList(),
@@ -145,9 +158,18 @@ class BughouseLanController extends Notifier<BughouseLanState> {
       case NetEventKind.bugPass:
         _applyOrQueue(e);
       case NetEventKind.bugResult:
+        state = state.copyWith(
+          session: reduceMultiBoard(state.session, const MbResult()),
+        );
         _applyOrQueue(e);
       case NetEventKind.disconnected:
-        state = state.copyWith(error: e.text.isEmpty ? 'Disconnected' : e.text);
+        // Routed like four-player: the match shows "disconnected" instead of
+        // freezing; the lobby shows the error.
+        state = state.copyWith(
+          session: reduceMultiBoard(state.session, const MbLinkClosed()),
+          error: e.text.isEmpty ? LanResultCode.opponentDisconnected : e.text,
+        );
+        _applyOrQueue(e);
       case NetEventKind.error:
         state = state.copyWith(error: e.text);
       default:
@@ -161,7 +183,7 @@ class BughouseLanController extends Notifier<BughouseLanState> {
       return;
     }
     if (_pendingMatchEvents.length >= _maxPendingMatchEvents) {
-      state = state.copyWith(error: 'Too many pending match updates.');
+      state = state.copyWith(error: tooManyPendingUpdates);
       return;
     }
     _pendingMatchEvents.add(event);
@@ -181,17 +203,22 @@ class BughouseLanController extends Notifier<BughouseLanState> {
         );
       case NetEventKind.bugResult:
         match.applyResult(event.winningTeam.toInt(), event.board.toInt());
+      case NetEventKind.disconnected:
+        match.markConnectionLost();
       default:
         break;
     }
   }
 
   void leave() {
+    _stopAdvertising();
     netLeave();
     _sub?.cancel();
     _sub = null;
     _match = null;
     _pendingMatchEvents.clear();
-    state = const BughouseLanState();
+    state = BughouseLanState(
+      session: reduceMultiBoard(state.session, const MbLeft()),
+    );
   }
 }

@@ -6,7 +6,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:open_chess/src/rust/api/net.dart';
 import 'package:open_chess/src/state/four_player_controller.dart';
+import 'package:open_chess/src/state/l10n_labels.dart';
+import 'package:open_chess/src/state/lan_controller.dart' show maxChatLines;
 import 'package:open_chess/src/state/lan_profile.dart';
+import 'package:open_chess/src/state/multi_board_session.dart';
+import 'package:open_chess/src/state/multicast_lock.dart';
 import 'package:open_chess/src/state/player_profile.dart';
 
 /// Wire values for four-player LAN seat assignments.
@@ -157,10 +161,9 @@ bool _sameFourLanSeatPairs(
 }
 
 class FourLanState {
-  final bool active;
+  final MultiBoardSession session;
   final bool isHost;
   final bool isSpectator;
-  final bool started;
   final String myName;
   final List<String> joiners;
   final List<PlayerProfile> joinerProfiles;
@@ -172,10 +175,9 @@ class FourLanState {
   final String? error;
 
   const FourLanState({
-    this.active = false,
+    this.session = const MbIdle(),
     this.isHost = false,
     this.isSpectator = false,
-    this.started = false,
     this.myName = '',
     this.joiners = const [],
     this.joinerProfiles = const [],
@@ -187,11 +189,13 @@ class FourLanState {
     this.error,
   });
 
+  bool get active => session is! MbIdle;
+  bool get started => matchStarted(session);
+
   FourLanState copyWith({
-    bool? active,
+    MultiBoardSession? session,
     bool? isHost,
     bool? isSpectator,
-    bool? started,
     String? myName,
     List<String>? joiners,
     List<PlayerProfile>? joinerProfiles,
@@ -202,10 +206,9 @@ class FourLanState {
     List<FourSpectatorChatMessage>? spectatorChat,
     String? error,
   }) => FourLanState(
-    active: active ?? this.active,
+    session: session ?? this.session,
     isHost: isHost ?? this.isHost,
     isSpectator: isSpectator ?? this.isSpectator,
-    started: started ?? this.started,
     myName: myName ?? this.myName,
     joiners: joiners ?? this.joiners,
     joinerProfiles: joinerProfiles ?? this.joinerProfiles,
@@ -241,11 +244,21 @@ class FourLanController extends Notifier<FourLanState> {
     return const FourLanState();
   }
 
+  bool _advertising = false; // multicast lock held while the lobby is open
+
+  void _stopAdvertising() {
+    if (_advertising) releaseMulticast();
+    _advertising = false;
+  }
+
   void host(
     PlayerProfile profile,
     String format, {
     required bool allowSpectators,
   }) {
+    _stopAdvertising();
+    acquireMulticast();
+    _advertising = true;
     _listen(
       netHostFour(
         profile: lanProfileWire(profile),
@@ -291,7 +304,7 @@ class FourLanController extends Notifier<FourLanState> {
     _pendingMatchEvents.clear();
     _pendingTerminalEvent = null;
     state = FourLanState(
-      active: true,
+      session: const MbLobby(),
       isHost: isHost,
       isSpectator: isSpectator,
       myName: profile.username,
@@ -338,8 +351,9 @@ class FourLanController extends Notifier<FourLanState> {
           joinerProfiles: [...state.joinerProfiles, profile],
         );
       case NetEventKind.fourStart:
+        _stopAdvertising();
         state = state.copyWith(
-          started: true,
+          session: reduceMultiBoard(state.session, const MbStarted()),
           isSpectator: state.isSpectator || e.isSpectator,
           mySeats: e.yourSeats.map((x) => x.toInt()).toList(),
           seatNames: e.seats,
@@ -349,17 +363,23 @@ class FourLanController extends Notifier<FourLanState> {
       case NetEventKind.fourMove:
         _applyOrQueue(e);
       case NetEventKind.fourResult:
+        state = state.copyWith(
+          session: reduceMultiBoard(state.session, const MbResult()),
+        );
         _applyOrQueue(e);
       case NetEventKind.disconnected:
-        state = state.copyWith(error: e.text.isEmpty ? 'Disconnected' : e.text);
+        state = state.copyWith(
+          session: reduceMultiBoard(state.session, const MbLinkClosed()),
+          error: e.text.isEmpty ? LanResultCode.opponentDisconnected : e.text,
+        );
         _applyOrQueue(e);
       case NetEventKind.spectatorChat:
         if (state.isSpectator) {
           state = state.copyWith(
-            spectatorChat: [
+            spectatorChat: _capped([
               ...state.spectatorChat,
               FourSpectatorChatMessage(e.text, false, senderName: e.sender),
-            ],
+            ]),
           );
         }
       case NetEventKind.error:
@@ -382,7 +402,7 @@ class FourLanController extends Notifier<FourLanState> {
         _pendingTerminalEvent ??= event;
         return;
       }
-      state = state.copyWith(error: 'Too many pending match updates.');
+      state = state.copyWith(error: tooManyPendingUpdates);
       return;
     }
     _pendingMatchEvents.add(event);
@@ -405,25 +425,34 @@ class FourLanController extends Notifier<FourLanState> {
 
   /// Spectator chat is private to spectator sockets. Player transports do not
   /// receive these messages, and the host app never surfaces them.
-  void sendSpectatorChat(String text) {
+  /// Returns false when nothing was sent, so the input keeps its text.
+  bool sendSpectatorChat(String text) {
     final message = text.trim();
-    if (!state.isSpectator || !isValidFourSpectatorChat(message)) return;
+    if (!state.isSpectator || !isValidFourSpectatorChat(message)) return false;
     netSendSpectatorChat(text: message);
     state = state.copyWith(
-      spectatorChat: [
+      spectatorChat: _capped([
         ...state.spectatorChat,
         FourSpectatorChatMessage(message, true, senderName: state.myName),
-      ],
+      ]),
     );
+    return true;
   }
 
+  static List<FourSpectatorChatMessage> _capped(
+    List<FourSpectatorChatMessage> l,
+  ) => l.length > maxChatLines ? l.sublist(l.length - maxChatLines) : l;
+
   void leave() {
+    _stopAdvertising();
     netLeave();
     _sub?.cancel();
     _sub = null;
     _match = null;
     _pendingMatchEvents.clear();
     _pendingTerminalEvent = null;
-    state = const FourLanState();
+    state = FourLanState(
+      session: reduceMultiBoard(state.session, const MbLeft()),
+    );
   }
 }

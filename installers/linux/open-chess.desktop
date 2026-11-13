@@ -9,3 +9,4 @@ Icon=open-chess
 Terminal=false
 Categories=Game;BoardGame;
 Keywords=open-chess;chess;satranc;board;game;
+StartupWMClass=com.ramazan.openchess

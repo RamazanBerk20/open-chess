@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'package:open_chess/l10n/app_localizations.dart';
+
 /// A scrollable, numbered SAN move list (1. e4 e5  2. Nf3 ...).
 class MoveList extends StatelessWidget {
   final List<String> sanMoves;
@@ -35,7 +37,7 @@ class MoveList extends StatelessWidget {
         borderRadius: BorderRadius.circular(6),
       ),
       child: rows.isEmpty
-          ? const Center(child: Text('No moves yet'))
+          ? Center(child: Text(AppLocalizations.of(context).noMovesYet))
           : ListView(reverse: false, children: rows),
     );
   }

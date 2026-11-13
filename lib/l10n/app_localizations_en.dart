@@ -370,9 +370,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get hostGame => 'Host game';
 
   @override
-  String get joinGame => 'Join game';
-
-  @override
   String get yourName => 'Your name';
 
   @override
@@ -415,19 +412,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get typeMessage => 'Type a message…';
 
   @override
-  String get savedGames => 'Saved games';
-
-  @override
   String get noSavedGames => 'No saved games yet';
 
   @override
-  String get resume => 'Resume';
-
-  @override
   String get renameGameTitle => 'Rename game';
-
-  @override
-  String get playFromPosition => 'Play from Position';
 
   @override
   String get pasteFen => 'Paste a FEN string';
@@ -446,28 +434,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get loadPosition => 'Load position';
 
   @override
-  String get sideToPlay => 'Side to play is set by the FEN';
-
-  @override
   String get exportPgn => 'Export PGN';
 
   @override
   String get copyPgn => 'Copy PGN';
 
   @override
-  String get copyMoves => 'Copy moves';
-
-  @override
   String get copiedToClipboard => 'Copied to clipboard';
 
   @override
   String get game => 'Game';
-
-  @override
-  String get singlePlayerTitle => 'Single Player vs AI';
-
-  @override
-  String get twoPlayerTitle => 'Two players — same device';
 
   @override
   String get lanTitle => 'Two players — LAN';
@@ -491,25 +467,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get tcInfinite => 'Infinite';
 
   @override
-  String get diffBeginner => 'Beginner';
-
-  @override
   String get diffVeryEasy => 'Very easy';
 
   @override
   String get diffEasy => 'Easy';
 
   @override
-  String get diffMedium => 'Medium';
-
-  @override
   String get diffNormal => 'Normal';
 
   @override
   String get diffHard => 'Hard';
-
-  @override
-  String get diffExpert => 'Expert';
 
   @override
   String get diffVeryHard => 'Very hard';
@@ -531,15 +498,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get timePerMove => 'Time/move (ms)';
-
-  @override
-  String get topNRandom => 'Top-N random';
-
-  @override
-  String get blunderChance => 'Blunder chance';
-
-  @override
-  String get evalNoise => 'Eval noise (cp)';
 
   @override
   String get maxEvalLoss => 'Maximum evaluation loss (cp)';
@@ -595,15 +553,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get bugMode => 'Mode';
-
-  @override
-  String get bugHotSeat => 'Hot-seat (4 players)';
-
-  @override
-  String get bugVsAi => 'vs Computer';
-
-  @override
-  String get bugYourSeat => 'Your seat';
 
   @override
   String get bugBoardA => 'Board A';
@@ -717,14 +666,6 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String fogPassDevice(String color) {
-    return 'Pass the device to $color';
-  }
-
-  @override
-  String get fogTapReveal => 'Tap to reveal your turn';
-
-  @override
   String get checksLabel => 'Checks';
 
   @override
@@ -759,4 +700,206 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get about => 'About';
+
+  @override
+  String storeCorrupt(Object path) {
+    return 'A data file could not be read. A copy was kept at $path.';
+  }
+
+  @override
+  String get settingsSaveFailed =>
+      'A setting could not be saved. It will apply until you close the app.';
+
+  @override
+  String get fenCastlingRemoved =>
+      'Castling rights that did not match the position were removed.';
+
+  @override
+  String get fenEnPassantRemoved =>
+      'An en passant square that did not match the position was removed.';
+
+  @override
+  String get fenOpenedAsChess960 =>
+      'Opened as Chess960: this castling setup is not valid in standard chess.';
+
+  @override
+  String savedPartialReplay(int count) {
+    return 'Moves that could not be replayed under the current rules: $count. The game was opened at the last playable move; your saved game was not changed.';
+  }
+
+  @override
+  String savedGameDefaultName(Object stamp) {
+    return 'Game $stamp';
+  }
+
+  @override
+  String get gameSaveFailed => 'The game could not be saved.';
+
+  @override
+  String get pauseGame => 'Pause';
+
+  @override
+  String get resumeGame => 'Resume';
+
+  @override
+  String get gamePaused => 'Game paused';
+
+  @override
+  String get chatTooLong => 'Message is too long.';
+
+  @override
+  String get aiThinking => 'AI thinking…';
+
+  @override
+  String aiDepthEval(int depth, Object eval) {
+    return 'AI: depth $depth, eval $eval';
+  }
+
+  @override
+  String pliesCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count plies',
+      one: '1 ply',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get openLinkFailed => 'Could not open the link.';
+
+  @override
+  String get boardGreen => 'Green';
+
+  @override
+  String get boardBrown => 'Brown';
+
+  @override
+  String get boardBlue => 'Blue';
+
+  @override
+  String get boardGray => 'Gray';
+
+  @override
+  String get animationOff => 'Off';
+
+  @override
+  String animationMs(int ms) {
+    return '$ms ms';
+  }
+
+  @override
+  String get checkUpdatesOnLaunch => 'Check for updates on launch';
+
+  @override
+  String get gameOverGeneric => 'Game over';
+
+  @override
+  String get lanIncompatibleVersion =>
+      'The other device runs a different version of Open Chess. Update the app on both devices.';
+
+  @override
+  String get tooManyPendingUpdates => 'Too many pending match updates.';
+
+  @override
+  String get continueGame => 'Continue unfinished game';
+
+  @override
+  String get discardGame => 'Discard';
+
+  @override
+  String get noMovesYet => 'No moves yet';
+
+  @override
+  String get promoteTo => 'Promote to';
+
+  @override
+  String get piecePawn => 'pawn';
+
+  @override
+  String get pieceKnight => 'knight';
+
+  @override
+  String get pieceBishop => 'bishop';
+
+  @override
+  String get pieceRook => 'rook';
+
+  @override
+  String get pieceQueen => 'queen';
+
+  @override
+  String get pieceKing => 'king';
+
+  @override
+  String squarePieceLabel(Object square, Object color, Object piece) {
+    return '$square, $color $piece';
+  }
+
+  @override
+  String get staleCastlingTitle => 'Outdated castling rights';
+
+  @override
+  String get staleCastlingBody =>
+      'This saved position allows castling with a rook that is no longer there. Open it without those castling rights? The saved game itself is not changed.';
+
+  @override
+  String get openAnyway => 'Open';
+
+  @override
+  String savedFenRejected(Object error) {
+    return 'This saved game cannot be opened: $error';
+  }
+
+  @override
+  String analysisFailed(Object error) {
+    return 'Analysis failed. $error';
+  }
+
+  @override
+  String get importGame => 'Import PGN / FEN';
+
+  @override
+  String get importFromClipboard => 'Paste';
+
+  @override
+  String get importFromFile => 'Open file';
+
+  @override
+  String get importHint => 'Paste a PGN game or a FEN position';
+
+  @override
+  String get importEmpty => 'Nothing to import.';
+
+  @override
+  String get importTooLarge => 'The text is too large to import.';
+
+  @override
+  String importTooLong(int max) {
+    return 'The game is longer than $max plies.';
+  }
+
+  @override
+  String importBadFen(Object error) {
+    return 'Invalid position: $error';
+  }
+
+  @override
+  String importBadMove(Object move) {
+    return 'Illegal or unreadable move: $move';
+  }
+
+  @override
+  String importUnsupported(Object variant) {
+    return 'This variant cannot be analysed: $variant';
+  }
+
+  @override
+  String get importReadFailed => 'The file could not be read.';
+
+  @override
+  String engineFailed(Object error) {
+    return 'The engine could not search this position: $error';
+  }
 }

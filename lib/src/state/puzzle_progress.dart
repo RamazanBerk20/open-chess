@@ -1,7 +1,4 @@
-import 'dart:convert';
-import 'dart:io';
-
-import 'package:path_provider/path_provider.dart';
+import 'package:open_chess/src/state/json_store.dart';
 
 /// Persisted puzzle progress: which puzzles are solved, where the user left off,
 /// and their best solve streak.
@@ -45,27 +42,21 @@ class PuzzleProgress {
   );
 }
 
-Future<File> _progressFile() async {
-  final dir = await getApplicationSupportDirectory();
-  return File('${dir.path}/puzzle_progress.json');
-}
+final puzzleProgressStore = JsonStore<PuzzleProgress>(
+  'puzzle_progress.json',
+  decode: (j) => PuzzleProgress.fromJson(j as Map<String, dynamic>),
+  encode: (p) => p.toJson(),
+  empty: const PuzzleProgress(),
+);
 
 Future<PuzzleProgress> loadPuzzleProgress() async {
   try {
-    final f = await _progressFile();
-    if (!await f.exists()) return const PuzzleProgress();
-    final j = json.decode(await f.readAsString()) as Map<String, dynamic>;
-    return PuzzleProgress.fromJson(j);
+    return await puzzleProgressStore.load();
   } catch (_) {
-    return const PuzzleProgress();
+    return const PuzzleProgress(); // file kept; writes stay refused
   }
 }
 
-Future<void> savePuzzleProgress(PuzzleProgress p) async {
-  try {
-    final f = await _progressFile();
-    await f.writeAsString(json.encode(p.toJson()));
-  } catch (_) {
-    // Best-effort persistence; ignore write failures.
-  }
-}
+/// Serialized, atomic, and never before the load has finished.
+Future<void> savePuzzleProgress(PuzzleProgress p) =>
+    puzzleProgressStore.set(p).then((_) {}, onError: (_) {});

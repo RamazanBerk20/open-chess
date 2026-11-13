@@ -87,6 +87,7 @@ class _FourPlayerScreenState extends ConsumerState<FourPlayerScreen> {
 
   String _resultText(AppLocalizations t, String result) {
     if (result == 'connection_lost') return t.opponentDisconnected;
+    if (result == 'desync') return t.boardDesync;
     if (result.startsWith('team:')) {
       final winners = result == 'team:red_yellow'
           ? '${t.fourRed} + ${t.fourYellow}'
@@ -283,8 +284,13 @@ class _FourSpectatorChatSheetState
   }
 
   void _send() {
-    ref.read(fourLanProvider.notifier).sendSpectatorChat(_text.text);
-    _text.clear();
+    if (ref.read(fourLanProvider.notifier).sendSpectatorChat(_text.text)) {
+      _text.clear();
+    } else if (_text.text.trim().isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AppLocalizations.of(context).chatTooLong)),
+      );
+    }
   }
 
   @override

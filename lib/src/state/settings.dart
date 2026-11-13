@@ -1,11 +1,9 @@
-import 'dart:convert';
-import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:path_provider/path_provider.dart';
 
+import 'package:open_chess/src/state/json_store.dart';
 import 'package:open_chess/src/state/player_profile.dart';
 import 'package:open_chess/src/state/profile_avatar_service.dart';
 
@@ -38,6 +36,7 @@ class Settings {
   final double textScale; // 1.0 = follow OS; >1 enlarges text
   final String? localeCode; // null = follow system; else 'en','tr',…
   final PlayerProfile playerProfile;
+  final bool checkUpdatesOnLaunch; // one GitHub request at startup
 
   const Settings({
     this.boardTheme = 0,
@@ -53,6 +52,7 @@ class Settings {
     this.textScale = 1.0,
     this.localeCode,
     this.playerProfile = const PlayerProfile(),
+    this.checkUpdatesOnLaunch = true,
   });
 
   BoardThemeOption get theme {
@@ -86,6 +86,7 @@ class Settings {
     double? textScale,
     String? localeCode,
     PlayerProfile? playerProfile,
+    bool? checkUpdatesOnLaunch,
     bool clearLocale = false,
   }) => Settings(
     boardTheme: boardTheme ?? this.boardTheme,
@@ -101,6 +102,7 @@ class Settings {
     textScale: textScale ?? this.textScale,
     localeCode: clearLocale ? null : (localeCode ?? this.localeCode),
     playerProfile: playerProfile ?? this.playerProfile,
+    checkUpdatesOnLaunch: checkUpdatesOnLaunch ?? this.checkUpdatesOnLaunch,
   );
 
   Map<String, dynamic> toJson() => {
@@ -117,6 +119,7 @@ class Settings {
     'textScale': textScale,
     'localeCode': localeCode,
     'playerProfile': playerProfile.toJson(),
+    'checkUpdatesOnLaunch': checkUpdatesOnLaunch,
   };
 
   factory Settings.fromJson(Map<String, dynamic> j) => Settings(
@@ -137,6 +140,7 @@ class Settings {
     // Older settings files simply omit profile data. Also accept the
     // temporary flat shape so no local identity is lost during migration.
     playerProfile: _profileFromJson(j),
+    checkUpdatesOnLaunch: j['checkUpdatesOnLaunch'] as bool? ?? true,
   );
 
   static PlayerProfile _profileFromJson(Map<String, dynamic> json) {
@@ -164,29 +168,12 @@ class Settings {
   };
 }
 
-Future<File> _file() async {
-  final dir = await getApplicationSupportDirectory();
-  return File('${dir.path}/settings.json');
-}
-
-Future<Settings> _load() async {
-  try {
-    final f = await _file();
-    if (!await f.exists()) return const Settings();
-    return Settings.fromJson(
-      json.decode(await f.readAsString()) as Map<String, dynamic>,
-    );
-  } catch (_) {
-    return const Settings();
-  }
-}
-
-Future<void> _save(Settings s) async {
-  try {
-    final f = await _file();
-    await f.writeAsString(json.encode(s.toJson()));
-  } catch (_) {}
-}
+final settingsStore = JsonStore<Settings>(
+  'settings.json',
+  decode: (j) => Settings.fromJson(j as Map<String, dynamic>),
+  encode: (s) => s.toJson(),
+  empty: const Settings(),
+);
 
 /// Settings loaded from disk before `runApp`, so the first frame (and any
 /// one-shot reads in setup screens) sees the persisted values, not defaults.
@@ -194,7 +181,12 @@ Settings _bootSettings = const Settings();
 
 /// Call once in `main()` before `runApp`.
 Future<void> preloadSettings() async {
-  _bootSettings = await _load();
+  try {
+    _bootSettings = await settingsStore.load();
+  } catch (_) {
+    // Unreadable and could not be backed up: run on defaults; the store keeps
+    // refusing to write so the original file is not lost.
+  }
 }
 
 final settingsProvider = NotifierProvider<SettingsController, Settings>(
@@ -207,7 +199,15 @@ class SettingsController extends Notifier<Settings> {
 
   void _update(Settings s) {
     state = s;
-    _save(s);
+    // Serialized + atomic; a failure keeps the old file and is reported once.
+    settingsStore
+        .set(s)
+        .then<void>(
+          (_) {},
+          onError: (_) {
+            storeWriteFailures.value++;
+          },
+        );
   }
 
   void setBoardTheme(int i) => _update(state.copyWith(boardTheme: i));
@@ -221,6 +221,8 @@ class SettingsController extends Notifier<Settings> {
   void setThemeMode(String v) => _update(state.copyWith(themeMode: v));
   void setHighContrast(bool v) => _update(state.copyWith(highContrast: v));
   void setColorblind(bool v) => _update(state.copyWith(colorblind: v));
+  void setCheckUpdatesOnLaunch(bool v) =>
+      _update(state.copyWith(checkUpdatesOnLaunch: v));
   void setTextScale(double v) => _update(state.copyWith(textScale: v));
   void setLocale(String? code) => _update(
     code == null

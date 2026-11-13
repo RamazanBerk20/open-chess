@@ -5,11 +5,11 @@
 //! protocol messages to the active connection. Every incoming move is validated
 //! against a local `chess_core` game; illegal/out-of-turn moves are rejected.
 
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
-use chess_core::{Color, Game, GameStatus, Piece, Variant};
+use chess_core::{Color, Game, Piece, Termination, Variant, VariantExtras};
 use chess_net::{
     HostAdvertisement, Message, PlayerProfile as ProtocolProfile, SessionRole, VariantState,
     MAX_AVATAR_BYTES, MAX_MESSAGE_BYTES, PROTOCOL_VERSION,
@@ -23,7 +23,23 @@ use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 
 use crate::frb_generated::StreamSink;
 
-type NetReader = BufReader<tokio::net::tcp::OwnedReadHalf>;
+/// A connection's read side plus the partial line received so far. Keeping
+/// the partial line here (not in the `read_message` future) makes reading
+/// cancel-safe: a `select!` branch that wins while a long message is still
+/// arriving no longer throws away the bytes already consumed.
+struct NetReader<R = tokio::net::tcp::OwnedReadHalf> {
+    inner: BufReader<R>,
+    partial: Vec<u8>,
+}
+
+impl<R: tokio::io::AsyncRead + Unpin> NetReader<R> {
+    fn new(read: R) -> Self {
+        Self {
+            inner: BufReader::new(read),
+            partial: Vec::new(),
+        }
+    }
+}
 
 const MAX_CHAT_BYTES: usize = 2 * 1024;
 /// Stable host ports let users permit LAN play without opening every ephemeral
@@ -195,12 +211,13 @@ fn variant_from_code(s: &str) -> Variant {
 /// be a Chess960 X-FEN that already carries it; setting it again is harmless).
 fn variant_game(fen: &str, variant: Variant, variant_state: &VariantState) -> Result<Game, String> {
     variant_state.validate()?;
-    let mut pos = chess_core::parse_fen(fen).map_err(|e| e.to_string())?;
-    pos.variant = variant;
-    pos.checks = [variant_state.white_checks, variant_state.black_checks];
-    pos.hand = [variant_state.white_hand, variant_state.black_hand];
-    pos.promoted = variant_state.promoted;
-    pos.hash = pos.compute_hash();
+    let extras = VariantExtras {
+        checks: [variant_state.white_checks, variant_state.black_checks],
+        hand: [variant_state.white_hand, variant_state.black_hand],
+        promoted: variant_state.promoted,
+    };
+    // A host-supplied FEN is hostile input: validated under the variant.
+    let pos = chess_core::parse_fen_variant(fen, variant, &extras).map_err(|e| e.to_string())?;
     Ok(Game::from_position(pos))
 }
 
@@ -228,9 +245,6 @@ fn runtime() -> &'static Runtime {
     })
 }
 
-/// Outgoing-command sender for the active session, tagged with a generation so
-/// a finishing session only clears the slot if it still owns it (a newer
-/// session won't be wiped by an older one's cleanup).
 /// Lock a mutex, recovering from poisoning (a prior holder panicked) instead of
 /// cascading the panic. The data these mutexes protect — channel slots and seat
 /// assignments — is always left in a consistent state, so recovery is safe.
@@ -238,13 +252,74 @@ fn lock<T>(m: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
     m.lock().unwrap_or_else(|e| e.into_inner())
 }
 
-/// The bool prevents a spectator-side bridge command from ever entering the
-/// transport, even before the host performs its own role check.
-type CmdSlot = Mutex<Option<(u64, UnboundedSender<Message>, bool)>>;
+/// The one active LAN session as seen by the bridge commands. Exactly one
+/// mode can own command routing at a time, a host's pending seat assignment
+/// lives (and dies) with its session, and every loop releases only the slot it
+/// installed (`gen`), so a finishing session never clears a newer one.
+enum Session {
+    Idle,
+    /// Two-player host or client. `actions` is false for a spectator, which
+    /// keeps spectator-side bridge commands out of the transport entirely.
+    TwoPlayer {
+        gen: u64,
+        tx: UnboundedSender<Message>,
+        actions: bool,
+    },
+    BugHost {
+        gen: u64,
+        tx: UnboundedSender<(Option<usize>, Message)>,
+        pending_start: Option<Vec<i32>>,
+    },
+    BugClient {
+        gen: u64,
+        tx: UnboundedSender<Message>,
+    },
+    FourHost {
+        gen: u64,
+        tx: UnboundedSender<(FourSource, Message)>,
+        pending_start: Option<FourStartAssignment>,
+    },
+    /// The role gates bridge commands before they reach the socket: a
+    /// spectator can never send a FourMove/FourResign command.
+    FourClient {
+        gen: u64,
+        tx: UnboundedSender<Message>,
+        role: SessionRole,
+    },
+}
 
-fn cmd_slot() -> &'static CmdSlot {
-    static C: OnceLock<CmdSlot> = OnceLock::new();
-    C.get_or_init(|| Mutex::new(None))
+impl Session {
+    fn gen(&self) -> Option<u64> {
+        match self {
+            Session::Idle => None,
+            Session::TwoPlayer { gen, .. }
+            | Session::BugHost { gen, .. }
+            | Session::BugClient { gen, .. }
+            | Session::FourHost { gen, .. }
+            | Session::FourClient { gen, .. } => Some(*gen),
+        }
+    }
+}
+
+static SESSION: Mutex<Session> = Mutex::new(Session::Idle);
+
+fn session() -> std::sync::MutexGuard<'static, Session> {
+    lock(&SESSION)
+}
+
+/// Allocate a generation and make `make(gen)` the active session.
+fn install_session(make: impl FnOnce(u64) -> Session) -> u64 {
+    let gen = SESSION_GEN.fetch_add(1, Ordering::Relaxed) + 1;
+    *session() = make(gen);
+    gen
+}
+
+/// Clear the active session only if it is still the one `gen` installed.
+fn release_session(gen: u64) {
+    let mut current = session();
+    if current.gen() == Some(gen) {
+        *current = Session::Idle;
+    }
 }
 
 static SESSION_GEN: AtomicU64 = AtomicU64::new(0);
@@ -384,16 +459,18 @@ async fn join_handshake(
     }
 }
 
-static BROWSE_STOP: AtomicBool = AtomicBool::new(false);
+/// Browse generation: each `net_browse` runs only while it is current, so a
+/// stop followed quickly by a new browse cannot revive the old loop.
+static BROWSE_EPOCH: AtomicU64 = AtomicU64::new(0);
 
 // ---- Discovery ----------------------------------------------------------
 
 /// Browse for LAN hosts. Streams each resolved host until `net_stop_browse`.
 pub fn net_browse(sink: StreamSink<NetHost>) -> Result<(), String> {
-    BROWSE_STOP.store(false, Ordering::Relaxed);
+    let epoch = BROWSE_EPOCH.fetch_add(1, Ordering::SeqCst) + 1;
     let (browser, rx) = chess_net::browse().map_err(|e| e.to_string())?;
     loop {
-        if BROWSE_STOP.load(Ordering::Relaxed) {
+        if BROWSE_EPOCH.load(Ordering::SeqCst) != epoch {
             break;
         }
         match rx.recv_timeout(Duration::from_millis(400)) {
@@ -424,7 +501,7 @@ pub fn net_browse(sink: StreamSink<NetHost>) -> Result<(), String> {
 
 #[frb(sync)]
 pub fn net_stop_browse() {
-    BROWSE_STOP.store(true, Ordering::Relaxed);
+    BROWSE_EPOCH.fetch_add(1, Ordering::SeqCst);
 }
 
 // ---- Session ------------------------------------------------------------
@@ -558,6 +635,69 @@ async fn host_reader(source: HostSource, mut reader: NetReader, tx: UnboundedSen
     let _ = tx.send(HostInbound::Closed(source));
 }
 
+/// Text prefix of the host-side `Error` event raised when a peer's `Hello`
+/// carries a different protocol version: `version_mismatch:<their version>`.
+/// The Dart lobbies map it to a non-fatal "update both devices" notice.
+const VERSION_MISMATCH_PREFIX: &str = "version_mismatch:";
+
+fn version_mismatch_event(protocol_version: u32) -> NetEvent {
+    let mut event = NetEvent::of(NetEventKind::Error);
+    event.text = format!("{VERSION_MISMATCH_PREFIX}{protocol_version}");
+    event
+}
+
+/// Host-side tell-tale for peers with another protocol version. The host UI
+/// hears about each peer address at most once per lobby, and never while a
+/// match is running (a LAN neighbour must not be able to spam a live game);
+/// every rejection is still logged.
+struct VersionNotices {
+    sink: StreamSink<NetEvent>,
+    gate: NoticeGate,
+}
+
+#[derive(Default)]
+struct NoticeGate {
+    seen: Mutex<std::collections::HashSet<std::net::IpAddr>>,
+    live: std::sync::atomic::AtomicBool,
+}
+
+impl NoticeGate {
+    /// True when the host UI should hear about this peer.
+    fn allow(&self, addr: Option<std::net::IpAddr>) -> bool {
+        if self.live.load(Ordering::SeqCst) {
+            return false;
+        }
+        match addr {
+            Some(addr) => self
+                .seen
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .insert(addr),
+            None => true,
+        }
+    }
+}
+
+impl VersionNotices {
+    fn new(sink: StreamSink<NetEvent>) -> std::sync::Arc<Self> {
+        std::sync::Arc::new(Self {
+            sink,
+            gate: NoticeGate::default(),
+        })
+    }
+
+    fn set_live(&self) {
+        self.gate.live.store(true, Ordering::SeqCst);
+    }
+
+    fn report(&self, addr: Option<std::net::IpAddr>, version: u32) {
+        eprintln!("open-chess: rejected a peer ({addr:?}) with protocol version {version}");
+        if self.gate.allow(addr) {
+            let _ = self.sink.add(version_mismatch_event(version));
+        }
+    }
+}
+
 fn validate_host_hello(message: Message) -> Result<(ProtocolProfile, SessionRole), String> {
     match message {
         Message::Hello {
@@ -584,14 +724,29 @@ fn reject_host_handshake(writer: OwnedWriteHalf, reason: String) {
     });
 }
 
-async fn prepare_host_handshake(stream: TcpStream, tx: UnboundedSender<HostHandshake>) {
+async fn prepare_host_handshake(
+    stream: TcpStream,
+    tx: UnboundedSender<HostHandshake>,
+    notices: std::sync::Arc<VersionNotices>,
+) {
+    let addr = stream.peer_addr().ok().map(|a| a.ip());
     let (read_half, writer) = stream.into_split();
-    let mut reader = BufReader::new(read_half);
+    let mut reader = NetReader::new(read_half);
     let handshake =
         match tokio::time::timeout(Duration::from_secs(5), read_handshake_message(&mut reader))
             .await
         {
-            Ok(Ok(message)) => validate_host_hello(message),
+            Ok(Ok(message)) => {
+                if let Message::Hello {
+                    protocol_version, ..
+                } = &message
+                {
+                    if *protocol_version != PROTOCOL_VERSION {
+                        notices.report(addr, *protocol_version);
+                    }
+                }
+                validate_host_hello(message)
+            }
             Ok(Err(_)) | Err(_) => Err("invalid or timed out handshake".into()),
         };
 
@@ -673,23 +828,20 @@ fn timeout_event(loser: Color) -> NetEvent {
     event
 }
 
-fn game_over_code(status: GameStatus) -> &'static str {
-    match status {
-        GameStatus::Checkmate { winner } | GameStatus::VariantWin { winner } => match winner {
-            Color::White => "white_wins",
-            Color::Black => "black_wins",
-        },
-        GameStatus::Stalemate => "stalemate",
-        GameStatus::DrawFiftyMove => "draw_fifty",
-        GameStatus::DrawThreefold => "draw_threefold",
-        GameStatus::DrawInsufficientMaterial => "draw_insufficient",
-        GameStatus::Ongoing => "ongoing",
+/// LAN `game_over:<code>` event, formatted from the single terminal state.
+/// `uci` as a legal move for `mover`, or None if it is illegal or it is not
+/// `mover`'s turn. Every LAN move path asks this, so a connection can never
+/// move the other side's pieces.
+fn move_for(game: &mut Game, mover: Color, uci: &str) -> Option<chess_core::Move> {
+    if game.pos.side != mover {
+        return None;
     }
+    game.pos.parse_uci(uci).ok()
 }
 
-fn game_over_event(status: GameStatus) -> NetEvent {
+fn game_over_event(result: Termination) -> NetEvent {
     let mut event = NetEvent::of(NetEventKind::Resign);
-    event.text = format!("game_over:{}", game_over_code(status));
+    event.text = format!("game_over:{}", result.code());
     event
 }
 
@@ -809,6 +961,11 @@ async fn host_task(
         chess_core::START_FEN.to_string()
     };
     let mut game = variant_game(&start_fen, var, &VariantState::EMPTY)?;
+    let host_color = if host_white {
+        Color::White
+    } else {
+        Color::Black
+    };
     let mut white_ms = initial_clock_ms(base, inc);
     let mut black_ms = initial_clock_ms(base, inc);
     let timed = base != 0 || inc != 0;
@@ -838,10 +995,14 @@ async fn host_task(
     .map_err(|e| e.to_string())?;
 
     let (in_tx, mut in_rx) = tokio::sync::mpsc::unbounded_channel::<HostInbound>();
+    let notices = VersionNotices::new(sink.clone());
     let (handshake_tx, mut handshake_rx) = tokio::sync::mpsc::unbounded_channel::<HostHandshake>();
     let (local_tx, mut local_rx) = tokio::sync::mpsc::unbounded_channel::<Message>();
-    let generation = SESSION_GEN.fetch_add(1, Ordering::Relaxed) + 1;
-    *lock(cmd_slot()) = Some((generation, local_tx, true));
+    let generation = install_session(|gen| Session::TwoPlayer {
+        gen,
+        tx: local_tx,
+        actions: true,
+    });
 
     let mut player: Option<HostPeer> = None;
     let mut player_profile: Option<ProtocolProfile> = None;
@@ -867,7 +1028,11 @@ async fn host_task(
                     continue;
                 }
                 pending_handshakes += 1;
-                tokio::spawn(prepare_host_handshake(stream, handshake_tx.clone()));
+                tokio::spawn(prepare_host_handshake(
+                    stream,
+                    handshake_tx.clone(),
+                    notices.clone(),
+                ));
             }
             handshake = handshake_rx.recv() => {
                 let Some(handshake) = handshake else { break };
@@ -929,6 +1094,7 @@ async fn host_task(
                             if sink.add(event).is_err() {
                                 break;
                             }
+                            notices.set_live();
                             player = Some(HostPeer {
                                 id: 0,
                                 tx: peer_tx,
@@ -953,7 +1119,7 @@ async fn host_task(
                             // which cannot be reconstructed from FEN by a newly
                             // joined client. More generally, a live spectator must
                             // join an active match rather than a finished result.
-                            if ended || !matches!(game.status(), GameStatus::Ongoing) {
+                            if ended || game.termination().is_over() {
                                 reject_host_handshake(
                                     writer,
                                     "the match has already ended".into(),
@@ -1019,10 +1185,16 @@ async fn host_task(
                 let Some(player_peer) = player.as_ref() else { continue };
                 match &message {
                     Message::Move { uci, .. } => {
-                        if ended || !matches!(game.status(), GameStatus::Ongoing) {
+                        if ended || game.termination().is_over() {
                             ended = true;
                             let mut event = NetEvent::of(NetEventKind::Error);
                             event.text = "rejected local move after the match ended".into();
+                            let _ = sink.add(event);
+                            continue;
+                        }
+                        if game.pos.side != host_color {
+                            let mut event = NetEvent::of(NetEventKind::Error);
+                            event.text = format!("rejected local move out of turn: {uci}");
                             let _ = sink.add(event);
                             continue;
                         }
@@ -1064,11 +1236,11 @@ async fn host_task(
                         };
                         let _ = player_peer.tx.send(outbound.clone());
                         broadcast(&spectators, &outbound);
-                        let status = game.status();
-                        ended = !matches!(status, GameStatus::Ongoing);
+                        let status = game.termination();
+                        ended = status.is_over();
                         if ended {
                             let game_over = Message::GameOver {
-                                result: game_over_code(status).into(),
+                                result: status.code().into(),
                             };
                             let _ = player_peer.tx.send(game_over.clone());
                             broadcast(&spectators, &game_over);
@@ -1180,7 +1352,7 @@ async fn host_task(
                         let Some(player_peer) = player.as_ref() else { continue };
                         match message {
                             Message::Move { uci, ply, .. } => {
-                                if ended || !matches!(game.status(), GameStatus::Ongoing) {
+                                if ended || game.termination().is_over() {
                                     ended = true;
                                     let _ = player_peer.tx.send(Message::Reject {
                                         reason: "the match has already ended".into(),
@@ -1204,7 +1376,8 @@ async fn host_task(
                                         continue;
                                     }
                                 }
-                                let Ok(mv) = game.pos.parse_uci(&uci) else {
+                                // The remote peer may only move its own colour.
+                                let Some(mv) = move_for(&mut game, host_color.opp(), &uci) else {
                                     let mut event = NetEvent::of(NetEventKind::Error);
                                     event.text = format!("rejected illegal/out-of-turn move: {uci}");
                                     let _ = sink.add(event);
@@ -1228,11 +1401,11 @@ async fn host_task(
                                 event.white_ms = white_ms;
                                 event.black_ms = black_ms;
                                 let _ = sink.add(event);
-                                let status = game.status();
-                                ended = !matches!(status, GameStatus::Ongoing);
+                                let status = game.termination();
+                                ended = status.is_over();
                                 if ended {
                                     let game_over = Message::GameOver {
-                                        result: game_over_code(status).into(),
+                                        result: status.code().into(),
                                     };
                                     let _ = player_peer.tx.send(game_over.clone());
                                     broadcast(&spectators, &game_over);
@@ -1342,10 +1515,7 @@ async fn host_task(
         }
     }
 
-    let mut slot = lock(cmd_slot());
-    if matches!(*slot, Some((owner, _, _)) if owner == generation) {
-        *slot = None;
-    }
+    release_session(generation);
     Ok(())
 }
 
@@ -1364,7 +1534,7 @@ async fn join_task(
         return Ok(());
     };
     let (rd, mut wr) = stream.into_split();
-    let mut reader = BufReader::new(rd);
+    let mut reader = NetReader::new(rd);
     if !join_write(
         &mut wr,
         Message::Hello {
@@ -1453,7 +1623,11 @@ async fn join_task(
         wr,
         sink,
         variant_game(&fen, variant_from_code(&variant), &variant_state)?,
-        role == SessionRole::Player,
+        (role == SessionRole::Player).then_some(if you_are_white {
+            Color::White
+        } else {
+            Color::Black
+        }),
         session_epoch,
     )
     .await;
@@ -1467,16 +1641,21 @@ async fn drive(
     mut wr: OwnedWriteHalf,
     sink: &StreamSink<NetEvent>,
     mut game: Game,
-    actions_allowed: bool,
+    // The colour this client plays; `None` for a read-only spectator.
+    my_color: Option<Color>,
     session_epoch: u64,
 ) {
+    let actions_allowed = my_color.is_some();
     if !session_current(session_epoch) {
         return;
     }
     let (tx, mut cmd_rx): (UnboundedSender<Message>, UnboundedReceiver<Message>) =
         tokio::sync::mpsc::unbounded_channel();
-    let gen = SESSION_GEN.fetch_add(1, Ordering::Relaxed) + 1;
-    *lock(cmd_slot()) = Some((gen, tx, actions_allowed));
+    let gen = install_session(|gen| Session::TwoPlayer {
+        gen,
+        tx,
+        actions: actions_allowed,
+    });
 
     let mut heartbeat = tokio::time::interval(Duration::from_secs(3));
     heartbeat.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
@@ -1503,9 +1682,13 @@ async fn drive(
             cmd = cmd_rx.recv() => {
                 let Some(msg) = cmd else { break };
                 if let Message::Move { ref uci, .. } = msg {
-                    if let Ok(mv) = game.pos.parse_uci(uci) {
-                        game.make_move(mv);
-                    }
+                    let Some(mv) = my_color.and_then(|color| move_for(&mut game, color, uci)) else {
+                        let mut ev = NetEvent::of(NetEventKind::Error);
+                        ev.text = format!("rejected local move out of turn or illegal: {uci}");
+                        let _ = sink.add(ev);
+                        continue;
+                    };
+                    game.make_move(mv);
                 }
                 let bye = matches!(msg, Message::Bye);
                 if wr.write_all(msg.encode().as_bytes()).await.is_err() {
@@ -1519,7 +1702,7 @@ async fn drive(
                 match message {
                     Ok(Some(message)) => {
                         last_seen = Instant::now();
-                        if !handle_incoming(message, &mut game, sink, &mut wr, !actions_allowed).await {
+                        if !handle_incoming(message, &mut game, sink, &mut wr, my_color).await {
                             break;
                         }
                     }
@@ -1545,11 +1728,7 @@ async fn drive(
             }
         }
     }
-    // Only clear the slot if this session still owns it (don't wipe a newer one).
-    let mut slot = lock(cmd_slot());
-    if matches!(*slot, Some((g, _, _)) if g == gen) {
-        *slot = None;
-    }
+    release_session(gen);
 }
 
 /// Returns false when the loop should stop (e.g. peer said Bye).
@@ -1558,16 +1737,21 @@ async fn handle_incoming(
     game: &mut Game,
     sink: &StreamSink<NetEvent>,
     wr: &mut OwnedWriteHalf,
-    is_spectator: bool,
+    my_color: Option<Color>,
 ) -> bool {
+    let is_spectator = my_color.is_none();
     match msg {
         Message::Move {
             uci,
             white_ms,
             black_ms,
             ..
-        } => match game.pos.parse_uci(&uci) {
-            Ok(mv) => {
+        } => match match my_color {
+            // A player only ever receives the opponent's moves.
+            Some(color) => move_for(game, color.opp(), &uci),
+            None => game.pos.parse_uci(&uci).ok(),
+        } {
+            Some(mv) => {
                 game.make_move(mv);
                 let mut ev = NetEvent::of(NetEventKind::Move);
                 ev.uci = uci;
@@ -1575,7 +1759,7 @@ async fn handle_incoming(
                 ev.black_ms = black_ms;
                 let _ = sink.add(ev);
             }
-            Err(_) => {
+            None => {
                 let mut ev = NetEvent::of(NetEventKind::Error);
                 ev.text = format!("rejected illegal/out-of-turn move: {uci}");
                 let _ = sink.add(ev);
@@ -1678,12 +1862,16 @@ async fn handle_incoming(
 /// Read one newline-delimited protocol message without allowing an attacker to
 /// allocate an unbounded `String` before the size check. `lines()` performs
 /// that allocation internally, so all LAN paths use this bounded reader.
-async fn read_message(reader: &mut NetReader) -> Result<Option<Message>, String> {
-    let mut line = Vec::new();
+///
+/// Cancel-safe: the only await is `fill_buf` (itself cancel-safe), and every
+/// consumed byte is moved into `reader.partial` before the next await.
+async fn read_message<R: tokio::io::AsyncRead + Unpin>(
+    reader: &mut NetReader<R>,
+) -> Result<Option<Message>, String> {
     loop {
-        let available = reader.fill_buf().await.map_err(es)?;
+        let available = reader.inner.fill_buf().await.map_err(es)?;
         if available.is_empty() {
-            return if line.is_empty() {
+            return if reader.partial.is_empty() {
                 Ok(None)
             } else {
                 Err("connection closed mid-message".into())
@@ -1692,15 +1880,19 @@ async fn read_message(reader: &mut NetReader) -> Result<Option<Message>, String>
         let available_len = available.len();
         let newline = available.iter().position(|&byte| byte == b'\n');
         let take = newline.unwrap_or(available_len);
-        if line.len().saturating_add(take) > MAX_MESSAGE_BYTES {
+        if reader.partial.len().saturating_add(take) > MAX_MESSAGE_BYTES {
             // The caller closes this connection on error; consume the currently
             // borrowed buffer before returning so the reader remains coherent.
-            reader.consume(available_len);
+            reader.inner.consume(available_len);
+            reader.partial.clear();
             return Err("LAN message exceeds size limit".into());
         }
-        line.extend_from_slice(&available[..take]);
-        reader.consume(if newline.is_some() { take + 1 } else { take });
+        reader.partial.extend_from_slice(&available[..take]);
+        reader
+            .inner
+            .consume(if newline.is_some() { take + 1 } else { take });
         if newline.is_some() {
+            let line = std::mem::take(&mut reader.partial);
             let text = std::str::from_utf8(&line)
                 .map_err(|_| "LAN message is not valid UTF-8".to_string())?;
             return Message::decode(text)
@@ -1745,28 +1937,36 @@ async fn bind_lan_listener() -> Result<TcpListener, String> {
 // ---- Commands (sent from Dart) -----------------------------------------
 
 fn send(msg: Message) {
-    if let Some((_, tx, true)) = lock(cmd_slot()).as_ref() {
+    if let Session::TwoPlayer {
+        tx, actions: true, ..
+    } = &*session()
+    {
         let _ = tx.send(msg);
     }
 }
 
 fn send_spectator(msg: Message) {
-    if let Some((_, tx, false)) = lock(cmd_slot()).as_ref() {
-        let _ = tx.send(msg);
-        return;
-    }
-    if let Some((_, tx, SessionRole::Spectator)) = lock(four_client_out()).as_ref() {
-        let _ = tx.send(msg);
+    match &*session() {
+        Session::TwoPlayer {
+            tx, actions: false, ..
+        }
+        | Session::FourClient {
+            tx,
+            role: SessionRole::Spectator,
+            ..
+        } => {
+            let _ = tx.send(msg);
+        }
+        _ => {}
     }
 }
 
 fn send_leave() {
-    if let Some((_, tx, _)) = lock(cmd_slot()).as_ref() {
-        let _ = tx.send(Message::Bye);
-        return;
-    }
-    if let Some((_, tx, _)) = lock(four_client_out()).as_ref() {
-        let _ = tx.send(Message::Bye);
+    match &*session() {
+        Session::TwoPlayer { tx, .. } | Session::FourClient { tx, .. } => {
+            let _ = tx.send(Message::Bye);
+        }
+        _ => {}
     }
 }
 
@@ -1916,19 +2116,6 @@ fn bug_passable(pos: &chess_core::Position, m: chess_core::Move) -> Option<Piece
     })
 }
 
-type BugInbound = Mutex<Option<(u64, UnboundedSender<(Option<usize>, Message)>)>>;
-fn bug_inbound() -> &'static BugInbound {
-    static S: OnceLock<BugInbound> = OnceLock::new();
-    S.get_or_init(|| Mutex::new(None))
-}
-
-type BugClientOut = Mutex<Option<(u64, UnboundedSender<Message>)>>;
-fn bug_client_out() -> &'static BugClientOut {
-    static S: OnceLock<BugClientOut> = OnceLock::new();
-    S.get_or_init(|| Mutex::new(None))
-}
-
-static BUG_ASSIGN: Mutex<Option<Vec<i32>>> = Mutex::new(None);
 fn bug_assign_notify() -> &'static tokio::sync::Notify {
     static N: OnceLock<tokio::sync::Notify> = OnceLock::new();
     N.get_or_init(tokio::sync::Notify::new)
@@ -1956,9 +2143,11 @@ struct PendingLobbyPeer {
 async fn lobby_player_handshake(
     stream: TcpStream,
     spectator_reason: &'static str,
+    notices: std::sync::Arc<VersionNotices>,
 ) -> Option<PendingLobbyPeer> {
+    let addr = stream.peer_addr().ok().map(|a| a.ip());
     let (rd, wr) = stream.into_split();
-    let mut reader = BufReader::new(rd);
+    let mut reader = NetReader::new(rd);
     let hello =
         match tokio::time::timeout(Duration::from_secs(5), read_handshake_message(&mut reader))
             .await
@@ -1977,6 +2166,7 @@ async fn lobby_player_handshake(
             ..
         } => {
             if protocol_version != PROTOCOL_VERSION {
+                notices.report(addr, protocol_version);
                 reject_host_handshake(wr, "incompatible protocol version".into());
                 return None;
             }
@@ -2073,10 +2263,14 @@ async fn bug_host_task(
     .map_err(|e| e.to_string())?;
 
     let (in_tx, mut in_rx) = tokio::sync::mpsc::unbounded_channel::<(Option<usize>, Message)>();
+    let notices = VersionNotices::new(sink.clone());
     let (handshake_tx, mut handshake_rx) =
         tokio::sync::mpsc::unbounded_channel::<Option<PendingLobbyPeer>>();
-    let gen = SESSION_GEN.fetch_add(1, Ordering::Relaxed) + 1;
-    *lock(bug_inbound()) = Some((gen, in_tx.clone()));
+    let gen = install_session(|gen| Session::BugHost {
+        gen,
+        tx: in_tx.clone(),
+        pending_start: None,
+    });
 
     let mut peers: Vec<BugPeer> = Vec::new();
     let mut games = [bug_game(), bug_game()];
@@ -2096,10 +2290,12 @@ async fn bug_host_task(
                 let stream = match r { Ok((s, _)) => s, Err(_) => continue };
                 pending_handshakes += 1;
                 let tx = handshake_tx.clone();
+                let notices = notices.clone();
                 tokio::spawn(async move {
                     let _ = tx.send(lobby_player_handshake(
                         stream,
                         "Bughouse does not support spectators",
+                        notices,
                     ).await);
                 });
             }
@@ -2126,7 +2322,11 @@ async fn bug_host_task(
                 let _ = sink.add(ev);
             }
             _ = bug_assign_notify().notified(), if !started => {
-                let Some(owner) = lock(&BUG_ASSIGN).take() else { continue };
+                let owner = match &mut *session() {
+                    Session::BugHost { gen: g, pending_start, .. } if *g == gen => pending_start.take(),
+                    _ => None,
+                };
+                let Some(owner) = owner else { continue };
                 if !valid_network_seat_owners(&owner, peers.len()) { continue; }
                 for (seat, owner_index) in owner.iter().enumerate() {
                     seat_owner[seat] = if *owner_index < 0 {
@@ -2168,6 +2368,7 @@ async fn bug_host_task(
                 ev.increment_seconds = inc;
                 let _ = sink.add(ev);
                 started = true;
+                notices.set_live();
             }
             msg = in_rx.recv() => {
                 let Some((from, m)) = msg else { break };
@@ -2190,10 +2391,7 @@ async fn bug_host_task(
         }
     }
 
-    let mut slot = lock(bug_inbound());
-    if matches!(*slot, Some((g, _)) if g == gen) {
-        *slot = None;
-    }
+    release_session(gen);
     Ok(())
 }
 
@@ -2302,11 +2500,9 @@ fn bug_authority(
 /// If either board has ended, the winning team + which board ended.
 fn bug_check_end(games: &mut [Game; 2]) -> Option<(u8, u8)> {
     for (b, game) in games.iter_mut().enumerate() {
-        let loser = match game.status() {
-            GameStatus::Checkmate { winner } | GameStatus::VariantWin { winner } => {
-                Some(winner.opp())
-            }
-            GameStatus::Ongoing => None,
+        let loser = match game.termination() {
+            Termination::Decisive { winner, .. } => Some(winner.opp()),
+            Termination::Ongoing => None,
             _ => Some(game.pos.side), // stalemate / draws → side to move loses
         };
         if let Some(lc) = loser {
@@ -2397,7 +2593,7 @@ async fn bug_join_task(
         return Ok(());
     };
     let (rd, mut wr) = stream.into_split();
-    let mut reader = BufReader::new(rd);
+    let mut reader = NetReader::new(rd);
 
     if !join_write(
         &mut wr,
@@ -2416,8 +2612,10 @@ async fn bug_join_task(
     }
 
     let (otx, orx) = tokio::sync::mpsc::unbounded_channel::<Message>();
-    let gen = SESSION_GEN.fetch_add(1, Ordering::Relaxed) + 1;
-    *lock(bug_client_out()) = Some((gen, otx.clone()));
+    let gen = install_session(|gen| Session::BugClient {
+        gen,
+        tx: otx.clone(),
+    });
     tokio::spawn(bug_writer(wr, orx));
     let mut cancel_poll = tokio::time::interval(Duration::from_millis(100));
     cancel_poll.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
@@ -2447,10 +2645,7 @@ async fn bug_join_task(
         }
     }
 
-    let mut slot = lock(bug_client_out());
-    if matches!(*slot, Some((g, _)) if g == gen) {
-        *slot = None;
-    }
+    release_session(gen);
     Ok(())
 }
 
@@ -2529,10 +2724,14 @@ fn bug_client_handle(message: Message, sink: &StreamSink<NetEvent>) -> bool {
 }
 
 fn bug_cmd(msg: Message) {
-    if let Some((_, tx)) = lock(bug_inbound()).as_ref() {
-        let _ = tx.send((None, msg)); // host: into the local authority
-    } else if let Some((_, tx)) = lock(bug_client_out()).as_ref() {
-        let _ = tx.send(msg); // client: over TCP to the host
+    match &*session() {
+        Session::BugHost { tx, .. } => {
+            let _ = tx.send((None, msg)); // host: into the local authority
+        }
+        Session::BugClient { tx, .. } => {
+            let _ = tx.send(msg); // client: over TCP to the host
+        }
+        _ => {}
     }
 }
 
@@ -2540,8 +2739,10 @@ fn bug_cmd(msg: Message) {
 /// connection index (join order, 0-based) or -1 for the host.
 #[frb(sync)]
 pub fn net_bug_start(seat_owner: Vec<i32>) {
-    *lock(&BUG_ASSIGN) = Some(seat_owner);
-    bug_assign_notify().notify_one();
+    if let Session::BugHost { pending_start, .. } = &mut *session() {
+        *pending_start = Some(seat_owner);
+        bug_assign_notify().notify_one();
+    }
 }
 
 #[frb(sync)]
@@ -2654,24 +2855,11 @@ enum FourSource {
     Spectator(u64),
 }
 
-type FourInbound = Mutex<Option<(u64, UnboundedSender<(FourSource, Message)>)>>;
-fn four_inbound() -> &'static FourInbound {
-    static S: OnceLock<FourInbound> = OnceLock::new();
-    S.get_or_init(|| Mutex::new(None))
-}
-/// The role gates bridge commands before they reach the socket. In particular,
-/// a spectator must never be able to send a FourMove/FourResign command.
-type FourClientOut = Mutex<Option<(u64, UnboundedSender<Message>, SessionRole)>>;
-fn four_client_out() -> &'static FourClientOut {
-    static S: OnceLock<FourClientOut> = OnceLock::new();
-    S.get_or_init(|| Mutex::new(None))
-}
 struct FourStartAssignment {
     seat_owner: Vec<i32>,
     ai_difficulties: Vec<i32>,
 }
 
-static FOUR_ASSIGN: Mutex<Option<FourStartAssignment>> = Mutex::new(None);
 fn four_assign_notify() -> &'static tokio::sync::Notify {
     static N: OnceLock<tokio::sync::Notify> = OnceLock::new();
     N.get_or_init(tokio::sync::Notify::new)
@@ -2778,9 +2966,13 @@ async fn four_host_task(
     );
 
     let (in_tx, mut in_rx) = tokio::sync::mpsc::unbounded_channel::<(FourSource, Message)>();
+    let notices = VersionNotices::new(sink.clone());
     let (handshake_tx, mut handshake_rx) = tokio::sync::mpsc::unbounded_channel::<HostHandshake>();
-    let gen = SESSION_GEN.fetch_add(1, Ordering::Relaxed) + 1;
-    *lock(four_inbound()) = Some((gen, in_tx.clone()));
+    let gen = install_session(|gen| Session::FourHost {
+        gen,
+        tx: in_tx.clone(),
+        pending_start: None,
+    });
 
     let mut peers: Vec<BugPeer> = Vec::new();
     let mut spectators: Vec<HostPeer> = Vec::new();
@@ -2816,8 +3008,9 @@ async fn four_host_task(
                 }
                 pending_handshakes += 1;
                 let tx = handshake_tx.clone();
+                let notices = notices.clone();
                 tokio::spawn(async move {
-                    prepare_host_handshake(stream, tx).await;
+                    prepare_host_handshake(stream, tx, notices).await;
                 });
             }
             handshake = handshake_rx.recv() => {
@@ -2920,7 +3113,11 @@ async fn four_host_task(
                 }
             }
             _ = four_assign_notify().notified(), if !started => {
-                let Some(FourStartAssignment { seat_owner: owner, ai_difficulties: difficulty_codes }) = lock(&FOUR_ASSIGN).take() else {
+                let assignment = match &mut *session() {
+                    Session::FourHost { gen: g, pending_start, .. } if *g == gen => pending_start.take(),
+                    _ => None,
+                };
+                let Some(FourStartAssignment { seat_owner: owner, ai_difficulties: difficulty_codes }) = assignment else {
                     continue;
                 };
                 if !valid_four_seat_owners(&owner, peers.len()) {
@@ -2978,6 +3175,7 @@ async fn four_host_task(
                 ev.variant = format.clone(); // reuse `variant` to carry the format code
                 let _ = sink.add(ev);
                 started = true;
+                notices.set_live();
                 seat_profiles = Some(assigned_profiles);
                 if allow_spectators {
                     // The match is no longer joinable, but discovery keeps the
@@ -3063,10 +3261,7 @@ async fn four_host_task(
 
     bug_broadcast(&peers, &Message::Bye);
     broadcast(&spectators, &Message::Bye);
-    let mut slot = lock(four_inbound());
-    if matches!(*slot, Some((g, _)) if g == gen) {
-        *slot = None;
-    }
+    release_session(gen);
     Ok(())
 }
 
@@ -3169,21 +3364,42 @@ fn four_authority(
             }
             let owner = seat_owner[seat as usize];
             if four_owner_can_act(owner, from) {
-                four_finish("forfeit".into(), peers, spectators, sink, ended);
+                four_resign_seat(game, seat, peers, spectators, sink, ended, history);
             }
         }
         Message::Bye => {
-            // A connected participant may only forfeit its assigned human seat.
-            // Host-run AI seats never grant a remote action permission.
-            let allowed = match from {
-                Some(peer) => seat_owner.contains(&FourSeatOwner::Peer(peer)),
-                None => seat_owner.contains(&FourSeatOwner::Host),
+            // A disconnecting participant resigns only its own human seat;
+            // the other armies play on. Host-run AI seats never grant a
+            // remote action permission.
+            let owner = match from {
+                Some(peer) => FourSeatOwner::Peer(peer),
+                None => FourSeatOwner::Host,
             };
-            if allowed {
-                four_finish("forfeit".into(), peers, spectators, sink, ended);
+            if let Some(seat) = seat_owner.iter().position(|&o| o == owner) {
+                four_resign_seat(game, seat as u8, peers, spectators, sink, ended, history);
             }
         }
         _ => {}
+    }
+}
+
+/// Resign one seat in the authority and relay it in move order as a
+/// `resign:<colour>` token, which every mirror's `FourGame::play_uci` applies.
+/// The match ends (with a typed result) only if that decided it.
+#[allow(clippy::too_many_arguments)]
+fn four_resign_seat(
+    game: &mut chess4::FourGame,
+    seat: u8,
+    peers: &[BugPeer],
+    spectators: &[HostPeer],
+    sink: &StreamSink<NetEvent>,
+    ended: &mut bool,
+    history: &mut Option<Vec<(u8, String)>>,
+) {
+    let player = chess4::Player::from_index(seat as usize);
+    if game.resign(player) {
+        let token = chess4::serial::resign_token(player);
+        four_publish_move(game, seat, token, peers, spectators, sink, ended, history);
     }
 }
 
@@ -3340,7 +3556,7 @@ async fn four_join_task(
         return Ok(());
     };
     let (rd, mut wr) = stream.into_split();
-    let mut reader = BufReader::new(rd);
+    let mut reader = NetReader::new(rd);
 
     if !join_write(
         &mut wr,
@@ -3359,8 +3575,11 @@ async fn four_join_task(
     }
 
     let (otx, orx) = tokio::sync::mpsc::unbounded_channel::<Message>();
-    let gen = SESSION_GEN.fetch_add(1, Ordering::Relaxed) + 1;
-    *lock(four_client_out()) = Some((gen, otx.clone(), requested_role));
+    let gen = install_session(|gen| Session::FourClient {
+        gen,
+        tx: otx.clone(),
+        role: requested_role,
+    });
     tokio::spawn(bug_writer(wr, orx));
     let mut cancel_poll = tokio::time::interval(Duration::from_millis(100));
     cancel_poll.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
@@ -3397,10 +3616,7 @@ async fn four_join_task(
         }
     }
 
-    let mut slot = lock(four_client_out());
-    if matches!(*slot, Some((g, _, _)) if g == gen) {
-        *slot = None;
-    }
+    release_session(gen);
     Ok(())
 }
 
@@ -3491,10 +3707,18 @@ fn four_client_handle(
 }
 
 fn four_cmd(msg: Message) {
-    if let Some((_, tx)) = lock(four_inbound()).as_ref() {
-        let _ = tx.send((FourSource::Host, msg));
-    } else if let Some((_, tx, SessionRole::Player)) = lock(four_client_out()).as_ref() {
-        let _ = tx.send(msg);
+    match &*session() {
+        Session::FourHost { tx, .. } => {
+            let _ = tx.send((FourSource::Host, msg));
+        }
+        Session::FourClient {
+            tx,
+            role: SessionRole::Player,
+            ..
+        } => {
+            let _ = tx.send(msg);
+        }
+        _ => {}
     }
 }
 
@@ -3505,11 +3729,13 @@ fn four_cmd(msg: Message) {
 /// seat must use `-1`.
 #[frb(sync)]
 pub fn net_four_start(seat_owner: Vec<i32>, ai_difficulties: Vec<i32>) {
-    *lock(&FOUR_ASSIGN) = Some(FourStartAssignment {
-        seat_owner,
-        ai_difficulties,
-    });
-    four_assign_notify().notify_one();
+    if let Session::FourHost { pending_start, .. } = &mut *session() {
+        *pending_start = Some(FourStartAssignment {
+            seat_owner,
+            ai_difficulties,
+        });
+        four_assign_notify().notify_one();
+    }
 }
 
 #[frb(sync)]
@@ -3558,6 +3784,31 @@ mod tests {
             validate_host_hello(Message::Ping { t: 0 }).unwrap_err(),
             "expected hello"
         );
+    }
+
+    #[test]
+    fn host_learns_about_a_protocol_version_mismatch() {
+        use super::{version_mismatch_event, NetEventKind};
+        let event = version_mismatch_event(PROTOCOL_VERSION + 1);
+        assert_eq!(event.kind, NetEventKind::Error);
+        assert_eq!(
+            event.text,
+            format!("version_mismatch:{}", PROTOCOL_VERSION + 1)
+        );
+    }
+
+    #[test]
+    fn version_notice_is_once_per_address_and_never_while_live() {
+        use super::NoticeGate;
+        use std::net::IpAddr;
+        let a: IpAddr = "192.168.1.5".parse().unwrap();
+        let b: IpAddr = "192.168.1.6".parse().unwrap();
+        let gate = NoticeGate::default();
+        assert!(gate.allow(Some(a)));
+        assert!(!gate.allow(Some(a)));
+        assert!(gate.allow(Some(b)));
+        gate.live.store(true, std::sync::atomic::Ordering::SeqCst);
+        assert!(!gate.allow(Some("192.168.1.7".parse().unwrap())));
     }
 
     #[test]
@@ -3737,6 +3988,105 @@ mod tests {
         );
         record_four_history(&mut full_history, 0, "d2d3");
         assert!(full_history.is_none());
+    }
+
+    #[test]
+    fn a_peer_can_only_move_its_own_colour() {
+        let mut game = super::variant_game(
+            chess_core::START_FEN,
+            chess_core::Variant::Standard,
+            &chess_net::VariantState::EMPTY,
+        )
+        .unwrap();
+        // White (the host, say) is to move: Black's connection may not play
+        // White's e2e4 even though it is legal for the side to move.
+        assert!(super::move_for(&mut game, chess_core::Color::Black, "e2e4").is_none());
+        let mv = super::move_for(&mut game, chess_core::Color::White, "e2e4").unwrap();
+        game.make_move(mv);
+        assert!(super::move_for(&mut game, chess_core::Color::White, "d2d4").is_none());
+        assert!(super::move_for(&mut game, chess_core::Color::Black, "e7e5").is_some());
+    }
+
+    #[test]
+    fn hostile_start_fen_is_rejected_not_corrupting() {
+        for fen in [
+            "4k3/8/8/8/4p3/3P4/8/4K3 w - e4 0 1",
+            "P3k3/8/8/8/8/8/8/4K3 w - - 0 1",
+            "4k3/8/8/8/4K3/8/8/7R w H - 0 1",
+            "99999999999999999999999999999/8/8/8/8/8/8/8 w - - 0 1",
+        ] {
+            assert!(super::variant_game(
+                fen,
+                chess_core::Variant::Chess960,
+                &chess_net::VariantState::EMPTY
+            )
+            .is_err());
+        }
+    }
+
+    #[test]
+    fn four_disconnect_resigns_only_that_seat() {
+        let mut game = FourGame::new(Format::FreeForAll);
+        assert!(game.resign(Player::Red));
+        assert_eq!(game.status[0], chess4::PlayerStatus::Resigned);
+        assert!(!game.ended);
+        assert_eq!(game.turn, Player::Blue, "turn moves past the resigned seat");
+        assert!(game.resign(Player::Blue));
+        assert!(game.resign(Player::Yellow));
+        assert!(game.ended);
+        assert_eq!(game.result(), chess4::FourResult::FfaWin(Player::Green));
+    }
+
+    #[test]
+    fn session_slot_is_single_and_released_only_by_its_owner() {
+        let (tx, _rx) = tokio::sync::mpsc::unbounded_channel();
+        let old = super::install_session(|gen| super::Session::BugHost {
+            gen,
+            tx,
+            pending_start: None,
+        });
+        super::net_bug_start(vec![-1, 0, 1, 2]);
+        let (tx2, mut rx2) = tokio::sync::mpsc::unbounded_channel();
+        let new = super::install_session(|gen| super::Session::TwoPlayer {
+            gen,
+            tx: tx2,
+            actions: true,
+        });
+        // The stale Bughouse assignment died with its session.
+        super::release_session(old);
+        super::net_resign();
+        assert_eq!(rx2.try_recv().unwrap(), Message::Resign);
+        super::release_session(new);
+        assert!(matches!(*super::session(), super::Session::Idle));
+    }
+
+    #[tokio::test]
+    async fn partial_message_survives_a_cancelled_read() {
+        use tokio::io::AsyncWriteExt;
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let mut client = tokio::net::TcpStream::connect(addr).await.unwrap();
+        let (server, _) = listener.accept().await.unwrap();
+        let (read_half, _write_half) = server.into_split();
+        let mut reader = super::NetReader::new(read_half);
+
+        let line = Message::Chat {
+            text: "x".repeat(20_000),
+        }
+        .encode();
+        let (head, tail) = line.as_bytes().split_at(12_000);
+        client.write_all(head).await.unwrap();
+        client.flush().await.unwrap();
+        // Lose the race against a timer, as a `select!` branch would.
+        let first = tokio::time::timeout(
+            std::time::Duration::from_millis(100),
+            super::read_message(&mut reader),
+        )
+        .await;
+        assert!(first.is_err(), "the message is not complete yet");
+        client.write_all(tail).await.unwrap();
+        let message = super::read_message(&mut reader).await.unwrap().unwrap();
+        assert_eq!(Message::decode(&line).unwrap(), message);
     }
 
     #[tokio::test]

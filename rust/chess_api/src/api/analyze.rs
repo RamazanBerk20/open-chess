@@ -9,12 +9,14 @@
 //! same horizon the best-move search already explored (and mostly from the
 //! shared transposition table, so the second search is nearly free).
 
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use chess_ai::{
     book_moves, lookup_opening, Engine, OpeningInfo, SearchInfo, SearchLimits, MATE, MATE_THRESHOLD,
 };
-use chess_core::{parse_fen, to_fen, Color, Move, Piece, Position, START_FEN};
+use chess_core::{
+    parse_fen_variant, to_fen, Color, Move, Piece, Position, VariantExtras, START_FEN,
+};
 use flutter_rust_bridge::frb;
 
 use crate::frb_generated::StreamSink;
@@ -113,8 +115,15 @@ pub struct AnalysisSummary {
     pub black_elo: Option<EloEstimate>,
 }
 
-/// Only one analysis runs at a time; this cancels it.
-static CANCEL: AtomicBool = AtomicBool::new(false);
+/// Analysis generation. Each job records the generation it started in and
+/// stops as soon as it changes, so a cancel only ever affects jobs that were
+/// started before it: a new job can no longer "un-cancel" an older one.
+/// Starting a job also retires any older job (only one analysis runs).
+static ANALYSIS_EPOCH: AtomicU64 = AtomicU64::new(0);
+
+fn begin_analysis() -> u64 {
+    ANALYSIS_EPOCH.fetch_add(1, Ordering::SeqCst) + 1
+}
 
 fn piece_val(p: Piece) -> i32 {
     match p {
@@ -295,18 +304,21 @@ pub fn analyze_game_request(
     request: AnalyzeGameRequest,
     sink: StreamSink<AnalysisUpdate>,
 ) -> Result<(), String> {
-    CANCEL.store(false, Ordering::Relaxed);
-    let mut pos = parse_fen(&request.start_fen).map_err(|e| e.to_string())?;
+    let epoch = begin_analysis();
+    // FEN has no portable variant field: parse and validate it under the
+    // caller's actual rules before engine use, just as the AI endpoint does.
+    let mut pos = parse_fen_variant(
+        &request.start_fen,
+        crate::api::game::to_variant(request.variant),
+        &VariantExtras::default(),
+    )
+    .map_err(|e| e.to_string())?;
     let standard_start = is_standard_start(&pos, request.variant);
-    // FEN has no portable variant field. Apply the caller's actual rules and
-    // rebuild its hash before engine use, just as the AI endpoint does.
-    pos.variant = crate::api::game::to_variant(request.variant);
-    pos.hash = pos.compute_hash();
 
     let total = request.moves.len() as u32;
     let depth = request.depth.clamp(1, 64) as u8;
     let mut eng = Engine::new(18);
-    let cancel = || CANCEL.load(Ordering::Relaxed);
+    let cancel = || ANALYSIS_EPOCH.load(Ordering::SeqCst) != epoch;
 
     // Best move searches `pos` to `depth`; the played move searches the child
     // one ply shallower so both look the same number of plies ahead of `pos`.
@@ -520,12 +532,13 @@ fn is_standard_start(position: &Position, variant: crate::api::game::GameVariant
 /// Cancel the running analysis.
 #[frb(sync)]
 pub fn analysis_cancel() {
-    CANCEL.store(true, Ordering::Relaxed);
+    ANALYSIS_EPOCH.fetch_add(1, Ordering::SeqCst);
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use chess_core::parse_fen;
 
     fn mv(uci: &str) -> Move {
         let mut p = Position::startpos();
@@ -616,6 +629,15 @@ mod tests {
             ),
             "best",
         );
+    }
+
+    #[test]
+    fn a_new_analysis_does_not_uncancel_an_older_one() {
+        let first = begin_analysis();
+        analysis_cancel();
+        let second = begin_analysis();
+        assert_ne!(ANALYSIS_EPOCH.load(Ordering::SeqCst), first);
+        assert_eq!(ANALYSIS_EPOCH.load(Ordering::SeqCst), second);
     }
 
     #[test]

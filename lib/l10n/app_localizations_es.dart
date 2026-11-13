@@ -370,9 +370,6 @@ class AppLocalizationsEs extends AppLocalizations {
   String get hostGame => 'Crear partida';
 
   @override
-  String get joinGame => 'Unirse a una partida';
-
-  @override
   String get yourName => 'Tu nombre';
 
   @override
@@ -415,19 +412,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get typeMessage => 'Escribe un mensaje…';
 
   @override
-  String get savedGames => 'Partidas guardadas';
-
-  @override
   String get noSavedGames => 'Aún no hay partidas guardadas';
 
   @override
-  String get resume => 'Reanudar';
-
-  @override
   String get renameGameTitle => 'Renombrar partida';
-
-  @override
-  String get playFromPosition => 'Jugar desde una posición';
 
   @override
   String get pasteFen => 'Pega una cadena FEN';
@@ -446,28 +434,16 @@ class AppLocalizationsEs extends AppLocalizations {
   String get loadPosition => 'Cargar posición';
 
   @override
-  String get sideToPlay => 'El bando que juega lo establece el FEN';
-
-  @override
   String get exportPgn => 'Exportar PGN';
 
   @override
   String get copyPgn => 'Copiar PGN';
 
   @override
-  String get copyMoves => 'Copiar jugadas';
-
-  @override
   String get copiedToClipboard => 'Copiado al portapapeles';
 
   @override
   String get game => 'Partida';
-
-  @override
-  String get singlePlayerTitle => 'Un jugador contra la IA';
-
-  @override
-  String get twoPlayerTitle => 'Dos jugadores — mismo dispositivo';
 
   @override
   String get lanTitle => 'Dos jugadores — LAN';
@@ -491,25 +467,16 @@ class AppLocalizationsEs extends AppLocalizations {
   String get tcInfinite => 'Ilimitado';
 
   @override
-  String get diffBeginner => 'Principiante';
-
-  @override
   String get diffVeryEasy => 'Muy fácil';
 
   @override
   String get diffEasy => 'Fácil';
 
   @override
-  String get diffMedium => 'Intermedio';
-
-  @override
   String get diffNormal => 'Normal';
 
   @override
   String get diffHard => 'Difícil';
-
-  @override
-  String get diffExpert => 'Experto';
 
   @override
   String get diffVeryHard => 'Muy difícil';
@@ -531,15 +498,6 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get timePerMove => 'Tiempo/jugada (ms)';
-
-  @override
-  String get topNRandom => 'Top-N aleatorio';
-
-  @override
-  String get blunderChance => 'Probabilidad de error grave';
-
-  @override
-  String get evalNoise => 'Ruido de evaluación (cp)';
 
   @override
   String get maxEvalLoss => 'Pérdida máxima de evaluación (cp)';
@@ -597,15 +555,6 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get bugMode => 'Modo';
-
-  @override
-  String get bugHotSeat => 'Asiento compartido (4 jugadores)';
-
-  @override
-  String get bugVsAi => 'contra la computadora';
-
-  @override
-  String get bugYourSeat => 'Tu asiento';
 
   @override
   String get bugBoardA => 'Tablero A';
@@ -719,14 +668,6 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String fogPassDevice(String color) {
-    return 'Pasa el dispositivo a $color';
-  }
-
-  @override
-  String get fogTapReveal => 'Toca para revelar tu turno';
-
-  @override
   String get checksLabel => 'Jaques';
 
   @override
@@ -761,4 +702,207 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get about => 'Acerca de';
+
+  @override
+  String storeCorrupt(Object path) {
+    return 'No se pudo leer un archivo de datos. Se guardó una copia en $path.';
+  }
+
+  @override
+  String get settingsSaveFailed =>
+      'No se pudo guardar un ajuste. Se aplicará hasta que cierres la aplicación.';
+
+  @override
+  String get fenCastlingRemoved =>
+      'Se quitaron los derechos de enroque que no coincidían con la posición.';
+
+  @override
+  String get fenEnPassantRemoved =>
+      'Se quitó una casilla de captura al paso que no coincidía con la posición.';
+
+  @override
+  String get fenOpenedAsChess960 =>
+      'Abierta como Chess960: esta disposición de enroque no es válida en el ajedrez estándar.';
+
+  @override
+  String savedPartialReplay(int count) {
+    return 'Jugadas que no se pudieron reproducir con las reglas actuales: $count. La partida se abrió en la última jugada posible; tu partida guardada no se modificó.';
+  }
+
+  @override
+  String savedGameDefaultName(Object stamp) {
+    return 'Partida $stamp';
+  }
+
+  @override
+  String get gameSaveFailed => 'No se pudo guardar la partida.';
+
+  @override
+  String get pauseGame => 'Pausar';
+
+  @override
+  String get resumeGame => 'Reanudar';
+
+  @override
+  String get gamePaused => 'Partida en pausa';
+
+  @override
+  String get chatTooLong => 'El mensaje es demasiado largo.';
+
+  @override
+  String get aiThinking => 'La IA está pensando…';
+
+  @override
+  String aiDepthEval(int depth, Object eval) {
+    return 'IA: profundidad $depth, evaluación $eval';
+  }
+
+  @override
+  String pliesCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count jugadas',
+      one: '1 jugada',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get openLinkFailed => 'No se pudo abrir el enlace.';
+
+  @override
+  String get boardGreen => 'Verde';
+
+  @override
+  String get boardBrown => 'Marrón';
+
+  @override
+  String get boardBlue => 'Azul';
+
+  @override
+  String get boardGray => 'Gris';
+
+  @override
+  String get animationOff => 'Desactivado';
+
+  @override
+  String animationMs(int ms) {
+    return '$ms ms';
+  }
+
+  @override
+  String get checkUpdatesOnLaunch => 'Buscar actualizaciones al iniciar';
+
+  @override
+  String get gameOverGeneric => 'Partida terminada';
+
+  @override
+  String get lanIncompatibleVersion =>
+      'El otro dispositivo usa otra versión de Open Chess. Actualiza la app en ambos dispositivos.';
+
+  @override
+  String get tooManyPendingUpdates =>
+      'Demasiadas actualizaciones de partida pendientes.';
+
+  @override
+  String get continueGame => 'Continuar partida sin terminar';
+
+  @override
+  String get discardGame => 'Descartar';
+
+  @override
+  String get noMovesYet => 'Aún no hay jugadas';
+
+  @override
+  String get promoteTo => 'Promocionar a';
+
+  @override
+  String get piecePawn => 'peón';
+
+  @override
+  String get pieceKnight => 'caballo';
+
+  @override
+  String get pieceBishop => 'alfil';
+
+  @override
+  String get pieceRook => 'torre';
+
+  @override
+  String get pieceQueen => 'dama';
+
+  @override
+  String get pieceKing => 'rey';
+
+  @override
+  String squarePieceLabel(Object square, Object color, Object piece) {
+    return '$square, $piece ($color)';
+  }
+
+  @override
+  String get staleCastlingTitle => 'Derechos de enroque obsoletos';
+
+  @override
+  String get staleCastlingBody =>
+      'Esta posición guardada permite enrocar con una torre que ya no está. ¿Abrirla sin esos derechos de enroque? La partida guardada no se modifica.';
+
+  @override
+  String get openAnyway => 'Abrir';
+
+  @override
+  String savedFenRejected(Object error) {
+    return 'No se puede abrir esta partida guardada: $error';
+  }
+
+  @override
+  String analysisFailed(Object error) {
+    return 'El análisis falló. $error';
+  }
+
+  @override
+  String get importGame => 'Importar PGN / FEN';
+
+  @override
+  String get importFromClipboard => 'Pegar';
+
+  @override
+  String get importFromFile => 'Abrir archivo';
+
+  @override
+  String get importHint => 'Pega una partida PGN o una posición FEN';
+
+  @override
+  String get importEmpty => 'No hay nada que importar.';
+
+  @override
+  String get importTooLarge => 'El texto es demasiado grande para importarlo.';
+
+  @override
+  String importTooLong(int max) {
+    return 'La partida tiene más de $max jugadas.';
+  }
+
+  @override
+  String importBadFen(Object error) {
+    return 'Posición no válida: $error';
+  }
+
+  @override
+  String importBadMove(Object move) {
+    return 'Jugada ilegal o ilegible: $move';
+  }
+
+  @override
+  String importUnsupported(Object variant) {
+    return 'Esta variante no se puede analizar: $variant';
+  }
+
+  @override
+  String get importReadFailed => 'No se pudo leer el archivo.';
+
+  @override
+  String engineFailed(Object error) {
+    return 'El motor no pudo analizar esta posición: $error';
+  }
 }

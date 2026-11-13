@@ -35,11 +35,20 @@ Future<void> showUpdateResult(
         FilledButton(
           onPressed: () {
             Navigator.pop(c);
-            openUrl(info.apkUrl ?? info.htmlUrl);
+            openUrlOrReport(context, info.downloadUrl);
           },
           child: Text(t.download),
         ),
       ],
     ),
   );
+}
+
+/// Open [url]; show a snackbar when no app could open it.
+Future<void> openUrlOrReport(BuildContext context, String url) async {
+  final messenger = ScaffoldMessenger.maybeOf(context);
+  final failed = AppLocalizations.of(context).openLinkFailed;
+  if (!await openUrl(url)) {
+    messenger?.showSnackBar(SnackBar(content: Text(failed)));
+  }
 }

@@ -16,15 +16,46 @@ const String _latestReleaseApi =
 class UpdateInfo {
   final String version; // e.g. "1.0.1"
   final String htmlUrl; // release page
-  final String? apkUrl; // android .apk asset, if present
-  const UpdateInfo({required this.version, required this.htmlUrl, this.apkUrl});
+  final String? assetUrl; // this OS's installer asset, if present
+  const UpdateInfo({
+    required this.version,
+    required this.htmlUrl,
+    this.assetUrl,
+  });
+
+  /// Where Download goes: this platform's artifact, else the release page.
+  String get downloadUrl => assetUrl ?? htmlUrl;
+}
+
+/// The release asset for [os] (`Platform.operatingSystem`): the APK on
+/// Android, the installer on Windows, the AppImage on Linux. Null otherwise,
+/// so desktop never downloads an APK.
+String? pickUpdateAsset(List<(String, String)> assets, String os) {
+  final suffix = switch (os) {
+    'android' => '.apk',
+    'windows' => '.exe',
+    'linux' => '.appimage',
+    _ => null,
+  };
+  if (suffix == null) return null;
+  for (final (name, url) in assets) {
+    if (name.toLowerCase().endsWith(suffix)) return url;
+  }
+  return null;
 }
 
 /// Open [url] in the external browser. Returns false if it couldn't open.
+/// (No `canLaunchUrl` pre-check: on Android 11+ it needs package visibility
+/// and wrongly reports false; `launchUrl` itself reports failure.)
 Future<bool> openUrl(String url) async {
-  final uri = Uri.parse(url);
-  if (!await canLaunchUrl(uri)) return false;
-  return launchUrl(uri, mode: LaunchMode.externalApplication);
+  try {
+    return await launchUrl(
+      Uri.parse(url),
+      mode: LaunchMode.externalApplication,
+    );
+  } catch (_) {
+    return false;
+  }
 }
 
 /// The running app's version string (e.g. "1.0.0").
@@ -50,18 +81,15 @@ Future<UpdateInfo?> checkForUpdate() async {
     final json = jsonDecode(body) as Map<String, dynamic>;
     final tag = (json['tag_name'] as String?) ?? '';
     if (!_isNewer(_parse(tag), current)) return null;
-    String? apkUrl;
-    for (final a in (json['assets'] as List?) ?? const []) {
-      final name = ((a as Map)['name'] as String? ?? '').toLowerCase();
-      if (name.endsWith('.apk')) {
-        apkUrl = a['browser_download_url'] as String?;
-        break;
-      }
-    }
+    final assets = [
+      for (final a in (json['assets'] as List?) ?? const [])
+        if (a is Map && a['browser_download_url'] is String)
+          ((a['name'] as String?) ?? '', a['browser_download_url'] as String),
+    ];
     return UpdateInfo(
       version: tag.replaceFirst(RegExp(r'^v'), ''),
       htmlUrl: (json['html_url'] as String?) ?? repoUrl,
-      apkUrl: apkUrl,
+      assetUrl: pickUpdateAsset(assets, Platform.operatingSystem),
     );
   } catch (_) {
     return null; // offline / parse error / rate-limited — fail quietly

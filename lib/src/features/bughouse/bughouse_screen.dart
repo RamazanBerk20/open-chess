@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:open_chess/l10n/app_localizations.dart';
+import 'package:open_chess/src/state/l10n_labels.dart';
 import 'package:open_chess/src/rust/api/game.dart';
 import 'package:open_chess/src/state/bughouse_controller.dart';
 import 'package:open_chess/src/state/bughouse_lan_controller.dart';
@@ -243,7 +244,9 @@ class _ResultBanner extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       color: Colors.blue.shade200,
       child: Text(
-        t.bugTeamWins(result.winningTeam.toString()),
+        result.interrupted != null
+            ? localizeLanResult(t, result.interrupted!)
+            : t.bugTeamWins(result.winningTeam.toString()),
         textAlign: TextAlign.center,
         style: const TextStyle(
           fontSize: 16,

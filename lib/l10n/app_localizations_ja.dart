@@ -370,9 +370,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get hostGame => 'ゲームを開催';
 
   @override
-  String get joinGame => 'ゲームに参加';
-
-  @override
   String get yourName => 'あなたの名前';
 
   @override
@@ -415,19 +412,10 @@ class AppLocalizationsJa extends AppLocalizations {
   String get typeMessage => 'メッセージを入力…';
 
   @override
-  String get savedGames => '保存したゲーム';
-
-  @override
   String get noSavedGames => '保存したゲームはまだありません';
 
   @override
-  String get resume => '再開';
-
-  @override
   String get renameGameTitle => 'ゲーム名を変更';
-
-  @override
-  String get playFromPosition => '局面から対局';
 
   @override
   String get pasteFen => 'FEN文字列を貼り付け';
@@ -446,28 +434,16 @@ class AppLocalizationsJa extends AppLocalizations {
   String get loadPosition => '局面を読み込む';
 
   @override
-  String get sideToPlay => '手番はFENで設定されます';
-
-  @override
   String get exportPgn => 'PGNをエクスポート';
 
   @override
   String get copyPgn => 'PGNをコピー';
 
   @override
-  String get copyMoves => '手をコピー';
-
-  @override
   String get copiedToClipboard => 'クリップボードにコピーしました';
 
   @override
   String get game => '対局';
-
-  @override
-  String get singlePlayerTitle => 'シングルプレイヤー 対 AI';
-
-  @override
-  String get twoPlayerTitle => '2人対戦 — 同じ端末';
 
   @override
   String get lanTitle => '2人対戦 — LAN';
@@ -491,25 +467,16 @@ class AppLocalizationsJa extends AppLocalizations {
   String get tcInfinite => '無制限';
 
   @override
-  String get diffBeginner => '初心者';
-
-  @override
   String get diffVeryEasy => 'とても簡単';
 
   @override
   String get diffEasy => '易しい';
 
   @override
-  String get diffMedium => '普通';
-
-  @override
   String get diffNormal => '標準';
 
   @override
   String get diffHard => '難しい';
-
-  @override
-  String get diffExpert => 'エキスパート';
 
   @override
   String get diffVeryHard => 'とても難しい';
@@ -531,15 +498,6 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get timePerMove => '1手あたりの時間（ミリ秒）';
-
-  @override
-  String get topNRandom => '上位N手からランダム';
-
-  @override
-  String get blunderChance => '大悪手の確率';
-
-  @override
-  String get evalNoise => '評価ノイズ（センチポーン）';
 
   @override
   String get maxEvalLoss => '最大評価損失（センチポーン）';
@@ -595,15 +553,6 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get bugMode => 'モード';
-
-  @override
-  String get bugHotSeat => 'ホットシート（4人）';
-
-  @override
-  String get bugVsAi => 'コンピュータと対戦';
-
-  @override
-  String get bugYourSeat => 'あなたの席';
 
   @override
   String get bugBoardA => 'ボードA';
@@ -717,14 +666,6 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String fogPassDevice(String color) {
-    return '端末を$colorに渡してください';
-  }
-
-  @override
-  String get fogTapReveal => 'タップして自分の手番を表示';
-
-  @override
   String get checksLabel => 'チェック数';
 
   @override
@@ -759,4 +700,196 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get about => 'アプリについて';
+
+  @override
+  String storeCorrupt(Object path) {
+    return 'データファイルを読み込めませんでした。コピーを $path に保存しました。';
+  }
+
+  @override
+  String get settingsSaveFailed => '設定を保存できませんでした。アプリを閉じるまでは有効です。';
+
+  @override
+  String get fenCastlingRemoved => '局面と一致しないキャスリングの権利を削除しました。';
+
+  @override
+  String get fenEnPassantRemoved => '局面と一致しないアンパッサンのマスを削除しました。';
+
+  @override
+  String get fenOpenedAsChess960 => 'Chess960として開きました。このキャスリング配置は通常のチェスでは無効です。';
+
+  @override
+  String savedPartialReplay(int count) {
+    return '現在のルールで再生できなかった手数：$count。最後に指せる手の位置で開きました。保存データは変更されていません。';
+  }
+
+  @override
+  String savedGameDefaultName(Object stamp) {
+    return '対局 $stamp';
+  }
+
+  @override
+  String get gameSaveFailed => '対局を保存できませんでした。';
+
+  @override
+  String get pauseGame => '一時停止';
+
+  @override
+  String get resumeGame => '再開';
+
+  @override
+  String get gamePaused => '一時停止中';
+
+  @override
+  String get chatTooLong => 'メッセージが長すぎます。';
+
+  @override
+  String get aiThinking => 'AI思考中…';
+
+  @override
+  String aiDepthEval(int depth, Object eval) {
+    return 'AI：深さ $depth、評価値 $eval';
+  }
+
+  @override
+  String pliesCount(int count) {
+    return '$count 手';
+  }
+
+  @override
+  String get openLinkFailed => 'リンクを開けませんでした。';
+
+  @override
+  String get boardGreen => 'グリーン';
+
+  @override
+  String get boardBrown => 'ブラウン';
+
+  @override
+  String get boardBlue => 'ブルー';
+
+  @override
+  String get boardGray => 'グレー';
+
+  @override
+  String get animationOff => 'オフ';
+
+  @override
+  String animationMs(int ms) {
+    return '$ms ミリ秒';
+  }
+
+  @override
+  String get checkUpdatesOnLaunch => '起動時にアップデートを確認';
+
+  @override
+  String get gameOverGeneric => '対局終了';
+
+  @override
+  String get lanIncompatibleVersion =>
+      '相手の端末は別のバージョンの Open Chess を使っています。両方の端末でアプリを更新してください。';
+
+  @override
+  String get tooManyPendingUpdates => '保留中の対局更新が多すぎます。';
+
+  @override
+  String get continueGame => '未完了の対局を続ける';
+
+  @override
+  String get discardGame => '破棄';
+
+  @override
+  String get noMovesYet => 'まだ指し手はありません';
+
+  @override
+  String get promoteTo => '成る駒を選択';
+
+  @override
+  String get piecePawn => 'ポーン';
+
+  @override
+  String get pieceKnight => 'ナイト';
+
+  @override
+  String get pieceBishop => 'ビショップ';
+
+  @override
+  String get pieceRook => 'ルーク';
+
+  @override
+  String get pieceQueen => 'クイーン';
+
+  @override
+  String get pieceKing => 'キング';
+
+  @override
+  String squarePieceLabel(Object square, Object color, Object piece) {
+    return '$square、$colorの$piece';
+  }
+
+  @override
+  String get staleCastlingTitle => '古いキャスリング権';
+
+  @override
+  String get staleCastlingBody =>
+      'この保存局面には、もう存在しないルークとのキャスリング権があります。その権利を外して開きますか？保存された対局自体は変更されません。';
+
+  @override
+  String get openAnyway => '開く';
+
+  @override
+  String savedFenRejected(Object error) {
+    return 'この保存対局は開けません: $error';
+  }
+
+  @override
+  String analysisFailed(Object error) {
+    return '解析に失敗しました。$error';
+  }
+
+  @override
+  String get importGame => 'PGN / FEN を読み込む';
+
+  @override
+  String get importFromClipboard => '貼り付け';
+
+  @override
+  String get importFromFile => 'ファイルを開く';
+
+  @override
+  String get importHint => 'PGN の棋譜または FEN 局面を貼り付けてください';
+
+  @override
+  String get importEmpty => '読み込む内容がありません。';
+
+  @override
+  String get importTooLarge => 'テキストが大きすぎて読み込めません。';
+
+  @override
+  String importTooLong(int max) {
+    return '対局が $max 手を超えています。';
+  }
+
+  @override
+  String importBadFen(Object error) {
+    return '無効な局面: $error';
+  }
+
+  @override
+  String importBadMove(Object move) {
+    return '不正または読み取れない指し手: $move';
+  }
+
+  @override
+  String importUnsupported(Object variant) {
+    return 'このバリアントは解析できません: $variant';
+  }
+
+  @override
+  String get importReadFailed => 'ファイルを読み込めませんでした。';
+
+  @override
+  String engineFailed(Object error) {
+    return 'エンジンはこの局面を探索できませんでした: $error';
+  }
 }

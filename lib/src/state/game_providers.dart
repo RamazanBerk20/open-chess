@@ -9,6 +9,7 @@ import 'package:open_chess/src/rust/api/net.dart' show netSendMove;
 import 'package:open_chess/src/state/ai_provider.dart';
 import 'package:open_chess/src/state/clock_provider.dart';
 import 'package:open_chess/src/state/game_mode.dart';
+import 'package:open_chess/src/state/game_phase.dart';
 import 'package:open_chess/src/state/l10n_labels.dart';
 import 'package:open_chess/src/state/saved_games.dart';
 import 'package:open_chess/src/state/settings.dart';
@@ -33,6 +34,8 @@ class GameUiState {
   final String? overlayResult;
   // Crazyhouse: the reserve piece selected for dropping (0=Pawn..4=Queen), if any.
   final int? handPiece;
+  // A local timed game on hold (pause button or app backgrounded).
+  final bool paused;
 
   const GameUiState({
     required this.view,
@@ -47,7 +50,39 @@ class GameUiState {
     this.premoveTargets = const {},
     this.overlayResult,
     this.handPiece,
+    this.paused = false,
   });
+
+  /// Same state with only the given presentation fields changed.
+  GameUiState keep({
+    GameView? view,
+    bool? flipped,
+    bool? autoFlip,
+    bool? paused,
+  }) => GameUiState(
+    view: view ?? this.view,
+    selected: selected,
+    targets: targets,
+    flipped: flipped ?? this.flipped,
+    autoFlip: autoFlip ?? this.autoFlip,
+    pendingPromotion: pendingPromotion,
+    animateLast: animateLast,
+    premoves: premoves,
+    premoveFrom: premoveFrom,
+    premoveTargets: premoveTargets,
+    overlayResult: overlayResult,
+    handPiece: handPiece,
+    paused: paused ?? this.paused,
+  );
+
+  GamePhase phase(GameMode mode) => gamePhase(
+    status: view.status,
+    overlay: overlayResult,
+    paused: paused,
+    pendingPromotion: pendingPromotion,
+    mode: mode,
+    sideToMove: view.sideToMove,
+  );
 
   /// Whether the board should be drawn with Black at the bottom.
   bool get isFlipped =>
@@ -56,8 +91,8 @@ class GameUiState {
   bool get isOver =>
       view.status != GameOutcome.ongoing || overlayResult != null;
 
-  /// Input must be refused while a promotion choice is outstanding.
-  bool get isBusy => pendingPromotion != null;
+  /// Input must be refused while a promotion choice is outstanding or paused.
+  bool get isBusy => pendingPromotion != null || paused;
 }
 
 /// A custom start position (FEN) for "Play from Position"; null = standard start.
@@ -91,6 +126,16 @@ final gameControllerProvider = NotifierProvider<GameController, GameUiState>(
 );
 
 class GameController extends Notifier<GameUiState> {
+  // Every build / new game / resume / takeback starts a new session; engine
+  // searches started in an older session are dropped.
+  static int _sessions = 0;
+  int _session = 0;
+  int get session => _session;
+  void _newSession() => _session = ++_sessions;
+
+  /// Clock (white, black ms) just before each ply, persisted with saves so a
+  /// takeback restores the real time even after a resume.
+  final List<(int, int)> _clockBefore = [];
   late ChessGame _game;
   String? _startFen; // exact position this game (and any rematch) starts from
   GameVariant _variant = GameVariant.standard;
@@ -109,6 +154,7 @@ class GameController extends Notifier<GameUiState> {
     }
     _game = _makeStart(tc);
     _startFen = _game.view().fen;
+    _newSession();
     final flipped = mode.lan ? mode.lanMyColor == PieceColor.black : false;
     return GameUiState(view: _game.view(), flipped: flipped);
   }
@@ -171,21 +217,7 @@ class GameController extends Notifier<GameUiState> {
     if (state.isOver) return _game.clockSnapshot();
     _game.tick(elapsedMs: elapsedMs);
     final snap = _game.clockSnapshot();
-    if (snap.over) {
-      state = GameUiState(
-        view: _game.view(),
-        selected: state.selected,
-        targets: state.targets,
-        flipped: state.flipped,
-        autoFlip: state.autoFlip,
-        pendingPromotion: state.pendingPromotion,
-        animateLast: state.animateLast,
-        premoves: state.premoves,
-        premoveFrom: state.premoveFrom,
-        premoveTargets: state.premoveTargets,
-        overlayResult: state.overlayResult,
-      );
-    }
+    if (snap.over) state = state.keep(view: _game.view());
     return snap;
   }
 
@@ -221,6 +253,7 @@ class GameController extends Notifier<GameUiState> {
       // the current chain. Premove selection (from/targets) ends on any idle.
       premoves: premoves ?? (keepPremove ? state.premoves : const []),
       overlayResult: overlayResult ?? state.overlayResult,
+      paused: state.paused,
     );
   }
 
@@ -240,6 +273,7 @@ class GameController extends Notifier<GameUiState> {
       premoveFrom: from,
       premoveTargets: targets,
       overlayResult: state.overlayResult,
+      paused: state.paused,
     );
   }
 
@@ -288,6 +322,8 @@ class GameController extends Notifier<GameUiState> {
     ref.read(aiControllerProvider.notifier).cancel();
     _game = _makeStart(ref.read(selectedTimeControlProvider));
     _startFen = _game.view().fen;
+    _clockBefore.clear();
+    _newSession();
     state = GameUiState(
       view: _game.view(),
       flipped: state.flipped,
@@ -298,60 +334,80 @@ class GameController extends Notifier<GameUiState> {
 
   void undo() {
     if (state.isBusy) return;
-    final mode = ref.read(gameModeProvider);
-    if (mode.lan) return; // can't take back networked moves
-    if (mode.vsAi) {
-      // Take back a full round (AI reply + your move) so it stays your turn and
-      // the engine doesn't immediately move again. Needs both plies present.
-      ref.read(aiControllerProvider.notifier).cancel();
-      if (state.view.sanMoves.length >= 2) {
-        _game.undo(); // AI reply
-        _game.undo(); // your move
-        state = _idle(animateLast: false, keepPremove: false);
-        ref.invalidate(
-          clockProvider,
-        ); // restart the ticker (also after a flag-fall)
+    final n = takebackPlies(
+      mode: ref.read(gameModeProvider),
+      sideToMove: state.view.sideToMove,
+      plies: state.view.sanMoves.length,
+    );
+    if (n == 0) return;
+    ref.read(aiControllerProvider.notifier).cancel();
+    for (var i = 0; i < n; i++) {
+      _undoPly();
+    }
+    _newSession();
+    state = _idle(animateLast: false, keepPremove: false);
+    ref.invalidate(
+      clockProvider,
+    ); // restart the ticker (also after a flag-fall)
+  }
+
+  /// Take back one ply and restore the clock recorded before it.
+  bool _undoPly() {
+    if (!_game.undo()) return false;
+    if (_clockBefore.isNotEmpty) {
+      final (w, b) = _clockBefore.removeLast();
+      if (!_game.clockSnapshot().infinite) {
+        _game.setClockMs(whiteMs: w, blackMs: b);
       }
+    }
+    return true;
+  }
+
+  /// Run a bridge move call, recording the pre-move clock when it adds a ply.
+  /// A bridge error counts as a rejected move instead of crashing the UI.
+  T _move<T>(T Function() apply, T rejected) {
+    final before = _game.clockSnapshot();
+    final T r;
+    try {
+      r = apply();
+    } catch (_) {
+      return rejected;
+    }
+    if (_game.moveHistoryUci().length > _clockBefore.length) {
+      _clockBefore.add((before.whiteMs.toInt(), before.blackMs.toInt()));
+    }
+    return r;
+  }
+
+  /// Hold a local timed game: stops the clock, the engine and input.
+  void pause() {
+    final mode = ref.read(gameModeProvider);
+    if (!canPause(
+      phase: state.phase(mode),
+      mode: mode,
+      timed: !_game.clockSnapshot().infinite,
+    )) {
       return;
     }
-    if (_game.undo()) {
-      state = _idle(animateLast: false);
-      ref.invalidate(clockProvider);
-    }
+    ref.read(clockProvider.notifier).pause();
+    ref.read(aiControllerProvider.notifier).cancel();
+    state = state.keep(paused: true);
+  }
+
+  void resume() {
+    if (!state.paused) return;
+    state = state.keep(paused: false);
+    ref.read(clockProvider.notifier).resume();
   }
 
   void toggleFlip() {
     if (state.isBusy) return;
-    state = GameUiState(
-      view: state.view,
-      selected: state.selected,
-      targets: state.targets,
-      flipped: !state.flipped,
-      autoFlip: false,
-      pendingPromotion: state.pendingPromotion,
-      animateLast: state.animateLast,
-      premoves: state.premoves,
-      premoveFrom: state.premoveFrom,
-      premoveTargets: state.premoveTargets,
-      overlayResult: state.overlayResult,
-    );
+    state = state.keep(flipped: !state.flipped, autoFlip: false);
   }
 
   void toggleAutoFlip() {
     if (state.isBusy) return;
-    state = GameUiState(
-      view: state.view,
-      selected: state.selected,
-      targets: state.targets,
-      flipped: state.flipped,
-      autoFlip: !state.autoFlip,
-      pendingPromotion: state.pendingPromotion,
-      animateLast: state.animateLast,
-      premoves: state.premoves,
-      premoveFrom: state.premoveFrom,
-      premoveTargets: state.premoveTargets,
-      overlayResult: state.overlayResult,
-    );
+    state = state.keep(autoFlip: !state.autoFlip);
   }
 
   /// Tap-to-move handler.
@@ -495,7 +551,10 @@ class GameController extends Notifier<GameUiState> {
       clock.refreshSnapshot();
       return;
     }
-    final outcome = _game.playDrop(piece: piece, to: to);
+    final outcome = _move(
+      () => _game.playDrop(piece: piece, to: to),
+      MoveOutcome.illegal,
+    );
     state = _idle(animateLast: false);
     if (outcome == MoveOutcome.played) {
       // Send the drop to the LAN peer (no-op off-LAN): UCI "N@e4" form.
@@ -514,7 +573,10 @@ class GameController extends Notifier<GameUiState> {
       clock.refreshSnapshot();
       return;
     }
-    final outcome = _game.play(from: from, to: to, promotion: null);
+    final outcome = _move(
+      () => _game.play(from: from, to: to, promotion: null),
+      MoveOutcome.illegal,
+    );
     switch (outcome) {
       case MoveOutcome.played:
         state = _idle(animateLast: true);
@@ -537,7 +599,7 @@ class GameController extends Notifier<GameUiState> {
       clock.refreshSnapshot();
       return;
     }
-    if (_game.playUci(uci: uci)) {
+    if (_move(() => _game.playUci(uci: uci), false)) {
       state = _idle(animateLast: true);
       _feedback();
     }
@@ -559,11 +621,17 @@ class GameController extends Notifier<GameUiState> {
       clock.refreshSnapshot();
       return;
     }
-    var outcome = _game.play(from: pm.$1, to: pm.$2, promotion: null);
+    var outcome = _move(
+      () => _game.play(from: pm.$1, to: pm.$2, promotion: null),
+      MoveOutcome.illegal,
+    );
     var promoted = false;
     if (outcome == MoveOutcome.needsPromotion) {
       // Premove promotions auto-queen (standard behaviour).
-      outcome = _game.play(from: pm.$1, to: pm.$2, promotion: PieceKind.queen);
+      outcome = _move(
+        () => _game.play(from: pm.$1, to: pm.$2, promotion: PieceKind.queen),
+        MoveOutcome.illegal,
+      );
       promoted = true;
     }
     if (outcome == MoveOutcome.played) {
@@ -588,10 +656,15 @@ class GameController extends Notifier<GameUiState> {
       clock.refreshSnapshot();
       return;
     }
-    _game.play(from: p.$1, to: p.$2, promotion: kind);
+    final outcome = _move(
+      () => _game.play(from: p.$1, to: p.$2, promotion: kind),
+      MoveOutcome.illegal,
+    );
     state = _idle(animateLast: true);
     clock.refreshSnapshot();
-    _afterLocalMove('${_su(p.$1)}${_su(p.$2)}${_promoChar(kind)}');
+    if (outcome == MoveOutcome.played) {
+      _afterLocalMove('${_su(p.$1)}${_su(p.$2)}${_promoChar(kind)}');
+    }
   }
 
   void cancelPromotion() {
@@ -615,7 +688,9 @@ class GameController extends Notifier<GameUiState> {
     final sans = state.view.sanMoves;
     if (sans.isEmpty) return;
     final last = sans.last;
-    if (last.contains('#') || last.contains('+')) {
+    // Fog of War: a check alert would reveal hidden attackers.
+    final fog = state.view.variant == GameVariant.fogOfWar;
+    if (!fog && (last.contains('#') || last.contains('+'))) {
       SystemSound.play(SystemSoundType.alert);
     } else {
       SystemSound.play(SystemSoundType.click);
@@ -626,7 +701,7 @@ class GameController extends Notifier<GameUiState> {
   /// reconcile the clock from the message.
   void lanApplyRemote(String uci, int whiteMs, int blackMs) {
     if (state.isOver) return;
-    if (_game.playUci(uci: uci)) {
+    if (_move(() => _game.playUci(uci: uci), false)) {
       _game.setClockMs(whiteMs: whiteMs, blackMs: blackMs);
       state = _idle(animateLast: true);
       ref.read(clockProvider.notifier).resetAndRefresh();
@@ -650,7 +725,7 @@ class GameController extends Notifier<GameUiState> {
     // A client can optimistically submit a move in the narrow interval before
     // the host's clock tick rejects it. The authoritative timeout belongs to
     // the pre-move side, so roll that local optimistic ply back first.
-    if (snap.running != loser && _game.undo()) {
+    if (snap.running != loser && _undoPly()) {
       snap = _game.clockSnapshot();
     }
     _game.setClockMs(
@@ -660,6 +735,17 @@ class GameController extends Notifier<GameUiState> {
     _game.tick(elapsedMs: 0);
     state = _idle(animateLast: false, keepPremove: false);
     ref.read(clockProvider.notifier).resetAndRefresh();
+  }
+
+  /// The host refused our last move [uci]: take it back locally if it is the
+  /// last ply, so the mirror matches the host again.
+  void lanRevertLocal(String uci) {
+    final history = _game.moveHistoryUci();
+    if (state.isOver || history.isEmpty || history.last != uci) return;
+    if (_undoPly()) {
+      state = _idle(animateLast: false, keepPremove: false);
+      ref.read(clockProvider.notifier).resetAndRefresh();
+    }
   }
 
   /// Replace the local board with the authoritative position sent to a LAN
@@ -678,29 +764,43 @@ class GameController extends Notifier<GameUiState> {
     required List<int> blackHand,
     required BigInt promoted,
   }) {
+    try {
+      final g = ChessGame.fromFenVariant(
+        fen: fen,
+        variant: variant,
+        baseMinutes: baseMinutes,
+        incrementSeconds: incrementSeconds,
+      );
+      g.restoreVariantState(
+        whiteChecks: whiteChecks,
+        blackChecks: blackChecks,
+        whiteHand: whiteHand,
+        blackHand: blackHand,
+        promoted: promoted,
+      );
+      _game = g;
+    } catch (_) {
+      // The host's snapshot is not a position we accept: say so, don't crash.
+      lanSetResult(LanResultCode.boardDesync);
+      return;
+    }
     _variant = variant;
     _startFen = fen;
-    _game = ChessGame.fromFenVariant(
-      fen: fen,
-      variant: variant,
-      baseMinutes: baseMinutes,
-      incrementSeconds: incrementSeconds,
-    );
-    _game.restoreVariantState(
-      whiteChecks: whiteChecks,
-      blackChecks: blackChecks,
-      whiteHand: whiteHand,
-      blackHand: blackHand,
-      promoted: promoted,
-    );
+    _clockBefore.clear();
+    _newSession();
     _game.setClockMs(whiteMs: whiteMs, blackMs: blackMs);
     state = GameUiState(view: _game.view());
     ref.invalidate(clockProvider);
   }
 
   /// Show a non-board result (resignation, draw agreed, disconnect).
+  /// The first result is final: a late draw acceptance, resignation, or
+  /// disconnect after the game ended changes nothing.
   void lanSetResult(String text) {
-    state = _idle(overlayResult: text);
+    final overlay = applyResult(state.phase(ref.read(gameModeProvider)), text);
+    if (overlay == null) return;
+    state = _idle(overlayResult: overlay, keepPremove: false);
+    ref.read(clockProvider.notifier).gameOver();
   }
 
   /// Moves played so far (UCI) — for post-game analysis.
@@ -715,56 +815,103 @@ class GameController extends Notifier<GameUiState> {
 
   // ---- Saved games ----
 
-  /// Persist the current game's moves under [name].
-  void saveGame(String name) {
+  /// The current game as a [SavedGame], or null before the first move.
+  SavedGame? snapshot(String name, {bool flush = true}) {
     final moves = _game.moveHistoryUci();
-    if (moves.isEmpty) return;
+    if (moves.isEmpty) return null;
     // Capture the same moment users clicked Save rather than the ticker's last
     // 100 ms snapshot, so a resumed timed game does not gain thinking time.
-    ref.read(clockProvider.notifier).flushElapsed();
+    if (flush) ref.read(clockProvider.notifier).flushElapsed();
     final now = DateTime.now();
-    final stamp = now.toString().split('.').first;
     final tc = ref.read(selectedTimeControlProvider);
     final clock = _game.clockSnapshot();
     final mode = ref.read(gameModeProvider);
-    ref
-        .read(savedGamesProvider.notifier)
-        .add(
-          SavedGame(
-            id: now.microsecondsSinceEpoch.toString(),
-            name: name.trim().isEmpty ? 'Game $stamp' : name.trim(),
-            moves: moves,
-            createdAt: stamp,
-            startFen: startFen,
-            variantCode: variantCode(_variant),
-            baseMinutes: tc.isInfinite ? null : tc.baseMinutes,
-            incrementSeconds: tc.incrementSeconds,
-            whiteMs: clock.infinite ? null : clock.whiteMs.toInt(),
-            blackMs: clock.infinite ? null : clock.blackMs.toInt(),
-            vsAi: mode.vsAi,
-            aiColorCode: mode.aiColor == PieceColor.white ? 'white' : 'black',
-            difficultyName: mode.vsAi ? mode.difficulty.name : null,
-          ),
-        );
+    return SavedGame(
+      id: now.microsecondsSinceEpoch.toString(),
+      name: name,
+      moves: moves,
+      createdAt: now.toString().split('.').first,
+      startFen: startFen,
+      variantCode: variantCode(_variant),
+      baseMinutes: tc.isInfinite ? null : tc.baseMinutes,
+      incrementSeconds: tc.incrementSeconds,
+      whiteMs: clock.infinite ? null : clock.whiteMs.toInt(),
+      blackMs: clock.infinite ? null : clock.blackMs.toInt(),
+      vsAi: mode.vsAi,
+      aiColorCode: mode.aiColor == PieceColor.white ? 'white' : 'black',
+      difficultyName: mode.vsAi ? mode.difficulty.name : null,
+      difficultyParams: mode.vsAi ? mode.difficulty.toJson() : null,
+      clockHistory: clock.infinite || _clockBefore.length != moves.length
+          ? null
+          : List.of(_clockBefore),
+    );
+  }
+
+  /// Persist the current game under [name]. Completes with false when there
+  /// was nothing to save or the write failed.
+  Future<bool> saveGame(String name) async {
+    final g = snapshot(name);
+    if (g == null) return false;
+    try {
+      await ref.read(savedGamesProvider.notifier).add(g);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Autosave the current local game (cleared once it is over). LAN
+  /// games are owned by the host and never autosaved.
+  void autosave({bool flush = true}) {
+    if (ref.read(gameModeProvider).lan) return;
+    final autosaved = ref.read(autosaveProvider.notifier);
+    if (state.isOver) {
+      autosaved.put(null); // finished: nothing to resume
+      return;
+    }
+    // An empty board (new game not started yet) keeps the previous unfinished
+    // game on offer instead of erasing it.
+    final g = snapshot('', flush: flush);
+    if (g != null) autosaved.put(g);
   }
 
   /// Replay a saved move list onto the current (freshly built) game. The caller
-  /// invalidates this provider with an infinite time control first. Returns
-  /// false if a move was illegal (corrupt save) — replay stops at that point.
-  bool loadGame(List<String> moves, {int? whiteMs, int? blackMs}) {
-    var ok = true;
-    for (final u in moves) {
-      if (!_game.playUci(uci: u)) {
-        ok = false;
+  /// invalidates this provider with an infinite time control first. Replay
+  /// stops at the first move the current rules reject (a save from an older
+  /// release, or a corrupt one); returns how many saved moves were NOT replayed
+  /// (0 = complete). The save itself is never touched.
+  int loadGame(
+    List<String> moves, {
+    int? whiteMs,
+    int? blackMs,
+    List<(int, int)>? clockHistory,
+  }) {
+    ref.read(aiControllerProvider.notifier).cancel();
+    var unplayed = 0;
+    for (var i = 0; i < moves.length; i++) {
+      if (!_move(() => _game.playUci(uci: moves[i]), false)) {
+        unplayed = moves.length - i;
         break; // don't apply later plies onto a desynced position
       }
     }
+    final ok = unplayed == 0;
     if (whiteMs != null && blackMs != null) {
       _game.setClockMs(whiteMs: whiteMs, blackMs: blackMs);
+      // The replay recorded fresh-game clocks. Use the saved per-ply history;
+      // for older saves without one, never hand back more than the save had.
+      final n = _clockBefore.length;
+      _clockBefore
+        ..clear()
+        ..addAll(
+          ok && clockHistory != null && clockHistory.length == n
+              ? clockHistory
+              : List.filled(n, (whiteMs, blackMs)),
+        );
     }
+    _newSession();
     state = GameUiState(view: _game.view());
     ref.invalidate(clockProvider);
-    return ok;
+    return unplayed;
   }
 
   static String _su(int sq) =>

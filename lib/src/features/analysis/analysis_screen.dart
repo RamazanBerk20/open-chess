@@ -37,32 +37,26 @@ class AnalysisScreen extends ConsumerStatefulWidget {
 class _AnalysisScreenState extends ConsumerState<AnalysisScreen> {
   int _viewPly = 0; // number of moves played from the start
   late ChessGame _nav;
-  late final AnalysisController _analysis;
   bool _animate = false; // slide pieces only when stepping one move at a time
   bool _flipped = false; // view from Black's side
 
   @override
   void initState() {
     super.initState();
-    _analysis = ref.read(analysisProvider.notifier);
     _nav = _newNavigator();
     _viewPly = 0;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      _analysis.run(
-        widget.moves,
-        startFen: widget.startFen,
-        variant: widget.variant,
-        knownWhiteElo: widget.knownWhiteElo,
-        knownBlackElo: widget.knownBlackElo,
-      );
+      ref
+          .read(analysisProvider.notifier)
+          .run(
+            widget.moves,
+            startFen: widget.startFen,
+            variant: widget.variant,
+            knownWhiteElo: widget.knownWhiteElo,
+            knownBlackElo: widget.knownBlackElo,
+          );
     });
-  }
-
-  @override
-  void dispose() {
-    _analysis.cancel();
-    super.dispose();
   }
 
   ChessGame _newNavigator() => ChessGame.fromFenVariant(
@@ -232,7 +226,7 @@ class _AnalysisScreenState extends ConsumerState<AnalysisScreen> {
         title: Text(t.analysis),
         actions: [
           IconButton(
-            tooltip: 'Flip board',
+            tooltip: t.flipBoard,
             icon: const Icon(Icons.flip),
             onPressed: () => setState(() => _flipped = !_flipped),
           ),
@@ -344,13 +338,23 @@ class _AccuracyHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
-    if (!st.done) {
+    final status = switch (st.job) {
+      AnalysisIdle() || AnalysisCancelled() => t.preparingAnalysis,
+      AnalysisRunning(:final progress, :final total) => t.analyzingProgress(
+        progress,
+        total,
+      ),
+      AnalysisFailed(:final error) => t.analysisFailed(error),
+      AnalysisDone() => null,
+    };
+    if (status != null) {
       return Padding(
         padding: const EdgeInsets.all(8),
         child: Text(
-          st.running
-              ? t.analyzingProgress(st.progress, st.total)
-              : t.preparingAnalysis,
+          status,
+          style: st.job is AnalysisFailed
+              ? TextStyle(color: Theme.of(context).colorScheme.error)
+              : null,
         ),
       );
     }

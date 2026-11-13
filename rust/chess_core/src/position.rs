@@ -6,42 +6,22 @@ use crate::bitboard::{bit, pop_lsb, Bitboard};
 use crate::types::{file_of, kind, CastlingRights, Color, Move, Piece, Square, Variant, HILL};
 use crate::zobrist::zobrist;
 
-/// Hash keys mixing the per-side delivered-check counts into the Zobrist hash
-/// (Three-check), so the transposition table distinguishes otherwise-identical
-/// positions with different check counts. Zero counts contribute nothing.
-const CHECK_KEY: [u64; 2] = [0x9E3779B97F4A7C15, 0xC2B2AE3D27D4EB4F];
-
+/// Three-check counters folded into the Zobrist hash (zero counts add nothing).
 #[inline]
 fn check_hash(checks: [u8; 2]) -> u64 {
-    (checks[0] as u64).wrapping_mul(CHECK_KEY[0]) ^ (checks[1] as u64).wrapping_mul(CHECK_KEY[1])
+    let z = zobrist();
+    z.checks(0, checks[0]) ^ z.checks(1, checks[1])
 }
 
-/// Hash keys mixing the Crazyhouse reserve counts into the Zobrist hash, so the
-/// transposition table distinguishes positions with different hands. Empty hands
-/// contribute nothing.
-const HAND_KEY: [[u64; 5]; 2] = [
-    [
-        0xD6E8FEB86659FD93,
-        0xA0761D6478BD642F,
-        0xE7037ED1A0B428DB,
-        0x8EBC6AF09C88C6E3,
-        0x589965CC75374CC3,
-    ],
-    [
-        0x1D8E4E27C47D124F,
-        0xEB44ACCAB455D165,
-        0x589965CC75374CC3,
-        0x9E6C63D0673C6E1B,
-        0xC2B2AE3D27D4EB4F,
-    ],
-];
-
+/// Crazyhouse reserve folded into the Zobrist hash with one independent key
+/// per (colour, piece, exact count); empty hands add nothing.
 #[inline]
 fn hand_hash(hand: [[u8; 5]; 2]) -> u64 {
+    let z = zobrist();
     let mut h = 0u64;
-    for c in 0..2 {
-        for p in 0..5 {
-            h ^= (hand[c][p] as u64).wrapping_mul(HAND_KEY[c][p]);
+    for (c, pieces) in hand.iter().enumerate() {
+        for (p, &count) in pieces.iter().enumerate() {
+            h ^= z.hand(c, p, count);
         }
     }
     h
@@ -163,9 +143,14 @@ impl Position {
         self.mailbox[sq as usize]
     }
 
+    /// The king's square. Callers in variants where a king can be captured
+    /// (Atomic, Fog of War) must check `pieces(c, King) != 0` first; an empty
+    /// board would yield the out-of-range square 64.
     #[inline]
     pub fn king_sq(&self, c: Color) -> Square {
-        crate::bitboard::lsb(self.pieces(c, Piece::King))
+        let kings = self.pieces(c, Piece::King);
+        debug_assert!(kings != 0, "king_sq called for a side without a king");
+        crate::bitboard::lsb(kings)
     }
 
     pub fn put_piece(&mut self, c: Color, p: Piece, sq: Square) {
@@ -270,7 +255,7 @@ impl Position {
             self.put_piece(us, piece, to);
             self.hand[us.index()][piece.index()] -= 1;
             self.ep = None;
-            self.halfmove += 1;
+            self.halfmove = self.halfmove.saturating_add(1);
             if us == Color::Black {
                 self.fullmove += 1;
             }
@@ -353,6 +338,8 @@ impl Position {
                             undo.exploded[idx as usize] = Some((cc, cp, sq));
                             idx += 1;
                             self.remove_piece(cc, cp, sq);
+                            // An exploded king or rook loses its castling right.
+                            self.castling.0 &= CASTLE_MASK[sq as usize];
                         }
                     }
                 }
@@ -372,7 +359,8 @@ impl Position {
                     } else {
                         cp
                     };
-                    self.hand[us.index()][gained.index()] += 1;
+                    let count = &mut self.hand[us.index()][gained.index()];
+                    *count = count.saturating_add(1);
                 }
             }
             self.promoted &= !bit(captured_sq);
@@ -409,7 +397,7 @@ impl Position {
         self.halfmove = if moving == Piece::Pawn || captured.is_some() {
             0
         } else {
-            self.halfmove + 1
+            self.halfmove.saturating_add(1)
         };
         if us == Color::Black {
             self.fullmove += 1;
@@ -555,7 +543,7 @@ impl Position {
             }
             Variant::KingOfTheHill => {
                 for c in [Color::White, Color::Black] {
-                    if HILL.contains(&self.king_sq(c)) {
+                    if self.pieces(c, Piece::King) != 0 && HILL.contains(&self.king_sq(c)) {
                         return Some(c);
                     }
                 }
@@ -584,7 +572,12 @@ impl Position {
         while knights != 0 {
             vis |= knight_attacks(pop_lsb(&mut knights));
         }
-        vis |= king_attacks(self.king_sq(viewer));
+        // The king is gone once it has been captured (the game is over, but
+        // the losing side's board is still rendered).
+        let king = self.pieces(viewer, Piece::King);
+        if king != 0 {
+            vis |= king_attacks(crate::bitboard::lsb(king));
+        }
 
         let mut diag = self.pieces(viewer, Piece::Bishop) | self.pieces(viewer, Piece::Queen);
         while diag != 0 {
@@ -627,7 +620,8 @@ impl Position {
             return;
         }
         self.hash ^= hand_hash(self.hand);
-        self.hand[c.index()][p.index()] += 1;
+        let count = &mut self.hand[c.index()][p.index()];
+        *count = count.saturating_add(1);
         self.hash ^= hand_hash(self.hand);
     }
 

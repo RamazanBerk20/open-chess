@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import 'package:open_chess/src/rust/api/game.dart';
+import 'package:open_chess/src/state/l10n_labels.dart';
 import 'package:open_chess/src/state/time_control.dart';
 
 /// The two boards of a Bughouse match.
@@ -37,10 +38,18 @@ class BugConfig {
 }
 
 class BugResult {
-  final int winningTeam; // 1 or 2
+  final int winningTeam; // 1 or 2 (0 when [interrupted])
   final GameOutcome? reason; // null when reported over the network
   final BugBoard board; // the board that ended
-  const BugResult(this.winningTeam, this.reason, this.board);
+  /// A [LanResultCode] when the match stopped without a winner (link lost,
+  /// boards diverged).
+  final String? interrupted;
+  const BugResult(
+    this.winningTeam,
+    this.reason,
+    this.board, {
+    this.interrupted,
+  });
 }
 
 class _Board {
@@ -379,8 +388,20 @@ class BughouseController extends ChangeNotifier {
 
   /// Apply a move the host broadcast (its authority already validated it).
   void applyRemoteMove(int board, String uci) {
+    if (result != null) return;
     final b = board == 0 ? _a : _b;
-    if (b.game.playUci(uci: uci)) {
+    bool ok;
+    try {
+      ok = b.game.playUci(uci: uci);
+    } catch (_) {
+      ok = false;
+    }
+    if (!ok) {
+      // The host's move does not fit our mirror: stop loudly, not silently.
+      _interrupt(LanResultCode.boardDesync, board);
+      return;
+    }
+    {
       _clearSel(b);
       b.premoveFrom = null; // drop any stale in-progress premove selection
       b.premoveTargets = {};
@@ -407,7 +428,25 @@ class BughouseController extends ChangeNotifier {
 
   /// Apply the host's match result.
   void applyResult(int team, int board) {
+    if (result != null) return;
     result = BugResult(team, null, board == 0 ? BugBoard.a : BugBoard.b);
+    notifyListeners();
+  }
+
+  /// The host disappeared mid-match: end the mirror with a visible result.
+  void markConnectionLost() =>
+      _interrupt(LanResultCode.opponentDisconnected, 0);
+
+  void _interrupt(String code, int board) {
+    if (result != null) return;
+    _clearSel(_a);
+    _clearSel(_b);
+    result = BugResult(
+      0,
+      null,
+      board == 0 ? BugBoard.a : BugBoard.b,
+      interrupted: code,
+    );
     notifyListeners();
   }
 }

@@ -28,6 +28,9 @@ impl Position {
         self.generate_pseudo(&mut pseudo);
         let mut legal = MoveList::new();
         let us = self.side;
+        if self.pieces(us, Piece::King) == 0 {
+            return legal; // only reachable through a corrupt external position
+        }
         for i in 0..pseudo.len() {
             let mv = pseudo[i];
             let u = self.make_move(mv);
@@ -48,7 +51,11 @@ impl Position {
         let mut legal = MoveList::new();
         let us = self.side;
         let them = us.opp();
-        let ksq = self.king_sq(us);
+        let own_king = self.pieces(us, Piece::King);
+        if own_king == 0 {
+            return legal; // our king exploded: the game is already over
+        }
+        let ksq = crate::bitboard::lsb(own_king);
         for i in 0..pseudo.len() {
             let mv = pseudo[i];
             if mv.from() == ksq && mv.is_capture() {
@@ -201,10 +208,18 @@ impl Position {
             self.gen_castling_960(us, them, list);
             return;
         }
+        // Defence in depth: castling rights are only meaningful with the king
+        // and the rook on their standard home squares (FEN validation and the
+        // explosion/capture masks keep this true; never conjure a piece).
+        let home = |k: Square, r: Square| {
+            self.piece_at(k) == Some((us, Piece::King))
+                && self.piece_at(r) == Some((us, Piece::Rook))
+        };
         match us {
             Color::White => {
                 // Kingside: f1,g1 empty; f1,g1 not attacked.
                 if self.castling.has(crate::types::CastlingRights::WK)
+                    && home(4, 7)
                     && self.all & (bit(5) | bit(6)) == 0
                     && !self.is_attacked(5, them)
                     && !self.is_attacked(6, them)
@@ -213,6 +228,7 @@ impl Position {
                 }
                 // Queenside: b1,c1,d1 empty; d1,c1 not attacked.
                 if self.castling.has(crate::types::CastlingRights::WQ)
+                    && home(4, 0)
                     && self.all & (bit(1) | bit(2) | bit(3)) == 0
                     && !self.is_attacked(3, them)
                     && !self.is_attacked(2, them)
@@ -222,6 +238,7 @@ impl Position {
             }
             Color::Black => {
                 if self.castling.has(crate::types::CastlingRights::BK)
+                    && home(60, 63)
                     && self.all & (bit(61) | bit(62)) == 0
                     && !self.is_attacked(61, them)
                     && !self.is_attacked(62, them)
@@ -229,6 +246,7 @@ impl Position {
                     list.push(Move::new(60, 62, kind::KING_CASTLE));
                 }
                 if self.castling.has(crate::types::CastlingRights::BQ)
+                    && home(60, 56)
                     && self.all & (bit(57) | bit(58) | bit(59)) == 0
                     && !self.is_attacked(59, them)
                     && !self.is_attacked(58, them)
@@ -255,6 +273,11 @@ impl Position {
                 continue;
             }
             let rook_from = self.castle_rook_sq[us.index()][if kingside { 0 } else { 1 }];
+            if king_from != self.castle_king_home[us.index()]
+                || self.piece_at(rook_from) != Some((us, Piece::Rook))
+            {
+                continue; // never castle with a piece that is not there
+            }
             let king_dest = rank8 + if kingside { 6 } else { 2 };
             let rook_dest = rank8 + if kingside { 5 } else { 3 };
             // Every square in the king's and rook's paths must be empty, except

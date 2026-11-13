@@ -1,4 +1,5 @@
 import 'package:open_chess/src/state/four_lan_controller.dart';
+import 'package:open_chess/src/state/multi_board_session.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -6,7 +7,7 @@ void main() {
     'keeps the four-player spectator state and chat private to the watcher',
     () {
       const state = FourLanState(
-        active: true,
+        session: MbLobby(),
         isSpectator: true,
         myName: 'watcher',
         spectatorChat: [

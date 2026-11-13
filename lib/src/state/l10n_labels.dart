@@ -1,4 +1,5 @@
 import 'package:open_chess/l10n/app_localizations.dart';
+import 'package:open_chess/src/state/fen_repair.dart';
 import 'package:open_chess/src/rust/api/game.dart';
 
 /// Variants that can be played against the on-device engine.
@@ -95,6 +96,7 @@ class LanResultCode {
   static const drawAgreed = 'drawAgreed';
   static const opponentDisconnected = 'opponentDisconnected';
   static const boardDesync = 'boardDesync';
+  static const incompatibleVersion = 'incompatibleVersion';
   static const gameWhiteWins = 'game_over:white_wins';
   static const gameBlackWins = 'game_over:black_wins';
   static const gameStalemate = 'game_over:stalemate';
@@ -103,8 +105,27 @@ class LanResultCode {
   static const gameDrawInsufficient = 'game_over:draw_insufficient';
 }
 
-/// Localise a result code; unknown values (e.g. a custom disconnect message
-/// sent by the peer) are shown verbatim.
+/// Localised board theme name (the theme list keeps English ids).
+String localizedBoardTheme(AppLocalizations t, String name) => switch (name) {
+  'Green' => t.boardGreen,
+  'Brown' => t.boardBrown,
+  'Blue' => t.boardBlue,
+  'Gray' => t.boardGray,
+  _ => name,
+};
+
+/// Error code: a match screen never registered and its updates overflowed.
+const tooManyPendingUpdates = 'tooManyPendingUpdates';
+
+/// Lobby/match error text from a controller or the bridge, made readable.
+String localizeMatchError(AppLocalizations t, String error) => switch (error) {
+  tooManyPendingUpdates => t.tooManyPendingUpdates,
+  LanResultCode.opponentDisconnected => t.opponentDisconnected,
+  _ => localizeLanError(t, error),
+};
+
+/// Localise a result code; unknown values (e.g. a peer's free-form text) get
+/// a generic localized title instead of raw protocol text.
 String localizeLanResult(AppLocalizations t, String code) => switch (code) {
   LanResultCode.youResigned => t.youResigned,
   LanResultCode.opponentResigned => t.opponentResigned,
@@ -117,5 +138,28 @@ String localizeLanResult(AppLocalizations t, String code) => switch (code) {
   LanResultCode.gameDrawFifty => t.drawFiftyMove,
   LanResultCode.gameDrawThreefold => t.drawThreefold,
   LanResultCode.gameDrawInsufficient => t.drawInsufficient,
-  _ => code,
+  LanResultCode.incompatibleVersion => t.lanIncompatibleVersion,
+  _ => t.gameOverGeneric,
+};
+
+/// A LAN error text from the bridge, made readable: the protocol-version
+/// rejection becomes an "update both devices" message.
+String localizeLanError(AppLocalizations t, String error) =>
+    isIncompatibleVersion(error) || isVersionMismatchNotice(error)
+    ? t.lanIncompatibleVersion
+    : error;
+
+/// Host-side notice (`version_mismatch:<their version>`) that a peer with a
+/// different LAN protocol version was turned away. Non-fatal: the lobby stays open.
+bool isVersionMismatchNotice(String text) =>
+    text.startsWith('version_mismatch:');
+
+bool isIncompatibleVersion(String error) =>
+    error.contains('incompatible protocol version');
+
+/// The visible note for a lenient FEN repair.
+String fenNoteText(AppLocalizations t, FenNote note) => switch (note) {
+  FenNote.castlingRemoved => t.fenCastlingRemoved,
+  FenNote.enPassantRemoved => t.fenEnPassantRemoved,
+  FenNote.chess960 => t.fenOpenedAsChess960,
 };

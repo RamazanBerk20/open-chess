@@ -190,7 +190,7 @@ abstract class RustLibApi extends BaseApi {
     required PieceColor viewer,
   });
 
-  String? crateApiFourFourGameBotMove({
+  Future<String?> crateApiFourFourGameBotMove({
     required FourGame that,
     required BigInt seed,
     required int difficultyCode,
@@ -1118,14 +1118,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
-  String? crateApiFourFourGameBotMove({
+  Future<String?> crateApiFourFourGameBotMove({
     required FourGame that,
     required BigInt seed,
     required int difficultyCode,
   }) {
-    return handler.executeSync(
-      SyncTask(
-        callFfi: () {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFourGame(
             that,
@@ -1133,7 +1133,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           );
           sse_encode_u_64(seed, serializer);
           sse_encode_i_32(difficultyCode, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 24)!;
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 24,
+            port: port_,
+          );
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_opt_String,
@@ -5196,12 +5201,14 @@ class FourGameImpl extends RustOpaque implements FourGame {
   /// The requested-difficulty bot move (UCI form) for the side to move, or
   /// None if none. Unknown codes deliberately fall back to Normal so a stale
   /// local setting can never make the four-player bot unavailable.
-  String? botMove({required BigInt seed, required int difficultyCode}) =>
-      RustLib.instance.api.crateApiFourFourGameBotMove(
-        that: this,
-        seed: seed,
-        difficultyCode: difficultyCode,
-      );
+  Future<String?> botMove({
+    required BigInt seed,
+    required int difficultyCode,
+  }) => RustLib.instance.api.crateApiFourFourGameBotMove(
+    that: this,
+    seed: seed,
+    difficultyCode: difficultyCode,
+  );
 
   /// Destination squares (row*14+col) of every legal move from `from`.
   Uint32List legalTargets({required int from}) => RustLib.instance.api

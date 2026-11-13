@@ -1,26 +1,32 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:open_chess/l10n/app_localizations.dart';
+import 'package:open_chess/src/features/import/import_screen.dart';
 import 'package:open_chess/src/features/newgame/new_game_hub_screen.dart';
 import 'package:open_chess/src/features/puzzles/puzzle_screen.dart';
 import 'package:open_chess/src/features/saved/resume_screen.dart';
 import 'package:open_chess/src/features/settings/settings_screen.dart';
+import 'package:open_chess/src/state/saved_games.dart';
+import 'package:open_chess/src/state/settings.dart';
 import 'package:open_chess/src/state/update_service.dart';
 import 'package:open_chess/src/widgets/update_dialog.dart';
 
-class MainMenu extends StatefulWidget {
+class MainMenu extends ConsumerStatefulWidget {
   const MainMenu({super.key});
 
   @override
-  State<MainMenu> createState() => _MainMenuState();
+  ConsumerState<MainMenu> createState() => _MainMenuState();
 }
 
-class _MainMenuState extends State<MainMenu> {
+class _MainMenuState extends ConsumerState<MainMenu> {
   @override
   void initState() {
     super.initState();
-    // One quiet check on launch: prompt only when a newer release exists.
+    // One quiet check on launch (unless turned off): prompt only when a newer
+    // release exists.
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!ref.read(settingsProvider).checkUpdatesOnLaunch) return;
       final info = await checkForUpdate();
       if (!mounted || info == null) return;
       await showUpdateResult(context, info, silent: true);
@@ -30,6 +36,7 @@ class _MainMenuState extends State<MainMenu> {
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
+    final unfinished = ref.watch(autosaveProvider).value;
     void go(Widget screen) =>
         Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
     return Scaffold(
@@ -57,6 +64,28 @@ class _MainMenuState extends State<MainMenu> {
                   style: Theme.of(context).textTheme.headlineMedium,
                 ),
                 const SizedBox(height: 24),
+                if (unfinished != null)
+                  Card(
+                    child: ListTile(
+                      leading: const Icon(Icons.play_arrow),
+                      title: Text(t.continueGame),
+                      subtitle: Text(
+                        '${t.pliesCount(unfinished.ply)}  ·  ${unfinished.createdAt}',
+                      ),
+                      onTap: () => resumeSavedGame(
+                        ref,
+                        context,
+                        unfinished,
+                        startPaused: true,
+                      ),
+                      trailing: IconButton(
+                        tooltip: t.discardGame,
+                        icon: const Icon(Icons.close),
+                        onPressed: () =>
+                            ref.read(autosaveProvider.notifier).put(null),
+                      ),
+                    ),
+                  ),
                 _MenuButton(
                   icon: Icons.play_circle_outline,
                   label: t.newGame,
@@ -66,6 +95,11 @@ class _MainMenuState extends State<MainMenu> {
                   icon: Icons.extension,
                   label: t.menuPuzzles,
                   onTap: () => go(const PuzzleScreen()),
+                ),
+                _MenuButton(
+                  icon: Icons.file_open_outlined,
+                  label: t.importGame,
+                  onTap: () => go(const ImportScreen()),
                 ),
                 _MenuButton(
                   icon: Icons.history,
@@ -79,7 +113,7 @@ class _MainMenuState extends State<MainMenu> {
                 ),
                 const SizedBox(height: 12),
                 TextButton.icon(
-                  onPressed: () => openUrl(sponsorUrl),
+                  onPressed: () => openUrlOrReport(context, sponsorUrl),
                   icon: const Icon(Icons.favorite, color: Color(0xFFE25555)),
                   label: Text(t.donate),
                 ),

@@ -370,9 +370,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String get hostGame => 'Создать игру';
 
   @override
-  String get joinGame => 'Присоединиться к игре';
-
-  @override
   String get yourName => 'Ваше имя';
 
   @override
@@ -415,19 +412,10 @@ class AppLocalizationsRu extends AppLocalizations {
   String get typeMessage => 'Введите сообщение…';
 
   @override
-  String get savedGames => 'Сохранённые партии';
-
-  @override
   String get noSavedGames => 'Пока нет сохранённых партий';
 
   @override
-  String get resume => 'Продолжить';
-
-  @override
   String get renameGameTitle => 'Переименовать партию';
-
-  @override
-  String get playFromPosition => 'Игра с позиции';
 
   @override
   String get pasteFen => 'Вставьте строку FEN';
@@ -446,28 +434,16 @@ class AppLocalizationsRu extends AppLocalizations {
   String get loadPosition => 'Загрузить позицию';
 
   @override
-  String get sideToPlay => 'Очередь хода задаётся строкой FEN';
-
-  @override
   String get exportPgn => 'Экспорт PGN';
 
   @override
   String get copyPgn => 'Копировать PGN';
 
   @override
-  String get copyMoves => 'Копировать ходы';
-
-  @override
   String get copiedToClipboard => 'Скопировано в буфер обмена';
 
   @override
   String get game => 'Партия';
-
-  @override
-  String get singlePlayerTitle => 'Один игрок против ИИ';
-
-  @override
-  String get twoPlayerTitle => 'Два игрока — одно устройство';
 
   @override
   String get lanTitle => 'Два игрока — локальная сеть';
@@ -491,25 +467,16 @@ class AppLocalizationsRu extends AppLocalizations {
   String get tcInfinite => 'Без ограничения';
 
   @override
-  String get diffBeginner => 'Новичок';
-
-  @override
   String get diffVeryEasy => 'Очень лёгкий';
 
   @override
   String get diffEasy => 'Лёгкий';
 
   @override
-  String get diffMedium => 'Средний';
-
-  @override
   String get diffNormal => 'Обычный';
 
   @override
   String get diffHard => 'Сложный';
-
-  @override
-  String get diffExpert => 'Эксперт';
 
   @override
   String get diffVeryHard => 'Очень сложный';
@@ -531,15 +498,6 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get timePerMove => 'Время на ход (мс)';
-
-  @override
-  String get topNRandom => 'Случайный из топ-N';
-
-  @override
-  String get blunderChance => 'Шанс зевка';
-
-  @override
-  String get evalNoise => 'Шум оценки (сантипешки)';
 
   @override
   String get maxEvalLoss => 'Максимальная потеря оценки (сантипешки)';
@@ -596,15 +554,6 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get bugMode => 'Режим';
-
-  @override
-  String get bugHotSeat => 'За одним устройством (4 игрока)';
-
-  @override
-  String get bugVsAi => 'Против компьютера';
-
-  @override
-  String get bugYourSeat => 'Ваше место';
 
   @override
   String get bugBoardA => 'Доска A';
@@ -718,14 +667,6 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String fogPassDevice(String color) {
-    return 'Передайте устройство игроку $color';
-  }
-
-  @override
-  String get fogTapReveal => 'Нажмите, чтобы открыть свой ход';
-
-  @override
   String get checksLabel => 'Шахи';
 
   @override
@@ -760,4 +701,208 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get about => 'О приложении';
+
+  @override
+  String storeCorrupt(Object path) {
+    return 'Не удалось прочитать файл данных. Копия сохранена в $path.';
+  }
+
+  @override
+  String get settingsSaveFailed =>
+      'Не удалось сохранить настройку. Она будет действовать, пока вы не закроете приложение.';
+
+  @override
+  String get fenCastlingRemoved =>
+      'Права на рокировку, не соответствовавшие позиции, удалены.';
+
+  @override
+  String get fenEnPassantRemoved =>
+      'Поле взятия на проходе, не соответствовавшее позиции, удалено.';
+
+  @override
+  String get fenOpenedAsChess960 =>
+      'Открыто как Chess960: такая расстановка для рокировки недопустима в стандартных шахматах.';
+
+  @override
+  String savedPartialReplay(int count) {
+    return 'Ходов, которые не удалось воспроизвести по текущим правилам: $count. Партия открыта на последнем допустимом ходе; сохранённая партия не изменена.';
+  }
+
+  @override
+  String savedGameDefaultName(Object stamp) {
+    return 'Партия $stamp';
+  }
+
+  @override
+  String get gameSaveFailed => 'Не удалось сохранить партию.';
+
+  @override
+  String get pauseGame => 'Пауза';
+
+  @override
+  String get resumeGame => 'Продолжить';
+
+  @override
+  String get gamePaused => 'Партия на паузе';
+
+  @override
+  String get chatTooLong => 'Сообщение слишком длинное.';
+
+  @override
+  String get aiThinking => 'ИИ думает…';
+
+  @override
+  String aiDepthEval(int depth, Object eval) {
+    return 'ИИ: глубина $depth, оценка $eval';
+  }
+
+  @override
+  String pliesCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count полуходов',
+      few: '$count полухода',
+      one: '$count полуход',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get openLinkFailed => 'Не удалось открыть ссылку.';
+
+  @override
+  String get boardGreen => 'Зелёная';
+
+  @override
+  String get boardBrown => 'Коричневая';
+
+  @override
+  String get boardBlue => 'Синяя';
+
+  @override
+  String get boardGray => 'Серая';
+
+  @override
+  String get animationOff => 'Выкл.';
+
+  @override
+  String animationMs(int ms) {
+    return '$ms мс';
+  }
+
+  @override
+  String get checkUpdatesOnLaunch => 'Проверять обновления при запуске';
+
+  @override
+  String get gameOverGeneric => 'Партия окончена';
+
+  @override
+  String get lanIncompatibleVersion =>
+      'На другом устройстве другая версия Open Chess. Обновите приложение на обоих устройствах.';
+
+  @override
+  String get tooManyPendingUpdates =>
+      'Слишком много ожидающих обновлений партии.';
+
+  @override
+  String get continueGame => 'Продолжить незаконченную партию';
+
+  @override
+  String get discardGame => 'Отбросить';
+
+  @override
+  String get noMovesYet => 'Ходов пока нет';
+
+  @override
+  String get promoteTo => 'Превратить в';
+
+  @override
+  String get piecePawn => 'пешка';
+
+  @override
+  String get pieceKnight => 'конь';
+
+  @override
+  String get pieceBishop => 'слон';
+
+  @override
+  String get pieceRook => 'ладья';
+
+  @override
+  String get pieceQueen => 'ферзь';
+
+  @override
+  String get pieceKing => 'король';
+
+  @override
+  String squarePieceLabel(Object square, Object color, Object piece) {
+    return '$square, $piece ($color)';
+  }
+
+  @override
+  String get staleCastlingTitle => 'Устаревшие права на рокировку';
+
+  @override
+  String get staleCastlingBody =>
+      'В этой сохранённой позиции разрешена рокировка с ладьёй, которой уже нет. Открыть без этих прав на рокировку? Сама сохранённая партия не изменится.';
+
+  @override
+  String get openAnyway => 'Открыть';
+
+  @override
+  String savedFenRejected(Object error) {
+    return 'Не удаётся открыть эту сохранённую партию: $error';
+  }
+
+  @override
+  String analysisFailed(Object error) {
+    return 'Анализ не удался. $error';
+  }
+
+  @override
+  String get importGame => 'Импорт PGN / FEN';
+
+  @override
+  String get importFromClipboard => 'Вставить';
+
+  @override
+  String get importFromFile => 'Открыть файл';
+
+  @override
+  String get importHint => 'Вставьте партию PGN или позицию FEN';
+
+  @override
+  String get importEmpty => 'Нечего импортировать.';
+
+  @override
+  String get importTooLarge => 'Текст слишком большой для импорта.';
+
+  @override
+  String importTooLong(int max) {
+    return 'Партия длиннее $max полуходов.';
+  }
+
+  @override
+  String importBadFen(Object error) {
+    return 'Недопустимая позиция: $error';
+  }
+
+  @override
+  String importBadMove(Object move) {
+    return 'Недопустимый или нечитаемый ход: $move';
+  }
+
+  @override
+  String importUnsupported(Object variant) {
+    return 'Этот вариант нельзя проанализировать: $variant';
+  }
+
+  @override
+  String get importReadFailed => 'Не удалось прочитать файл.';
+
+  @override
+  String engineFailed(Object error) {
+    return 'Движок не смог рассчитать эту позицию: $error';
+  }
 }

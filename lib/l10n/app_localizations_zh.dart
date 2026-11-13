@@ -370,9 +370,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get hostGame => '创建对局';
 
   @override
-  String get joinGame => '加入对局';
-
-  @override
   String get yourName => '你的名字';
 
   @override
@@ -415,19 +412,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get typeMessage => '输入消息…';
 
   @override
-  String get savedGames => '已保存的对局';
-
-  @override
   String get noSavedGames => '暂无已保存的对局';
 
   @override
-  String get resume => '继续';
-
-  @override
   String get renameGameTitle => '重命名对局';
-
-  @override
-  String get playFromPosition => '从指定局面开始';
 
   @override
   String get pasteFen => '粘贴 FEN 字符串';
@@ -446,28 +434,16 @@ class AppLocalizationsZh extends AppLocalizations {
   String get loadPosition => '加载局面';
 
   @override
-  String get sideToPlay => '走棋方由 FEN 决定';
-
-  @override
   String get exportPgn => '导出 PGN';
 
   @override
   String get copyPgn => '复制 PGN';
 
   @override
-  String get copyMoves => '复制着法';
-
-  @override
   String get copiedToClipboard => '已复制到剪贴板';
 
   @override
   String get game => '对局';
-
-  @override
-  String get singlePlayerTitle => '单人对战 AI';
-
-  @override
-  String get twoPlayerTitle => '双人对战 — 同一设备';
 
   @override
   String get lanTitle => '双人对战 — 局域网';
@@ -491,25 +467,16 @@ class AppLocalizationsZh extends AppLocalizations {
   String get tcInfinite => '无限制';
 
   @override
-  String get diffBeginner => '初学者';
-
-  @override
   String get diffVeryEasy => '非常简单';
 
   @override
   String get diffEasy => '简单';
 
   @override
-  String get diffMedium => '中等';
-
-  @override
   String get diffNormal => '标准';
 
   @override
   String get diffHard => '困难';
-
-  @override
-  String get diffExpert => '专家';
 
   @override
   String get diffVeryHard => '非常困难';
@@ -531,15 +498,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get timePerMove => '每步用时（毫秒）';
-
-  @override
-  String get topNRandom => '前 N 随机';
-
-  @override
-  String get blunderChance => '漏着概率';
-
-  @override
-  String get evalNoise => '评估噪声（cp）';
 
   @override
   String get maxEvalLoss => '最大评估损失（兵值）';
@@ -595,15 +553,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get bugMode => '模式';
-
-  @override
-  String get bugHotSeat => '同屏对战（4人）';
-
-  @override
-  String get bugVsAi => '对战电脑';
-
-  @override
-  String get bugYourSeat => '你的座位';
 
   @override
   String get bugBoardA => '棋盘A';
@@ -717,14 +666,6 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String fogPassDevice(String color) {
-    return '请将设备交给$color';
-  }
-
-  @override
-  String get fogTapReveal => '点击屏幕显示你的回合';
-
-  @override
   String get checksLabel => '将军次数';
 
   @override
@@ -759,4 +700,195 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get about => '关于';
+
+  @override
+  String storeCorrupt(Object path) {
+    return '无法读取数据文件。已在 $path 保留一份副本。';
+  }
+
+  @override
+  String get settingsSaveFailed => '无法保存某项设置。在关闭应用之前它仍会生效。';
+
+  @override
+  String get fenCastlingRemoved => '已移除与局面不符的王车易位权利。';
+
+  @override
+  String get fenEnPassantRemoved => '已移除与局面不符的吃过路兵格。';
+
+  @override
+  String get fenOpenedAsChess960 => '已作为 Chess960 打开：此易位布局在标准国际象棋中无效。';
+
+  @override
+  String savedPartialReplay(int count) {
+    return '无法按当前规则重放的着法数：$count。对局已打开到最后一个可走的着法；已保存的对局未被更改。';
+  }
+
+  @override
+  String savedGameDefaultName(Object stamp) {
+    return '对局 $stamp';
+  }
+
+  @override
+  String get gameSaveFailed => '无法保存对局。';
+
+  @override
+  String get pauseGame => '暂停';
+
+  @override
+  String get resumeGame => '继续';
+
+  @override
+  String get gamePaused => '对局已暂停';
+
+  @override
+  String get chatTooLong => '消息太长。';
+
+  @override
+  String get aiThinking => 'AI 思考中…';
+
+  @override
+  String aiDepthEval(int depth, Object eval) {
+    return 'AI：深度 $depth，评估 $eval';
+  }
+
+  @override
+  String pliesCount(int count) {
+    return '$count 步';
+  }
+
+  @override
+  String get openLinkFailed => '无法打开链接。';
+
+  @override
+  String get boardGreen => '绿色';
+
+  @override
+  String get boardBrown => '棕色';
+
+  @override
+  String get boardBlue => '蓝色';
+
+  @override
+  String get boardGray => '灰色';
+
+  @override
+  String get animationOff => '关闭';
+
+  @override
+  String animationMs(int ms) {
+    return '$ms 毫秒';
+  }
+
+  @override
+  String get checkUpdatesOnLaunch => '启动时检查更新';
+
+  @override
+  String get gameOverGeneric => '对局结束';
+
+  @override
+  String get lanIncompatibleVersion => '另一台设备运行的 Open Chess 版本不同。请在两台设备上都更新应用。';
+
+  @override
+  String get tooManyPendingUpdates => '待处理的对局更新过多。';
+
+  @override
+  String get continueGame => '继续未完成的对局';
+
+  @override
+  String get discardGame => '丢弃';
+
+  @override
+  String get noMovesYet => '尚无着法';
+
+  @override
+  String get promoteTo => '升变为';
+
+  @override
+  String get piecePawn => '兵';
+
+  @override
+  String get pieceKnight => '马';
+
+  @override
+  String get pieceBishop => '象';
+
+  @override
+  String get pieceRook => '车';
+
+  @override
+  String get pieceQueen => '后';
+
+  @override
+  String get pieceKing => '王';
+
+  @override
+  String squarePieceLabel(Object square, Object color, Object piece) {
+    return '$square，$color$piece';
+  }
+
+  @override
+  String get staleCastlingTitle => '过期的王车易位权';
+
+  @override
+  String get staleCastlingBody =>
+      '此保存局面允许与已不存在的车进行王车易位。是否去掉这些易位权后打开？已保存的对局本身不会被修改。';
+
+  @override
+  String get openAnyway => '打开';
+
+  @override
+  String savedFenRejected(Object error) {
+    return '无法打开此保存的对局：$error';
+  }
+
+  @override
+  String analysisFailed(Object error) {
+    return '分析失败。$error';
+  }
+
+  @override
+  String get importGame => '导入 PGN / FEN';
+
+  @override
+  String get importFromClipboard => '粘贴';
+
+  @override
+  String get importFromFile => '打开文件';
+
+  @override
+  String get importHint => '粘贴 PGN 对局或 FEN 局面';
+
+  @override
+  String get importEmpty => '没有可导入的内容。';
+
+  @override
+  String get importTooLarge => '文本过大，无法导入。';
+
+  @override
+  String importTooLong(int max) {
+    return '对局超过 $max 步。';
+  }
+
+  @override
+  String importBadFen(Object error) {
+    return '无效局面：$error';
+  }
+
+  @override
+  String importBadMove(Object move) {
+    return '非法或无法识别的着法：$move';
+  }
+
+  @override
+  String importUnsupported(Object variant) {
+    return '无法分析此变体：$variant';
+  }
+
+  @override
+  String get importReadFailed => '无法读取文件。';
+
+  @override
+  String engineFailed(Object error) {
+    return '引擎无法搜索此局面：$error';
+  }
 }

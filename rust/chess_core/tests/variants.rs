@@ -128,8 +128,9 @@ fn chess960_index_518_is_standard() {
 
 #[test]
 fn chess960_castling_kingside() {
-    // King e1, rooks a1/h1, flagged Chess960 via Shredder-FEN rook files.
-    let mut g = Game::from_fen("4k3/8/8/8/8/8/8/R3K2R w HAha - 0 1").unwrap();
+    // King e1, rooks a1/h1 (and the black ones the `ha` rights need), flagged
+    // Chess960 via Shredder-FEN rook files.
+    let mut g = Game::from_fen("r3k2r/8/8/8/8/8/8/R3K2R w HAha - 0 1").unwrap();
     assert_eq!(g.pos.variant, Variant::Chess960);
     let mv = g.pos.parse_uci("e1h1").unwrap(); // king-takes-rook encoding
     g.make_move(mv);
@@ -141,7 +142,7 @@ fn chess960_castling_kingside() {
 
 #[test]
 fn chess960_castle_unmake_roundtrips() {
-    let mut g = Game::from_fen("4k3/8/8/8/8/8/8/R3K2R w HAha - 0 1").unwrap();
+    let mut g = Game::from_fen("r3k2r/8/8/8/8/8/8/R3K2R w HAha - 0 1").unwrap();
     let before = g.pos.clone();
     let mv = g.pos.parse_uci("e1a1").unwrap(); // queenside king-takes-rook
     let u = g.pos.make_move(mv);

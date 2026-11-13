@@ -74,6 +74,11 @@ class FourPlayerController extends ChangeNotifier {
   (int, int)? pendingPromo;
   bool _disposed = false;
   Timer? _botTimer;
+  // A bot search is async: its result may only be applied if nothing changed the
+  // match meanwhile (any move, result, desync or dispose bumps the epoch), and
+  // only one request is ever in flight.
+  int _botEpoch = 0;
+  bool _botBusy = false;
   // Premove chain queued while a bot/remote player is to move.
   List<(int, int)> premoves = [];
   int? premoveFrom;
@@ -345,6 +350,7 @@ class FourPlayerController extends ChangeNotifier {
   }
 
   void _afterMove() {
+    _botEpoch++;
     _clear();
     // A move landed → any uncommitted premove selection is stale; clear its
     // dots (keep the committed chain).
@@ -369,8 +375,8 @@ class FourPlayerController extends ChangeNotifier {
     _botTimer = Timer(const Duration(milliseconds: 300), _botTick);
   }
 
-  void _botTick() {
-    if (_disposed) return;
+  Future<void> _botTick() async {
+    if (_disposed || _botBusy) return;
     final v = _game.view();
     if (v.result != 'ongoing' || _isHuman(v.turn)) return;
     // Hold the bot back while the human is mid-premove-selection (capped), so a
@@ -381,10 +387,22 @@ class FourPlayerController extends ChangeNotifier {
       return;
     }
     final seed = DateTime.now().millisecondsSinceEpoch & 0x7fffffff;
-    final uci = _game.botMove(
-      seed: BigInt.from(seed),
-      difficultyCode: normalizedFourAiDifficultyCode(config.aiDifficultyCode),
-    );
+    final epoch = _botEpoch;
+    _botBusy = true;
+    String? uci;
+    try {
+      uci = await _game.botMove(
+        seed: BigInt.from(seed),
+        difficultyCode: normalizedFourAiDifficultyCode(config.aiDifficultyCode),
+      );
+    } finally {
+      _botBusy = false;
+    }
+    if (_disposed) return;
+    if (epoch != _botEpoch || isOver) {
+      _scheduleBot(); // stale result dropped; re-plan if the bot still owes a move
+      return;
+    }
     if (uci != null) {
       _game.playUci(uci: uci);
       _afterMove();
@@ -415,7 +433,23 @@ class FourPlayerController extends ChangeNotifier {
 
   /// Apply a move the host broadcast (its authority already validated it).
   void applyRemoteMove(int seat, String uci) {
-    _game.playUci(uci: uci);
+    if (isOver) return;
+    bool ok;
+    try {
+      ok = _game.playUci(uci: uci); // also applies `resign:<colour>` tokens
+    } catch (_) {
+      ok = false;
+    }
+    _botEpoch++;
+    if (!ok) {
+      _botTimer?.cancel();
+      pendingPromo = null;
+      _clear();
+      _clearPremoves();
+      netResult = 'desync'; // mirror diverged from the host
+      notifyListeners();
+      return;
+    }
     _clear();
     premoveFrom = null; // drop any stale in-progress premove selection
     premoveTargets = {};
@@ -425,6 +459,7 @@ class FourPlayerController extends ChangeNotifier {
 
   /// Apply the host's match result (forfeit/disconnect override).
   void applyResult(String result) {
+    _botEpoch++;
     netResult = result;
     notifyListeners();
   }
@@ -434,6 +469,7 @@ class FourPlayerController extends ChangeNotifier {
   /// while rendering the standard disconnected result.
   void markConnectionLost() {
     if (isOver) return;
+    _botEpoch++;
     _botTimer?.cancel();
     pendingPromo = null;
     _clear();
@@ -445,6 +481,7 @@ class FourPlayerController extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
+    _botEpoch++;
     _botTimer?.cancel();
     super.dispose();
   }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:open_chess/l10n/app_localizations.dart';
+import 'package:open_chess/src/state/l10n_labels.dart';
 import 'package:open_chess/src/features/bughouse/bughouse_screen.dart';
 import 'package:open_chess/src/rust/api/net.dart';
 import 'package:open_chess/src/state/bughouse_controller.dart';
@@ -84,7 +85,10 @@ class _BughouseLobbyScreenState extends ConsumerState<BughouseLobbyScreen> {
           if (s.error != null)
             Padding(
               padding: const EdgeInsets.only(bottom: 12),
-              child: Text(s.error!, style: const TextStyle(color: Colors.red)),
+              child: Text(
+                localizeMatchError(AppLocalizations.of(context), s.error!),
+                style: const TextStyle(color: Colors.red),
+              ),
             ),
           if (!s.isHost) ...[
             const Center(child: CircularProgressIndicator()),

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:open_chess/l10n/app_localizations.dart';
 import 'package:open_chess/src/state/difficulty.dart';
+import 'package:open_chess/src/state/l10n_labels.dart';
 import 'package:open_chess/src/state/player_profile.dart';
 import 'package:open_chess/src/state/profile_avatar_service.dart';
 import 'package:open_chess/src/state/settings.dart';
@@ -63,7 +64,10 @@ class SettingsScreen extends ConsumerWidget {
                   : (v) => v != null ? c.setBoardTheme(v) : null,
               items: [
                 for (int i = 0; i < boardThemes.length; i++)
-                  DropdownMenuItem(value: i, child: Text(boardThemes[i].name)),
+                  DropdownMenuItem(
+                    value: i,
+                    child: Text(localizedBoardTheme(t, boardThemes[i].name)),
+                  ),
               ],
             ),
           ),
@@ -129,7 +133,9 @@ class SettingsScreen extends ConsumerWidget {
               min: 0,
               max: 400,
               divisions: 8,
-              label: s.animationMs == 0 ? 'off' : '${s.animationMs} ms',
+              label: s.animationMs == 0
+                  ? t.animationOff
+                  : t.animationMs(s.animationMs),
               onChanged: (v) => c.setAnimationMs(v.round()),
             ),
           ),
@@ -141,7 +147,10 @@ class SettingsScreen extends ConsumerWidget {
               onChanged: (v) => v != null ? c.setDefaultTc(v) : null,
               items: [
                 for (final p in TimeControlOption.presets)
-                  DropdownMenuItem(value: p.label, child: Text(p.label)),
+                  DropdownMenuItem(
+                    value: p.label,
+                    child: Text(localizedTc(t, p.label)),
+                  ),
               ],
             ),
           ),
@@ -152,7 +161,10 @@ class SettingsScreen extends ConsumerWidget {
               onChanged: (v) => v != null ? c.setDefaultDifficulty(v) : null,
               items: [
                 for (final d in Difficulty.presets)
-                  DropdownMenuItem(value: d.name, child: Text(d.name)),
+                  DropdownMenuItem(
+                    value: d.name,
+                    child: Text(localizedDifficulty(t, d.name)),
+                  ),
               ],
             ),
           ),
@@ -161,7 +173,7 @@ class SettingsScreen extends ConsumerWidget {
             leading: const Icon(Icons.favorite_border),
             title: Text(t.donate),
             subtitle: Text(t.donateSubtitle),
-            onTap: () => openUrl(sponsorUrl),
+            onTap: () => openUrlOrReport(context, sponsorUrl),
           ),
           ListTile(
             leading: const Icon(Icons.system_update_alt),
@@ -179,6 +191,12 @@ class SettingsScreen extends ConsumerWidget {
               await showUpdateResult(context, info);
             },
           ),
+          SwitchListTile(
+            secondary: const Icon(Icons.update),
+            title: Text(t.checkUpdatesOnLaunch),
+            value: s.checkUpdatesOnLaunch,
+            onChanged: c.setCheckUpdatesOnLaunch,
+          ),
           ListTile(
             leading: const Icon(Icons.info_outline),
             title: Text(t.about),
@@ -186,7 +204,7 @@ class SettingsScreen extends ConsumerWidget {
               future: currentVersion(),
               builder: (_, snap) => Text(snap.hasData ? 'v${snap.data}' : ''),
             ),
-            onTap: () => openUrl(repoUrl),
+            onTap: () => openUrlOrReport(context, repoUrl),
           ),
           const SizedBox(height: 24),
         ],

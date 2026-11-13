@@ -111,6 +111,13 @@ pub struct Engine {
     path: Vec<u64>,
     /// Position hashes from the actual game before the root (for repetition).
     game_hist: Vec<u64>,
+    /// Counts draws that depend on history (repetition, fifty-move). A node
+    /// whose subtree saw one is not stored, so the table only ever holds
+    /// history-independent scores and can be reused across moves and games.
+    history_draws: u64,
+    /// Best move of the last completed root search (the root entry may be left
+    /// out of the table when its subtree saw a history-dependent draw).
+    root_best: Option<Move>,
 }
 
 impl Engine {
@@ -128,13 +135,30 @@ impl Engine {
             contempt: 0,
             path: Vec::with_capacity(MAX_PLY),
             game_hist: Vec::new(),
+            history_draws: 0,
+            root_best: None,
         }
     }
 
     /// Provide the actual game's position-hash history so the search treats a
     /// return to an earlier game position as a draw (repetition avoidance).
+    ///
+    /// A history that is not an extension (or takeback) of the previous one
+    /// means a different game: the table and move-ordering tables are cleared.
     pub fn set_game_history(&mut self, history: &[u64]) {
+        let same_game = !history.is_empty()
+            && !self.game_hist.is_empty()
+            && (history.starts_with(&self.game_hist) || self.game_hist.starts_with(history));
+        if !same_game {
+            self.clear_tables();
+        }
         self.game_hist = history.to_vec();
+    }
+
+    fn clear_tables(&mut self) {
+        self.tt.fill(TtEntry::default());
+        self.killers = [[None; 2]; MAX_PLY];
+        self.history = [[0; 64]; 64];
     }
 
     fn is_draw_by_repetition(&self, hash: u64) -> bool {
@@ -370,6 +394,7 @@ impl Engine {
             return result;
         }
 
+        self.root_best = None;
         let max_depth = limits.max_depth.max(1).min(MAX_PLY as u8 - 1);
         for depth in 1..=max_depth {
             let mut pos = root.clone();
@@ -392,8 +417,8 @@ impl Engine {
                 break; // discard the incomplete iteration, keep the last result
             }
             let best = self
-                .tt_probe(root.hash)
-                .and_then(|e| e.best)
+                .root_best
+                .or_else(|| self.tt_probe(root.hash).and_then(|e| e.best))
                 .or(result.best);
             let pv = self.extract_pv(root, depth as usize);
             result = SearchInfo {
@@ -430,6 +455,7 @@ impl Engine {
         // Draw by repetition or fifty-move: score as a draw so a winning engine
         // makes progress instead of shuffling (contempt = draw aversion).
         if ply > 0 && (pos.halfmove >= 100 || self.is_draw_by_repetition(pos.hash)) {
+            self.history_draws += 1;
             return self.draw_score(ply);
         }
         // Variant loss (opponent reached three checks / the hill / blew up our
@@ -442,6 +468,7 @@ impl Engine {
         }
 
         let key = pos.hash;
+        let draws_before = self.history_draws;
         let mut tt_best = None;
         if let Some(e) = self.tt_probe(key) {
             tt_best = e.best;
@@ -511,7 +538,8 @@ impl Engine {
             if alpha >= beta {
                 if !mv.is_capture() {
                     self.store_killer(ply, mv);
-                    self.history[mv.from() as usize][mv.to() as usize] += depth * depth;
+                    let h = &mut self.history[mv.from() as usize][mv.to() as usize];
+                    *h = h.saturating_add(depth * depth);
                 }
                 break;
             }
@@ -525,7 +553,12 @@ impl Engine {
         } else {
             BOUND_EXACT
         };
-        self.tt_store(key, depth, adjust_to_tt(best_score, ply), flag, best_move);
+        if ply == 0 {
+            self.root_best = best_move;
+        }
+        if self.history_draws == draws_before {
+            self.tt_store(key, depth, adjust_to_tt(best_score, ply), flag, best_move);
+        }
         best_score
     }
 
@@ -545,6 +578,7 @@ impl Engine {
             return 0;
         }
         if ply > 0 && (pos.halfmove >= 100 || self.is_draw_by_repetition(pos.hash)) {
+            self.history_draws += 1;
             return self.draw_score(ply);
         }
         if ply > 0 && pos.variant_terminal().is_some() {
@@ -681,16 +715,20 @@ impl Engine {
     fn extract_pv(&self, root: &Position, max: usize) -> Vec<Move> {
         let mut pv = Vec::new();
         let mut pos = root.clone();
-        for _ in 0..max {
+        for i in 0..max {
             // Stop at a variant-terminal node (e.g. a king captured in Fog of
             // War / Atomic) — the game is over, don't walk past it.
             if pos.variant_terminal().is_some() {
                 break;
             }
-            let Some(e) = self.tt_probe(pos.hash) else {
+            let Some(mv) = (if i == 0 {
+                self.root_best
+                    .or_else(|| self.tt_probe(pos.hash).and_then(|e| e.best))
+            } else {
+                self.tt_probe(pos.hash).and_then(|e| e.best)
+            }) else {
                 break;
             };
-            let Some(mv) = e.best else { break };
             let legal = pos.generate_legal();
             if (0..legal.len()).any(|i| legal[i] == mv) {
                 pv.push(mv);
@@ -817,6 +855,23 @@ fn mover_value(pos: &Position, m: Move) -> i32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_different_game_history_clears_the_table() {
+        let mut eng = Engine::new(10);
+        eng.set_game_history(&[1, 2, 3]);
+        eng.tt[5] = TtEntry {
+            key: 5,
+            depth: 3,
+            ..TtEntry::default()
+        };
+        eng.set_game_history(&[1, 2, 3, 4, 5]); // same game, later
+        assert_eq!(eng.tt[5].key, 5);
+        eng.set_game_history(&[1, 2]); // takeback
+        assert_eq!(eng.tt[5].key, 5);
+        eng.set_game_history(&[9, 8, 7]); // another game
+        assert_eq!(eng.tt[5].key, 0);
+    }
 
     #[test]
     fn bounded_selection_never_picks_a_forced_loss_when_safe_moves_exist() {

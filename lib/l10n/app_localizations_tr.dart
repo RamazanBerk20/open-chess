@@ -370,9 +370,6 @@ class AppLocalizationsTr extends AppLocalizations {
   String get hostGame => 'Oyun kur';
 
   @override
-  String get joinGame => 'Oyuna katıl';
-
-  @override
   String get yourName => 'Adınız';
 
   @override
@@ -415,19 +412,10 @@ class AppLocalizationsTr extends AppLocalizations {
   String get typeMessage => 'Bir mesaj yazın…';
 
   @override
-  String get savedGames => 'Kaydedilen oyunlar';
-
-  @override
   String get noSavedGames => 'Henüz kaydedilmiş oyun yok';
 
   @override
-  String get resume => 'Devam et';
-
-  @override
   String get renameGameTitle => 'Oyunu yeniden adlandır';
-
-  @override
-  String get playFromPosition => 'Pozisyondan Oyna';
 
   @override
   String get pasteFen => 'Bir FEN dizesi yapıştırın';
@@ -446,28 +434,16 @@ class AppLocalizationsTr extends AppLocalizations {
   String get loadPosition => 'Pozisyonu yükle';
 
   @override
-  String get sideToPlay => 'Oynayacak taraf FEN tarafından belirlenir';
-
-  @override
   String get exportPgn => 'PGN\'yi dışa aktar';
 
   @override
   String get copyPgn => 'PGN\'yi kopyala';
 
   @override
-  String get copyMoves => 'Hamleleri kopyala';
-
-  @override
   String get copiedToClipboard => 'Panoya kopyalandı';
 
   @override
   String get game => 'Oyun';
-
-  @override
-  String get singlePlayerTitle => 'Tek Oyuncu - Yapay Zekâya Karşı';
-
-  @override
-  String get twoPlayerTitle => 'İki oyuncu - aynı cihaz';
 
   @override
   String get lanTitle => 'İki oyuncu - LAN';
@@ -491,25 +467,16 @@ class AppLocalizationsTr extends AppLocalizations {
   String get tcInfinite => 'Sınırsız';
 
   @override
-  String get diffBeginner => 'Acemi';
-
-  @override
   String get diffVeryEasy => 'Çok kolay';
 
   @override
   String get diffEasy => 'Kolay';
 
   @override
-  String get diffMedium => 'Orta';
-
-  @override
   String get diffNormal => 'Normal';
 
   @override
   String get diffHard => 'Zor';
-
-  @override
-  String get diffExpert => 'Uzman';
 
   @override
   String get diffVeryHard => 'Çok zor';
@@ -531,15 +498,6 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get timePerMove => 'Hamle/süre (ms)';
-
-  @override
-  String get topNRandom => 'İlk-N rastgele';
-
-  @override
-  String get blunderChance => 'Hata yapma olasılığı';
-
-  @override
-  String get evalNoise => 'Değerlendirme gürültüsü (cp)';
 
   @override
   String get maxEvalLoss => 'En yüksek değerlendirme kaybı (cp)';
@@ -596,15 +554,6 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get bugMode => 'Mod';
-
-  @override
-  String get bugHotSeat => 'Tek cihazda (4 oyuncu)';
-
-  @override
-  String get bugVsAi => 'Bilgisayara karşı';
-
-  @override
-  String get bugYourSeat => 'Yeriniz';
 
   @override
   String get bugBoardA => 'Tahta A';
@@ -718,14 +667,6 @@ class AppLocalizationsTr extends AppLocalizations {
   }
 
   @override
-  String fogPassDevice(String color) {
-    return 'Cihazı $color oyuncusuna ver';
-  }
-
-  @override
-  String get fogTapReveal => 'Hamleni görmek için dokun';
-
-  @override
   String get checksLabel => 'Şahlar';
 
   @override
@@ -760,4 +701,199 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get about => 'Hakkında';
+
+  @override
+  String storeCorrupt(Object path) {
+    return 'Bir veri dosyası okunamadı. Bir kopyası $path konumunda saklandı.';
+  }
+
+  @override
+  String get settingsSaveFailed =>
+      'Bir ayar kaydedilemedi. Uygulamayı kapatana kadar geçerli olacak.';
+
+  @override
+  String get fenCastlingRemoved => 'Konumla uyuşmayan rok hakları kaldırıldı.';
+
+  @override
+  String get fenEnPassantRemoved =>
+      'Konumla uyuşmayan geçerken alma karesi kaldırıldı.';
+
+  @override
+  String get fenOpenedAsChess960 =>
+      'Chess960 olarak açıldı: bu rok düzeni standart satrançta geçerli değil.';
+
+  @override
+  String savedPartialReplay(int count) {
+    return 'Güncel kurallarla yeniden oynatılamayan hamle sayısı: $count. Oyun, oynanabilen son hamlede açıldı; kayıtlı oyununuz değiştirilmedi.';
+  }
+
+  @override
+  String savedGameDefaultName(Object stamp) {
+    return 'Oyun $stamp';
+  }
+
+  @override
+  String get gameSaveFailed => 'Oyun kaydedilemedi.';
+
+  @override
+  String get pauseGame => 'Duraklat';
+
+  @override
+  String get resumeGame => 'Devam et';
+
+  @override
+  String get gamePaused => 'Oyun duraklatıldı';
+
+  @override
+  String get chatTooLong => 'Mesaj çok uzun.';
+
+  @override
+  String get aiThinking => 'Yapay zekâ düşünüyor…';
+
+  @override
+  String aiDepthEval(int depth, Object eval) {
+    return 'Yapay zekâ: derinlik $depth, değerlendirme $eval';
+  }
+
+  @override
+  String pliesCount(int count) {
+    return '$count yarım hamle';
+  }
+
+  @override
+  String get openLinkFailed => 'Bağlantı açılamadı.';
+
+  @override
+  String get boardGreen => 'Yeşil';
+
+  @override
+  String get boardBrown => 'Kahverengi';
+
+  @override
+  String get boardBlue => 'Mavi';
+
+  @override
+  String get boardGray => 'Gri';
+
+  @override
+  String get animationOff => 'Kapalı';
+
+  @override
+  String animationMs(int ms) {
+    return '$ms ms';
+  }
+
+  @override
+  String get checkUpdatesOnLaunch => 'Açılışta güncellemeleri denetle';
+
+  @override
+  String get gameOverGeneric => 'Oyun bitti';
+
+  @override
+  String get lanIncompatibleVersion =>
+      'Diğer cihaz farklı bir Open Chess sürümü kullanıyor. Uygulamayı iki cihazda da güncelleyin.';
+
+  @override
+  String get tooManyPendingUpdates => 'Bekleyen maç güncellemesi çok fazla.';
+
+  @override
+  String get continueGame => 'Bitmemiş oyuna devam et';
+
+  @override
+  String get discardGame => 'Vazgeç';
+
+  @override
+  String get noMovesYet => 'Henüz hamle yok';
+
+  @override
+  String get promoteTo => 'Terfi';
+
+  @override
+  String get piecePawn => 'piyon';
+
+  @override
+  String get pieceKnight => 'at';
+
+  @override
+  String get pieceBishop => 'fil';
+
+  @override
+  String get pieceRook => 'kale';
+
+  @override
+  String get pieceQueen => 'vezir';
+
+  @override
+  String get pieceKing => 'şah';
+
+  @override
+  String squarePieceLabel(Object square, Object color, Object piece) {
+    return '$square, $color $piece';
+  }
+
+  @override
+  String get staleCastlingTitle => 'Geçersiz rok hakları';
+
+  @override
+  String get staleCastlingBody =>
+      'Bu kayıtlı konum artık olmayan bir kaleyle roka izni veriyor. Bu rok hakları olmadan açılsın mı? Kayıtlı oyunun kendisi değişmez.';
+
+  @override
+  String get openAnyway => 'Aç';
+
+  @override
+  String savedFenRejected(Object error) {
+    return 'Bu kayıtlı oyun açılamıyor: $error';
+  }
+
+  @override
+  String analysisFailed(Object error) {
+    return 'Analiz başarısız oldu. $error';
+  }
+
+  @override
+  String get importGame => 'PGN / FEN içe aktar';
+
+  @override
+  String get importFromClipboard => 'Yapıştır';
+
+  @override
+  String get importFromFile => 'Dosya aç';
+
+  @override
+  String get importHint => 'Bir PGN oyunu ya da FEN konumu yapıştırın';
+
+  @override
+  String get importEmpty => 'İçe aktarılacak bir şey yok.';
+
+  @override
+  String get importTooLarge => 'Metin içe aktarmak için çok büyük.';
+
+  @override
+  String importTooLong(int max) {
+    return 'Oyun $max yarım hamleden uzun.';
+  }
+
+  @override
+  String importBadFen(Object error) {
+    return 'Geçersiz konum: $error';
+  }
+
+  @override
+  String importBadMove(Object move) {
+    return 'Geçersiz ya da okunamayan hamle: $move';
+  }
+
+  @override
+  String importUnsupported(Object variant) {
+    return 'Bu varyant analiz edilemez: $variant';
+  }
+
+  @override
+  String get importReadFailed => 'Dosya okunamadı.';
+
+  @override
+  String engineFailed(Object error) {
+    return 'Motor bu konumu hesaplayamadı: $error';
+  }
 }

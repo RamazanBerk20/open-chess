@@ -7,6 +7,7 @@ import 'package:open_chess/l10n/app_localizations.dart';
 import 'package:open_chess/src/features/bughouse/bughouse_lobby_screen.dart';
 import 'package:open_chess/src/rust/api/net.dart';
 import 'package:open_chess/src/state/bughouse_lan_controller.dart';
+import 'package:open_chess/src/state/multicast_lock.dart';
 import 'package:open_chess/src/state/settings.dart';
 import 'package:open_chess/src/widgets/player_avatar.dart';
 
@@ -32,6 +33,7 @@ class _BughouseSetupScreenState extends ConsumerState<BughouseSetupScreen> {
 
   @override
   void dispose() {
+    if (_browse != null) releaseMulticast();
     _browse?.cancel();
     netStopBrowse();
     super.dispose();
@@ -40,6 +42,7 @@ class _BughouseSetupScreenState extends ConsumerState<BughouseSetupScreen> {
   void _startBrowse() {
     if (_browse != null) return;
     _hosts.clear();
+    acquireMulticast();
     _browse = netBrowse().listen((h) {
       if (h.mode != 'bughouse') return;
       if (!mounted) return;
@@ -55,6 +58,7 @@ class _BughouseSetupScreenState extends ConsumerState<BughouseSetupScreen> {
   }
 
   void _stopBrowse() {
+    if (_browse != null) releaseMulticast();
     _browse?.cancel();
     _browse = null;
     netStopBrowse();
@@ -66,9 +70,12 @@ class _BughouseSetupScreenState extends ConsumerState<BughouseSetupScreen> {
         .read(bughouseLanProvider.notifier)
         .host(ref.read(settingsProvider).playerProfile);
     _stopBrowse();
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => const BughouseLobbyScreen()));
+    // Back from the lobby: browse again so the host list is live.
+    Navigator.of(context)
+        .push(MaterialPageRoute(builder: (_) => const BughouseLobbyScreen()))
+        .then((_) {
+          if (mounted) _startBrowse();
+        });
   }
 
   void _joinLan(NetHost host) {
@@ -76,9 +83,12 @@ class _BughouseSetupScreenState extends ConsumerState<BughouseSetupScreen> {
         .read(bughouseLanProvider.notifier)
         .join(host.addr, ref.read(settingsProvider).playerProfile);
     _stopBrowse();
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => const BughouseLobbyScreen()));
+    // Back from the lobby: browse again so the host list is live.
+    Navigator.of(context)
+        .push(MaterialPageRoute(builder: (_) => const BughouseLobbyScreen()))
+        .then((_) {
+          if (mounted) _startBrowse();
+        });
   }
 
   @override

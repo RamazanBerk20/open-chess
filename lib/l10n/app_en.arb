@@ -143,7 +143,6 @@
   "defaultTimeControl": "Default time control",
   "defaultDifficulty": "Default difficulty",
   "hostGame": "Host game",
-  "joinGame": "Join game",
   "yourName": "Your name",
   "yourColour": "Your colour",
   "colourWhite": "White",
@@ -158,24 +157,17 @@
   "lanSpectate": "Watch game",
   "chat": "Chat",
   "typeMessage": "Type a message…",
-  "savedGames": "Saved games",
   "noSavedGames": "No saved games yet",
-  "resume": "Resume",
   "renameGameTitle": "Rename game",
-  "playFromPosition": "Play from Position",
   "pasteFen": "Paste a FEN string",
   "fenHint": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
   "invalidFen": "Invalid FEN — check the position string",
   "useStartPosition": "Use start position",
   "loadPosition": "Load position",
-  "sideToPlay": "Side to play is set by the FEN",
   "exportPgn": "Export PGN",
   "copyPgn": "Copy PGN",
-  "copyMoves": "Copy moves",
   "copiedToClipboard": "Copied to clipboard",
   "game": "Game",
-  "singlePlayerTitle": "Single Player vs AI",
-  "twoPlayerTitle": "Two players — same device",
   "lanTitle": "Two players — LAN",
   "playAs": "Play as",
   "difficulty": "Difficulty",
@@ -183,13 +175,10 @@
   "startGame": "Start game",
   "custom": "Custom",
   "tcInfinite": "Infinite",
-  "diffBeginner": "Beginner",
   "diffVeryEasy": "Very easy",
   "diffEasy": "Easy",
-  "diffMedium": "Medium",
   "diffNormal": "Normal",
   "diffHard": "Hard",
-  "diffExpert": "Expert",
   "diffVeryHard": "Very hard",
   "diffImpossible": "Impossible",
   "baseMinutes": "Base minutes",
@@ -197,9 +186,6 @@
   "baseTimeError": "Base time must be at least 1 minute",
   "searchDepth": "Search depth",
   "timePerMove": "Time/move (ms)",
-  "topNRandom": "Top-N random",
-  "blunderChance": "Blunder chance",
-  "evalNoise": "Eval noise (cp)",
   "maxEvalLoss": "Maximum evaluation loss (cp)",
   "moveVariety": "Move variety",
   "puzzlesSolved": "{solved}/{total} solved",
@@ -230,9 +216,6 @@
   "savedCorrupt": "Saved game was corrupt; loaded partially",
   "menuBughouse": "Bughouse",
   "bugMode": "Mode",
-  "bugHotSeat": "Hot-seat (4 players)",
-  "bugVsAi": "vs Computer",
-  "bugYourSeat": "Your seat",
   "bugBoardA": "Board A",
   "bugBoardB": "Board B",
   "bugWhite": "White",
@@ -289,15 +272,6 @@
       }
     }
   },
-  "fogPassDevice": "Pass the device to {color}",
-  "@fogPassDevice": {
-    "placeholders": {
-      "color": {
-        "type": "String"
-      }
-    }
-  },
-  "fogTapReveal": "Tap to reveal your turn",
   "checksLabel": "Checks",
   "support": "Support",
   "donate": "Donate",
@@ -309,5 +283,142 @@
   "newVersionAvailable": "A new version is available:",
   "download": "Download",
   "later": "Later",
-  "about": "About"
+  "about": "About",
+  "storeCorrupt": "A data file could not be read. A copy was kept at {path}.",
+  "@storeCorrupt": {
+    "placeholders": {
+      "path": {}
+    }
+  },
+  "settingsSaveFailed": "A setting could not be saved. It will apply until you close the app.",
+  "fenCastlingRemoved": "Castling rights that did not match the position were removed.",
+  "fenEnPassantRemoved": "An en passant square that did not match the position was removed.",
+  "fenOpenedAsChess960": "Opened as Chess960: this castling setup is not valid in standard chess.",
+  "savedPartialReplay": "Moves that could not be replayed under the current rules: {count}. The game was opened at the last playable move; your saved game was not changed.",
+  "@savedPartialReplay": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "savedGameDefaultName": "Game {stamp}",
+  "@savedGameDefaultName": {
+    "placeholders": {
+      "stamp": {}
+    }
+  },
+  "gameSaveFailed": "The game could not be saved.",
+  "pauseGame": "Pause",
+  "resumeGame": "Resume",
+  "gamePaused": "Game paused",
+  "chatTooLong": "Message is too long.",
+  "aiThinking": "AI thinking…",
+  "aiDepthEval": "AI: depth {depth}, eval {eval}",
+  "@aiDepthEval": {
+    "placeholders": {
+      "depth": {
+        "type": "int"
+      },
+      "eval": {}
+    }
+  },
+  "pliesCount": "{count, plural, =1{1 ply} other{{count} plies}}",
+  "@pliesCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "openLinkFailed": "Could not open the link.",
+  "boardGreen": "Green",
+  "boardBrown": "Brown",
+  "boardBlue": "Blue",
+  "boardGray": "Gray",
+  "animationOff": "Off",
+  "animationMs": "{ms} ms",
+  "@animationMs": {
+    "placeholders": {
+      "ms": {
+        "type": "int"
+      }
+    }
+  },
+  "checkUpdatesOnLaunch": "Check for updates on launch",
+  "gameOverGeneric": "Game over",
+  "lanIncompatibleVersion": "The other device runs a different version of Open Chess. Update the app on both devices.",
+  "tooManyPendingUpdates": "Too many pending match updates.",
+  "continueGame": "Continue unfinished game",
+  "discardGame": "Discard",
+  "noMovesYet": "No moves yet",
+  "promoteTo": "Promote to",
+  "piecePawn": "pawn",
+  "pieceKnight": "knight",
+  "pieceBishop": "bishop",
+  "pieceRook": "rook",
+  "pieceQueen": "queen",
+  "pieceKing": "king",
+  "squarePieceLabel": "{square}, {color} {piece}",
+  "@squarePieceLabel": {
+    "placeholders": {
+      "square": {},
+      "color": {},
+      "piece": {}
+    }
+  },
+  "staleCastlingTitle": "Outdated castling rights",
+  "staleCastlingBody": "This saved position allows castling with a rook that is no longer there. Open it without those castling rights? The saved game itself is not changed.",
+  "openAnyway": "Open",
+  "savedFenRejected": "This saved game cannot be opened: {error}",
+  "@savedFenRejected": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "analysisFailed": "Analysis failed. {error}",
+  "@analysisFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "importGame": "Import PGN / FEN",
+  "importFromClipboard": "Paste",
+  "importFromFile": "Open file",
+  "importHint": "Paste a PGN game or a FEN position",
+  "importEmpty": "Nothing to import.",
+  "importTooLarge": "The text is too large to import.",
+  "importTooLong": "The game is longer than {max} plies.",
+  "@importTooLong": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "importBadFen": "Invalid position: {error}",
+  "@importBadFen": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "importBadMove": "Illegal or unreadable move: {move}",
+  "@importBadMove": {
+    "placeholders": {
+      "move": {}
+    }
+  },
+  "importUnsupported": "This variant cannot be analysed: {variant}",
+  "@importUnsupported": {
+    "placeholders": {
+      "variant": {}
+    }
+  },
+  "importReadFailed": "The file could not be read.",
+  "engineFailed": "The engine could not search this position: {error}",
+  "@engineFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  }
 }

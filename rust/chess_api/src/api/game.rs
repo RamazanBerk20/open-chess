@@ -8,7 +8,10 @@ use chess_core::attacks::{
 };
 use chess_core::bitboard::{pop_lsb, Bitboard};
 use chess_core::types::rank_of;
-use chess_core::{Clock, Color, Game, GameStatus, Move, Piece, Position, TimeControl, Variant};
+use chess_core::{
+    parse_fen_variant, Clock, Color, DrawReason, Game, Move, Piece, Position, Termination,
+    TimeControl, Variant, VariantExtras, WinReason,
+};
 use flutter_rust_bridge::frb;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -150,8 +153,9 @@ pub struct ChessGame {
     clock: Clock,
     clock_undo: Vec<Clock>,
     clock_start: Clock,
-    timeout: Option<Color>,
-    status: GameStatus,
+    /// The single terminal state (move-derived, or a flag fall latched by
+    /// `tick`); `view()` and `is_over()` both read only this.
+    termination: Termination,
     /// Whether the most recently applied move was an Atomic explosion (for the
     /// UI's blast animation). Reset on undo.
     last_explosion: bool,
@@ -233,9 +237,9 @@ impl ChessGame {
         base_minutes: u32,
         increment_seconds: u32,
     ) -> Result<ChessGame, String> {
-        let mut game = Game::from_fen(&fen).map_err(|e| e.to_string())?;
-        game.pos.variant = to_variant(variant);
-        game.pos.hash = game.pos.compute_hash();
+        let pos = parse_fen_variant(&fen, to_variant(variant), &VariantExtras::default())
+            .map_err(|e| e.to_string())?;
+        let game = Game::from_position(pos);
         let clock = if base_minutes == 0 && increment_seconds == 0 {
             Clock::new(TimeControl::Infinite)
         } else {
@@ -279,17 +283,21 @@ impl ChessGame {
             hand[Color::Black.index()][index] =
                 u8::try_from(*count).map_err(|_| "black reserve count exceeds supported range")?;
         }
-        self.game.pos.checks = checks;
-        self.game.pos.hand = hand;
-        self.game.pos.promoted = promoted;
-        self.game.pos.hash = self.game.pos.compute_hash();
+        self.game
+            .pos
+            .set_variant_extras(&VariantExtras {
+                checks,
+                hand,
+                promoted,
+            })
+            .map_err(|e| e.to_string())?;
         self.game.reset_history();
-        self.status = self.game.status();
+        self.termination = self.game.termination();
         Ok(())
     }
 
     fn with_clock(mut game: Game, clock: Clock) -> ChessGame {
-        let status = game.status();
+        let termination = game.termination();
         ChessGame {
             game,
             san_history: Vec::new(),
@@ -298,22 +306,31 @@ impl ChessGame {
             clock,
             clock_undo: Vec::new(),
             clock_start: clock,
-            timeout: None,
-            status,
+            termination,
             last_explosion: false,
             last_passable: None,
         }
     }
 
+    fn timed_out(&self) -> bool {
+        matches!(
+            self.termination,
+            Termination::Decisive {
+                reason: WinReason::Time,
+                ..
+            } | Termination::Draw(DrawReason::TimeVsInsufficient)
+        )
+    }
+
     #[inline]
     fn is_over(&self) -> bool {
-        self.status != GameStatus::Ongoing || self.timeout.is_some()
+        self.termination.is_over()
     }
 
     /// Destination squares of every legal move starting from `from` (for hints).
     #[frb(sync)]
     pub fn legal_targets(&mut self, from: u32) -> Vec<u32> {
-        if self.is_over() {
+        if self.is_over() || from >= 64 {
             return Vec::new();
         }
         let from = from as u8;
@@ -333,6 +350,9 @@ impl ChessGame {
     /// re-checked when the premove is actually executed.
     #[frb(sync)]
     pub fn premove_targets(&self, from: u32) -> Vec<u32> {
+        if from >= 64 {
+            return Vec::new();
+        }
         premove_targets_on(&self.game.pos, from as u8)
     }
 
@@ -342,11 +362,14 @@ impl ChessGame {
     /// premove's real legality is still re-checked when it executes.
     #[frb(sync)]
     pub fn premove_targets_after(&self, premoves: Vec<u32>, from: u32) -> Vec<u32> {
+        if from >= 64 {
+            return Vec::new();
+        }
         let mut pos = self.game.pos.clone();
-        let mut i = 0;
-        while i + 1 < premoves.len() {
-            relocate(&mut pos, premoves[i] as u8, premoves[i + 1] as u8);
-            i += 2;
+        for pair in premoves.chunks_exact(2) {
+            if pair[0] < 64 && pair[1] < 64 {
+                relocate(&mut pos, pair[0] as u8, pair[1] as u8);
+            }
         }
         premove_targets_on(&pos, from as u8)
     }
@@ -354,7 +377,7 @@ impl ChessGame {
     /// Try to play from→to (with optional promotion piece).
     #[frb(sync)]
     pub fn play(&mut self, from: u32, to: u32, promotion: Option<PieceKind>) -> MoveOutcome {
-        if self.is_over() {
+        if self.is_over() || from >= 64 || to >= 64 {
             return MoveOutcome::Illegal;
         }
         let (from, to) = (from as u8, to as u8);
@@ -425,7 +448,7 @@ impl ChessGame {
     /// Crazyhouse: drop reserve `piece` (0=Pawn .. 4=Queen) onto square `to`.
     #[frb(sync)]
     pub fn play_drop(&mut self, piece: u32, to: u32) -> MoveOutcome {
-        if self.is_over() {
+        if self.is_over() || to >= 64 {
             return MoveOutcome::Illegal;
         }
         let (piece, to) = (piece as usize, to as u8);
@@ -454,7 +477,11 @@ impl ChessGame {
         self.game
             .pos
             .add_to_hand(from_color(color), from_kind(piece));
-        self.status = self.game.status();
+        // A fed piece can open a drop escape from a mate, so re-derive the
+        // move result; a latched flag fall stays.
+        if !self.timed_out() {
+            self.termination = self.game.termination();
+        }
     }
 
     /// Fog of War: the squares `viewer` can see (own pieces + observed squares).
@@ -485,7 +512,7 @@ impl ChessGame {
         self.clock_undo.push(self.clock);
         self.game.make_move(m);
         self.clock.on_move(mover);
-        self.status = self.game.status();
+        self.termination = self.game.termination();
     }
 
     /// Advance the running side's clock by `elapsed_ms`. Latches a timeout when
@@ -496,7 +523,7 @@ impl ChessGame {
             return;
         }
         if self.clock.elapse(elapsed_ms as i64) {
-            self.timeout = Some(self.clock.running());
+            self.termination = Termination::on_time(&self.game.pos, self.clock.running());
         }
     }
 
@@ -542,14 +569,12 @@ impl ChessGame {
             if let Some(c) = self.clock_undo.pop() {
                 self.clock = c;
             }
-            self.timeout = None;
-            self.status = self.game.status();
+            self.termination = self.game.termination();
             true
-        } else if self.timeout.is_some() {
+        } else if self.timed_out() {
             // Recover from a timeout latched before any move was made.
             self.clock = self.clock_start;
-            self.timeout = None;
-            self.status = self.game.status();
+            self.termination = self.game.termination();
             true
         } else {
             false
@@ -574,18 +599,7 @@ impl ChessGame {
         let in_check = pos.in_check(side);
         let (cap_w, cap_b) = captured(pos);
 
-        let outcome = match self.timeout {
-            Some(flagger) => {
-                if insufficient_to_mate(pos, flagger.opp()) {
-                    GameOutcome::DrawInsufficientMaterial
-                } else if flagger == Color::White {
-                    GameOutcome::BlackWinsOnTime
-                } else {
-                    GameOutcome::WhiteWinsOnTime
-                }
-            }
-            None => to_outcome(self.status),
-        };
+        let outcome = to_outcome(self.termination);
 
         GameView {
             board,
@@ -690,18 +704,20 @@ fn pawn_premove(color: Color, from: u8) -> Bitboard {
     let mut m = pawn_attacks(color, from);
     let rank = rank_of(from);
     match color {
-        Color::White => {
+        // A relocated pawn can sit on its last rank in a premove preview.
+        Color::White if rank < 7 => {
             m |= 1u64 << (from + 8);
             if rank == 1 {
                 m |= 1u64 << (from + 16);
             }
         }
-        Color::Black => {
+        Color::Black if rank > 0 => {
             m |= 1u64 << (from - 8);
             if rank == 6 {
                 m |= 1u64 << (from - 16);
             }
         }
+        _ => {}
     }
     m
 }
@@ -769,61 +785,29 @@ fn from_kind(k: PieceKind) -> Piece {
     }
 }
 
-fn to_outcome(s: GameStatus) -> GameOutcome {
-    match s {
-        GameStatus::Ongoing => GameOutcome::Ongoing,
-        GameStatus::Checkmate {
-            winner: Color::White,
-        } => GameOutcome::WhiteWins,
-        GameStatus::Checkmate {
-            winner: Color::Black,
-        } => GameOutcome::BlackWins,
-        GameStatus::VariantWin {
-            winner: Color::White,
-        } => GameOutcome::WhiteWins,
-        GameStatus::VariantWin {
-            winner: Color::Black,
-        } => GameOutcome::BlackWins,
-        GameStatus::Stalemate => GameOutcome::Stalemate,
-        GameStatus::DrawFiftyMove => GameOutcome::DrawFiftyMove,
-        GameStatus::DrawThreefold => GameOutcome::DrawThreefold,
-        GameStatus::DrawInsufficientMaterial => GameOutcome::DrawInsufficientMaterial,
+fn to_outcome(t: Termination) -> GameOutcome {
+    match t {
+        Termination::Ongoing => GameOutcome::Ongoing,
+        Termination::Decisive {
+            winner,
+            reason: WinReason::Time,
+        } => match winner {
+            Color::White => GameOutcome::WhiteWinsOnTime,
+            Color::Black => GameOutcome::BlackWinsOnTime,
+        },
+        Termination::Decisive { winner, .. } => match winner {
+            Color::White => GameOutcome::WhiteWins,
+            Color::Black => GameOutcome::BlackWins,
+        },
+        Termination::Draw(DrawReason::Stalemate) => GameOutcome::Stalemate,
+        Termination::Draw(DrawReason::FiftyMove) => GameOutcome::DrawFiftyMove,
+        Termination::Draw(DrawReason::Threefold) => GameOutcome::DrawThreefold,
+        // Agreement is never produced by this game object (draws by agreement
+        // live on the Dart/LAN side); flattened with insufficient material.
+        Termination::Draw(
+            DrawReason::Insufficient | DrawReason::TimeVsInsufficient | DrawReason::Agreement,
+        ) => GameOutcome::DrawInsufficientMaterial,
     }
-}
-
-/// Whether `side` has insufficient material to deliver checkmate by any legal
-/// sequence (lone king, K+N, K+B, or only same-coloured bishops) — used for the
-/// flag-fall-vs-insufficient-material draw rule.
-fn insufficient_to_mate(pos: &Position, side: Color) -> bool {
-    if pos.pieces(side, Piece::Pawn) != 0
-        || pos.pieces(side, Piece::Rook) != 0
-        || pos.pieces(side, Piece::Queen) != 0
-    {
-        return false;
-    }
-    let knights = pos.pieces(side, Piece::Knight).count_ones();
-    let mut bb = pos.pieces(side, Piece::Bishop);
-    let (mut light, mut dark) = (0u32, 0u32);
-    while bb != 0 {
-        let sq = bb.trailing_zeros() as usize;
-        bb &= bb - 1;
-        if (sq % 8 + sq / 8).is_multiple_of(2) {
-            dark += 1;
-        } else {
-            light += 1;
-        }
-    }
-    let bishops = light + dark;
-    if knights + bishops == 0 {
-        return true; // lone king
-    }
-    if knights + bishops == 1 {
-        return true; // K + single minor
-    }
-    if knights == 0 && (light == 0 || dark == 0) {
-        return true; // only same-coloured bishops
-    }
-    false
 }
 
 /// Pieces captured by each side, derived from the start material minus what

@@ -12,6 +12,7 @@ import 'package:open_chess/src/state/difficulty.dart';
 import 'package:open_chess/src/state/four_lan_controller.dart';
 import 'package:open_chess/src/state/four_player_controller.dart';
 import 'package:open_chess/src/state/l10n_labels.dart';
+import 'package:open_chess/src/state/multicast_lock.dart';
 import 'package:open_chess/src/state/settings.dart';
 import 'package:open_chess/src/widgets/player_avatar.dart';
 
@@ -33,6 +34,7 @@ class _FourSetupScreenState extends ConsumerState<FourSetupScreen> {
 
   @override
   void dispose() {
+    if (_browse != null) releaseMulticast();
     _browse?.cancel();
     netStopBrowse();
     super.dispose();
@@ -41,6 +43,7 @@ class _FourSetupScreenState extends ConsumerState<FourSetupScreen> {
   void _startBrowse() {
     if (_browse != null) return;
     _hosts.clear();
+    acquireMulticast();
     _browse = netBrowse().listen((h) {
       if (h.mode != 'four_player') return;
       if (!mounted) return;
@@ -56,6 +59,7 @@ class _FourSetupScreenState extends ConsumerState<FourSetupScreen> {
   }
 
   void _stopBrowse() {
+    if (_browse != null) releaseMulticast();
     _browse?.cancel();
     _browse = null;
     netStopBrowse();
@@ -85,9 +89,12 @@ class _FourSetupScreenState extends ConsumerState<FourSetupScreen> {
           allowSpectators: _allowSpectators,
         );
     _stopBrowse();
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => const FourLobbyScreen()));
+    // Back from the lobby: browse again so the host list is live.
+    Navigator.of(context)
+        .push(MaterialPageRoute(builder: (_) => const FourLobbyScreen()))
+        .then((_) {
+          if (mounted && _mode == FourMode.lan) _startBrowse();
+        });
   }
 
   void _joinLan(NetHost h) {
@@ -95,9 +102,12 @@ class _FourSetupScreenState extends ConsumerState<FourSetupScreen> {
         .read(fourLanProvider.notifier)
         .join(h.addr, ref.read(settingsProvider).playerProfile);
     _stopBrowse();
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => const FourLobbyScreen()));
+    // Back from the lobby: browse again so the host list is live.
+    Navigator.of(context)
+        .push(MaterialPageRoute(builder: (_) => const FourLobbyScreen()))
+        .then((_) {
+          if (mounted && _mode == FourMode.lan) _startBrowse();
+        });
   }
 
   void _spectateLan(NetHost h) {
@@ -105,9 +115,12 @@ class _FourSetupScreenState extends ConsumerState<FourSetupScreen> {
         .read(fourLanProvider.notifier)
         .spectate(h.addr, ref.read(settingsProvider).playerProfile);
     _stopBrowse();
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => const FourLobbyScreen()));
+    // Back from the lobby: browse again so the host list is live.
+    Navigator.of(context)
+        .push(MaterialPageRoute(builder: (_) => const FourLobbyScreen()))
+        .then((_) {
+          if (mounted && _mode == FourMode.lan) _startBrowse();
+        });
   }
 
   @override

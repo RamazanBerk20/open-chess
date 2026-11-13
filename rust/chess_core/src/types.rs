@@ -263,23 +263,41 @@ impl fmt::Debug for Move {
     }
 }
 
-/// A fixed-capacity, zero-allocation move list (max legal moves in any position < 256).
+/// Inline capacity of [`MoveList`]. Standard chess never exceeds 218 legal
+/// moves, so ordinary positions stay allocation-free.
+const MOVE_LIST_INLINE: usize = 256;
+
+/// A move list that is allocation-free up to 256 moves and spills to the heap
+/// beyond that. Drop variants have no small proven bound (Bughouse can feed
+/// any number of pieces into a hand: 5 piece types x 64 squares of drops plus
+/// the board moves), so a fixed array could overflow and panic.
 pub struct MoveList {
-    moves: [Move; 256],
+    moves: [Move; MOVE_LIST_INLINE],
     len: usize,
+    /// Holds every move once the inline array is full (empty otherwise).
+    spill: Vec<Move>,
 }
 
 impl MoveList {
     #[inline]
     pub fn new() -> MoveList {
         MoveList {
-            moves: [Move(0); 256],
+            moves: [Move(0); MOVE_LIST_INLINE],
             len: 0,
+            spill: Vec::new(),
         }
     }
     #[inline]
     pub fn push(&mut self, m: Move) {
-        self.moves[self.len] = m;
+        if self.len < MOVE_LIST_INLINE {
+            self.moves[self.len] = m;
+        } else {
+            if self.spill.is_empty() {
+                self.spill.reserve(2 * MOVE_LIST_INLINE);
+                self.spill.extend_from_slice(&self.moves);
+            }
+            self.spill.push(m);
+        }
         self.len += 1;
     }
     #[inline]
@@ -292,12 +310,20 @@ impl MoveList {
     }
     #[inline]
     pub fn as_slice(&self) -> &[Move] {
-        &self.moves[..self.len]
+        if self.spill.is_empty() {
+            &self.moves[..self.len]
+        } else {
+            &self.spill
+        }
     }
     /// Mutable view of the active moves (used by the AI to order them in place).
     #[inline]
     pub fn as_mut_slice(&mut self) -> &mut [Move] {
-        &mut self.moves[..self.len]
+        if self.spill.is_empty() {
+            &mut self.moves[..self.len]
+        } else {
+            &mut self.spill
+        }
     }
 }
 
@@ -311,6 +337,6 @@ impl std::ops::Index<usize> for MoveList {
     type Output = Move;
     #[inline]
     fn index(&self, i: usize) -> &Move {
-        &self.moves[i]
+        &self.as_slice()[i]
     }
 }

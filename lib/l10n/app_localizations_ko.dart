@@ -370,9 +370,6 @@ class AppLocalizationsKo extends AppLocalizations {
   String get hostGame => '게임 호스트';
 
   @override
-  String get joinGame => '게임 참가';
-
-  @override
   String get yourName => '이름';
 
   @override
@@ -415,19 +412,10 @@ class AppLocalizationsKo extends AppLocalizations {
   String get typeMessage => '메시지를 입력하세요…';
 
   @override
-  String get savedGames => '저장된 게임';
-
-  @override
   String get noSavedGames => '아직 저장된 게임이 없습니다';
 
   @override
-  String get resume => '이어하기';
-
-  @override
   String get renameGameTitle => '게임 이름 변경';
-
-  @override
-  String get playFromPosition => '특정 국면에서 시작';
 
   @override
   String get pasteFen => 'FEN 문자열을 붙여넣으세요';
@@ -446,28 +434,16 @@ class AppLocalizationsKo extends AppLocalizations {
   String get loadPosition => '국면 불러오기';
 
   @override
-  String get sideToPlay => '착수할 차례는 FEN에 따라 설정됩니다';
-
-  @override
   String get exportPgn => 'PGN 내보내기';
 
   @override
   String get copyPgn => 'PGN 복사';
 
   @override
-  String get copyMoves => '기보 복사';
-
-  @override
   String get copiedToClipboard => '클립보드에 복사되었습니다';
 
   @override
   String get game => '게임';
-
-  @override
-  String get singlePlayerTitle => '1인용 대 AI';
-
-  @override
-  String get twoPlayerTitle => '2인용 — 같은 기기';
 
   @override
   String get lanTitle => '2인용 — LAN';
@@ -491,25 +467,16 @@ class AppLocalizationsKo extends AppLocalizations {
   String get tcInfinite => '무제한';
 
   @override
-  String get diffBeginner => '입문';
-
-  @override
   String get diffVeryEasy => '매우 쉬움';
 
   @override
   String get diffEasy => '쉬움';
 
   @override
-  String get diffMedium => '보통';
-
-  @override
   String get diffNormal => '일반';
 
   @override
   String get diffHard => '어려움';
-
-  @override
-  String get diffExpert => '전문가';
 
   @override
   String get diffVeryHard => '매우 어려움';
@@ -531,15 +498,6 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get timePerMove => '수당 시간(ms)';
-
-  @override
-  String get topNRandom => '상위 N개 무작위';
-
-  @override
-  String get blunderChance => '실수 확률';
-
-  @override
-  String get evalNoise => '평가 노이즈(cp)';
 
   @override
   String get maxEvalLoss => '최대 평가 손실(cp)';
@@ -595,15 +553,6 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get bugMode => '모드';
-
-  @override
-  String get bugHotSeat => '핫시트 (4인)';
-
-  @override
-  String get bugVsAi => '컴퓨터와 대전';
-
-  @override
-  String get bugYourSeat => '내 자리';
 
   @override
   String get bugBoardA => '보드 A';
@@ -717,14 +666,6 @@ class AppLocalizationsKo extends AppLocalizations {
   }
 
   @override
-  String fogPassDevice(String color) {
-    return '기기를 $color에게 건네주세요';
-  }
-
-  @override
-  String get fogTapReveal => '화면을 탭하여 당신의 차례를 확인하세요';
-
-  @override
   String get checksLabel => '체크 수';
 
   @override
@@ -759,4 +700,197 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get about => '정보';
+
+  @override
+  String storeCorrupt(Object path) {
+    return '데이터 파일을 읽을 수 없습니다. 사본을 $path에 보관했습니다.';
+  }
+
+  @override
+  String get settingsSaveFailed => '설정을 저장하지 못했습니다. 앱을 닫기 전까지는 적용됩니다.';
+
+  @override
+  String get fenCastlingRemoved => '포지션과 맞지 않는 캐슬링 권리를 제거했습니다.';
+
+  @override
+  String get fenEnPassantRemoved => '포지션과 맞지 않는 앙파상 칸을 제거했습니다.';
+
+  @override
+  String get fenOpenedAsChess960 =>
+      'Chess960으로 열었습니다. 이 캐슬링 배치는 표준 체스에서 유효하지 않습니다.';
+
+  @override
+  String savedPartialReplay(int count) {
+    return '현재 규칙으로 재생할 수 없었던 수: $count. 마지막으로 둘 수 있는 수에서 게임을 열었으며, 저장된 게임은 변경되지 않았습니다.';
+  }
+
+  @override
+  String savedGameDefaultName(Object stamp) {
+    return '대국 $stamp';
+  }
+
+  @override
+  String get gameSaveFailed => '대국을 저장할 수 없습니다.';
+
+  @override
+  String get pauseGame => '일시정지';
+
+  @override
+  String get resumeGame => '재개';
+
+  @override
+  String get gamePaused => '대국 일시정지됨';
+
+  @override
+  String get chatTooLong => '메시지가 너무 깁니다.';
+
+  @override
+  String get aiThinking => 'AI 생각 중…';
+
+  @override
+  String aiDepthEval(int depth, Object eval) {
+    return 'AI: 깊이 $depth, 평가 $eval';
+  }
+
+  @override
+  String pliesCount(int count) {
+    return '$count수';
+  }
+
+  @override
+  String get openLinkFailed => '링크를 열 수 없습니다.';
+
+  @override
+  String get boardGreen => '초록';
+
+  @override
+  String get boardBrown => '갈색';
+
+  @override
+  String get boardBlue => '파랑';
+
+  @override
+  String get boardGray => '회색';
+
+  @override
+  String get animationOff => '끔';
+
+  @override
+  String animationMs(int ms) {
+    return '${ms}ms';
+  }
+
+  @override
+  String get checkUpdatesOnLaunch => '시작 시 업데이트 확인';
+
+  @override
+  String get gameOverGeneric => '대국 종료';
+
+  @override
+  String get lanIncompatibleVersion =>
+      '상대 기기의 Open Chess 버전이 다릅니다. 두 기기 모두 앱을 업데이트하세요.';
+
+  @override
+  String get tooManyPendingUpdates => '대기 중인 대국 업데이트가 너무 많습니다.';
+
+  @override
+  String get continueGame => '끝나지 않은 대국 계속하기';
+
+  @override
+  String get discardGame => '삭제';
+
+  @override
+  String get noMovesYet => '아직 수가 없습니다';
+
+  @override
+  String get promoteTo => '승진할 기물';
+
+  @override
+  String get piecePawn => '폰';
+
+  @override
+  String get pieceKnight => '나이트';
+
+  @override
+  String get pieceBishop => '비숍';
+
+  @override
+  String get pieceRook => '룩';
+
+  @override
+  String get pieceQueen => '퀸';
+
+  @override
+  String get pieceKing => '킹';
+
+  @override
+  String squarePieceLabel(Object square, Object color, Object piece) {
+    return '$square, $color $piece';
+  }
+
+  @override
+  String get staleCastlingTitle => '오래된 캐슬링 권리';
+
+  @override
+  String get staleCastlingBody =>
+      '이 저장된 국면에는 더 이상 없는 룩과의 캐슬링 권리가 있습니다. 해당 권리 없이 열까요? 저장된 대국 자체는 바뀌지 않습니다.';
+
+  @override
+  String get openAnyway => '열기';
+
+  @override
+  String savedFenRejected(Object error) {
+    return '이 저장된 대국을 열 수 없습니다: $error';
+  }
+
+  @override
+  String analysisFailed(Object error) {
+    return '분석에 실패했습니다. $error';
+  }
+
+  @override
+  String get importGame => 'PGN / FEN 가져오기';
+
+  @override
+  String get importFromClipboard => '붙여넣기';
+
+  @override
+  String get importFromFile => '파일 열기';
+
+  @override
+  String get importHint => 'PGN 기보나 FEN 국면을 붙여넣으세요';
+
+  @override
+  String get importEmpty => '가져올 내용이 없습니다.';
+
+  @override
+  String get importTooLarge => '텍스트가 너무 커서 가져올 수 없습니다.';
+
+  @override
+  String importTooLong(int max) {
+    return '대국이 $max수를 초과합니다.';
+  }
+
+  @override
+  String importBadFen(Object error) {
+    return '잘못된 국면: $error';
+  }
+
+  @override
+  String importBadMove(Object move) {
+    return '불법이거나 읽을 수 없는 수: $move';
+  }
+
+  @override
+  String importUnsupported(Object variant) {
+    return '이 변형은 분석할 수 없습니다: $variant';
+  }
+
+  @override
+  String get importReadFailed => '파일을 읽을 수 없습니다.';
+
+  @override
+  String engineFailed(Object error) {
+    return '엔진이 이 국면을 탐색할 수 없습니다: $error';
+  }
 }

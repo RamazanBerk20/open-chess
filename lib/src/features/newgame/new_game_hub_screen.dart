@@ -9,8 +9,10 @@ import 'package:open_chess/src/features/four/four_setup_screen.dart';
 import 'package:open_chess/src/features/game/game_screen.dart';
 import 'package:open_chess/src/features/setup/lan_setup_screen.dart';
 import 'package:open_chess/src/rust/api/game.dart';
+import 'package:open_chess/src/state/ai_provider.dart';
 import 'package:open_chess/src/state/clock_provider.dart';
 import 'package:open_chess/src/state/difficulty.dart';
+import 'package:open_chess/src/state/fen_repair.dart';
 import 'package:open_chess/src/state/game_mode.dart';
 import 'package:open_chess/src/state/game_providers.dart';
 import 'package:open_chess/src/state/lan_controller.dart';
@@ -79,10 +81,12 @@ class _NewGameHubScreenState extends ConsumerState<NewGameHubScreen> {
     context,
   ).pushReplacement(MaterialPageRoute(builder: (_) => const GameScreen()));
 
+  /// Every local start ends the previous session: LAN link and engine search.
   void _leaveLanBeforeLocalGame() {
     if (hasActiveLanSession(ref.read(lanProvider))) {
       ref.read(lanProvider.notifier).leave();
     }
+    ref.read(aiControllerProvider.notifier).cancel();
   }
 
   void _startComputer() {
@@ -129,28 +133,28 @@ class _NewGameHubScreenState extends ConsumerState<NewGameHubScreen> {
     });
   }
 
-  bool _isValidFen(String fen) {
-    try {
-      ChessGame.fromFen(fen: fen);
-      return true;
-    } catch (_) {
-      return false;
-    }
-  }
-
   void _loadCustom(AppLocalizations t) {
     final fen = _fenCtl.text.trim();
-    if (fen.isEmpty || !_isValidFen(fen)) {
+    final prep = fen.isEmpty ? null : prepareUserFen(fen);
+    if (prep == null || prep.error != null) {
       setState(() => _fenError = t.invalidFen);
       return;
+    }
+    if (prep.notes.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(prep.notes.map((n) => fenNoteText(t, n)).join(' ')),
+          duration: const Duration(seconds: 8),
+        ),
+      );
     }
     _leaveLanBeforeLocalGame();
     ref.read(gameModeProvider.notifier).setTwoPlayer();
     ref
         .read(selectedTimeControlProvider.notifier)
         .set(TimeControlOption.infinite);
-    ref.read(customStartFenProvider.notifier).set(fen);
-    ref.read(selectedVariantProvider.notifier).set(GameVariant.standard);
+    ref.read(customStartFenProvider.notifier).set(prep.fen);
+    ref.read(selectedVariantProvider.notifier).set(prep.variant);
     ref.invalidate(gameControllerProvider);
     ref.invalidate(clockProvider);
     _toGame();

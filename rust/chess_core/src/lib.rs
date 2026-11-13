@@ -20,8 +20,8 @@ pub mod zobrist;
 
 pub use clock::{Clock, TimeControl};
 pub use error::{ChessError, Result};
-pub use fen::{parse_fen, to_fen};
-pub use game::{Game, GameStatus};
+pub use fen::{parse_fen, parse_fen_variant, to_fen, VariantExtras};
+pub use game::{DrawReason, Game, GameStatus, Termination, WinReason};
 pub use perft::{perft, perft_divide};
 pub use position::Position;
 pub use types::{Color, Move, MoveList, Piece, Square, Variant};

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'package:open_chess/l10n/app_localizations.dart';
+
 import 'package:open_chess/src/rust/api/game.dart';
 import 'package:open_chess/src/widgets/pieces.dart';
 
@@ -14,7 +16,7 @@ Future<PieceKind?> showPromotionDialog(BuildContext context, PieceColor color) {
   return showDialog<PieceKind>(
     context: context,
     builder: (context) => AlertDialog(
-      title: const Text('Promote to'),
+      title: Text(AppLocalizations.of(context).promoteTo),
       content: Row(
         mainAxisSize: MainAxisSize.min,
         children: [

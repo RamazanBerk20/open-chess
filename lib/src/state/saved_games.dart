@@ -1,8 +1,5 @@
-import 'dart:convert';
-import 'dart:io';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:path_provider/path_provider.dart';
+import 'package:open_chess/src/state/json_store.dart';
 
 /// A saved game with enough context to replay its exact rules and start
 /// position. Older entries are upgraded with standard/infinite defaults.
@@ -27,6 +24,13 @@ class SavedGame {
   final String? aiColorCode;
   final String? difficultyName;
 
+  /// Full engine profile, so a Custom difficulty resumes as itself.
+  final Map<String, dynamic>? difficultyParams;
+
+  /// Clock (white, black ms) just before each ply, so a takeback after resume
+  /// restores the time the game really had at that move.
+  final List<(int, int)>? clockHistory;
+
   const SavedGame({
     required this.id,
     required this.name,
@@ -41,7 +45,27 @@ class SavedGame {
     this.vsAi = false,
     this.aiColorCode,
     this.difficultyName,
+    this.difficultyParams,
+    this.clockHistory,
   });
+
+  SavedGame copyWith({String? name}) => SavedGame(
+    id: id,
+    name: name ?? this.name,
+    moves: moves,
+    createdAt: createdAt,
+    startFen: startFen,
+    variantCode: variantCode,
+    baseMinutes: baseMinutes,
+    incrementSeconds: incrementSeconds,
+    whiteMs: whiteMs,
+    blackMs: blackMs,
+    vsAi: vsAi,
+    aiColorCode: aiColorCode,
+    difficultyName: difficultyName,
+    difficultyParams: difficultyParams,
+    clockHistory: clockHistory,
+  );
 
   int get ply => moves.length;
 
@@ -59,6 +83,12 @@ class SavedGame {
     'vsAi': vsAi,
     'aiColorCode': aiColorCode,
     'difficultyName': difficultyName,
+    'difficultyParams': difficultyParams,
+    'clockHistory': clockHistory == null
+        ? null
+        : [
+            for (final (w, b) in clockHistory!) [w, b],
+          ],
   };
 
   factory SavedGame.fromJson(Map<String, dynamic> j) => SavedGame(
@@ -77,80 +107,98 @@ class SavedGame {
     vsAi: j['vsAi'] as bool? ?? false,
     aiColorCode: j['aiColorCode'] as String?,
     difficultyName: j['difficultyName'] as String?,
+    difficultyParams: j['difficultyParams'] as Map<String, dynamic>?,
+    clockHistory: (j['clockHistory'] as List?)?.map((e) {
+      final p = e as List;
+      return ((p[0] as num).toInt(), (p[1] as num).toInt());
+    }).toList(),
   );
 }
 
-Future<File> _file() async {
-  final dir = await getApplicationSupportDirectory();
-  return File('${dir.path}/saved_games.json');
-}
-
-Future<List<SavedGame>> loadSavedGames() async {
-  try {
-    final f = await _file();
-    if (!await f.exists()) return [];
-    final list = json.decode(await f.readAsString()) as List;
-    return list
-        .map((e) => SavedGame.fromJson(e as Map<String, dynamic>))
-        .toList();
-  } catch (_) {
-    return [];
+/// Strict per-entry decode: one bad entry is skipped (and the file is backed
+/// up by the store) instead of discarding every saved game.
+List<SavedGame> decodeSavedGames(Object? j) {
+  final out = <SavedGame>[];
+  var bad = false;
+  for (final e in j as List) {
+    try {
+      out.add(SavedGame.fromJson(e as Map<String, dynamic>));
+    } catch (_) {
+      bad = true;
+    }
   }
+  if (bad) throw PartialDecode(out);
+  return out;
 }
 
-Future<void> saveSavedGames(List<SavedGame> games) async {
-  try {
-    final f = await _file();
-    await f.writeAsString(json.encode(games.map((g) => g.toJson()).toList()));
-  } catch (_) {}
-}
+final savedGamesStoreProvider = Provider<JsonStore<List<SavedGame>>>(
+  (_) => JsonStore(
+    'saved_games.json',
+    decode: decodeSavedGames,
+    encode: (games) => [for (final g in games) g.toJson()],
+    empty: const [],
+  ),
+);
 
 final savedGamesProvider =
     AsyncNotifierProvider<SavedGamesController, List<SavedGame>>(
       SavedGamesController.new,
     );
 
+/// Every mutation goes through the store, which waits for the load and
+/// serializes writes, so a save from a cold provider never drops older games.
 class SavedGamesController extends AsyncNotifier<List<SavedGame>> {
+  JsonStore<List<SavedGame>> get _store => ref.read(savedGamesStoreProvider);
+
   @override
-  Future<List<SavedGame>> build() => loadSavedGames();
+  Future<List<SavedGame>> build() => _store.load();
 
-  Future<void> add(SavedGame g) async {
-    final list = <SavedGame>[...?state.value, g];
-    await saveSavedGames(list);
-    state = AsyncData(list);
+  Future<void> _apply(List<SavedGame> Function(List<SavedGame>) f) async {
+    state = AsyncData(await _store.update(f));
   }
 
-  Future<void> remove(String id) async {
-    final list = (state.value ?? const <SavedGame>[])
-        .where((g) => g.id != id)
-        .toList();
-    await saveSavedGames(list);
-    state = AsyncData(list);
-  }
+  Future<void> add(SavedGame g) => _apply((list) => [...list, g]);
 
-  Future<void> rename(String id, String name) async {
-    final list = (state.value ?? const <SavedGame>[])
-        .map(
-          (g) => g.id == id
-              ? SavedGame(
-                  id: g.id,
-                  name: name,
-                  moves: g.moves,
-                  createdAt: g.createdAt,
-                  startFen: g.startFen,
-                  variantCode: g.variantCode,
-                  baseMinutes: g.baseMinutes,
-                  incrementSeconds: g.incrementSeconds,
-                  whiteMs: g.whiteMs,
-                  blackMs: g.blackMs,
-                  vsAi: g.vsAi,
-                  aiColorCode: g.aiColorCode,
-                  difficultyName: g.difficultyName,
-                )
-              : g,
-        )
-        .toList();
-    await saveSavedGames(list);
-    state = AsyncData(list);
+  Future<void> remove(String id) => _apply(
+    (list) => [
+      for (final g in list)
+        if (g.id != id) g,
+    ],
+  );
+
+  Future<void> rename(String id, String name) => _apply(
+    (list) => [for (final g in list) g.id == id ? g.copyWith(name: name) : g],
+  );
+}
+
+/// The unfinished game being played, rewritten after every move and when the
+/// app is backgrounded, so it can be offered for resume on the next launch.
+final autosaveStoreProvider = Provider<JsonStore<SavedGame?>>(
+  (_) => JsonStore(
+    'current_game.json',
+    decode: (j) =>
+        j == null ? null : SavedGame.fromJson(j as Map<String, dynamic>),
+    encode: (g) => g?.toJson(),
+    empty: null,
+  ),
+);
+
+final autosaveProvider = AsyncNotifierProvider<AutosaveController, SavedGame?>(
+  AutosaveController.new,
+);
+
+class AutosaveController extends AsyncNotifier<SavedGame?> {
+  JsonStore<SavedGame?> get _store => ref.read(autosaveStoreProvider);
+
+  @override
+  Future<SavedGame?> build() => _store.load();
+
+  /// Store [g] as the current game, or clear it with null (finished/empty).
+  Future<void> put(SavedGame? g) async {
+    try {
+      state = AsyncData(await _store.set(g));
+    } catch (_) {
+      // Autosave is best effort; the previous file is kept intact.
+    }
   }
 }

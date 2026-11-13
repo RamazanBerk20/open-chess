@@ -214,26 +214,14 @@ fn malformed_fen_rejected() {
 
 #[test]
 fn castling_rights_require_pieces_home() {
-    // King/rook absent or off its home square → those rights are stripped (the
-    // FEN still parses, mirroring the ep normalisation) so movegen can't trust a
-    // phantom right. WK=0b0001, WQ=0b0010, BK=0b0100, BQ=0b1000.
+    // A right whose king/rook is absent or off its home square is rejected
+    // outright: movegen must never be handed a phantom right.
+    // WK=0b0001, WQ=0b0010, BK=0b0100, BQ=0b1000.
+    assert!(parse_fen("4k3/8/8/8/8/8/8/4K3 w KQkq - 0 1").is_err()); // no rooks
+    assert!(parse_fen("4k3/8/8/8/8/8/8/1R2KR2 w KQ - 0 1").is_err()); // off corners
+    assert!(parse_fen("4k3/8/8/8/8/8/8/R3K2R w KQq - 0 1").is_err()); // black has no rook
     assert_eq!(
-        parse_fen("4k3/8/8/8/8/8/8/4K3 w KQkq - 0 1")
-            .unwrap()
-            .castling
-            .0,
-        0
-    ); // no rooks
-    assert_eq!(
-        parse_fen("4k3/8/8/8/8/8/8/1R2KR2 w KQ - 0 1")
-            .unwrap()
-            .castling
-            .0,
-        0
-    ); // off corners
-       // White intact (e1 king, a1/h1 rooks); black has no rooks → black rights gone.
-    assert_eq!(
-        parse_fen("4k3/8/8/8/8/8/8/R3K2R w KQq - 0 1")
+        parse_fen("4k3/8/8/8/8/8/8/R3K2R w KQ - 0 1")
             .unwrap()
             .castling
             .0,
@@ -250,9 +238,11 @@ fn castling_rights_require_pieces_home() {
 }
 
 #[test]
-fn impossible_ep_normalized() {
-    // ep e4 with White to move and no capturing pawn → normalized to None, still parses.
-    let p = parse_fen("4k3/8/8/8/8/8/8/4K3 w - e4 0 1").unwrap();
+fn impossible_ep_rejected_and_uncapturable_ep_normalized() {
+    // ep e4 with White to move is on the wrong rank: rejected.
+    assert!(parse_fen("4k3/8/8/8/8/8/8/4K3 w - e4 0 1").is_err());
+    // A real double-push target that no pawn can capture is dropped.
+    let p = parse_fen("4k3/8/8/4p3/8/8/8/4K3 w - e6 0 1").unwrap();
     assert!(p.ep.is_none());
 }
 

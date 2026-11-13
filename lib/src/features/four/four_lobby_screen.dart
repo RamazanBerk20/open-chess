@@ -138,7 +138,10 @@ class _FourLobbyScreenState extends ConsumerState<FourLobbyScreen> {
           if (s.error != null)
             Padding(
               padding: const EdgeInsets.only(bottom: 12),
-              child: Text(s.error!, style: const TextStyle(color: Colors.red)),
+              child: Text(
+                localizeMatchError(AppLocalizations.of(context), s.error!),
+                style: const TextStyle(color: Colors.red),
+              ),
             ),
           if (!s.isHost) ...[
             const Center(child: CircularProgressIndicator()),

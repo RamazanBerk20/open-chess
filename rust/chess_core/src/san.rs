@@ -123,7 +123,7 @@ impl Position {
         let mut others = Vec::new();
         for i in 0..legal.len() {
             let m = legal[i];
-            if m.to() == mv.to() && m.from() != from {
+            if m.to() == mv.to() && m.from() != from && !m.is_drop() {
                 if let Some((_, pp)) = self.piece_at(m.from()) {
                     if pp == piece {
                         others.push(m.from());

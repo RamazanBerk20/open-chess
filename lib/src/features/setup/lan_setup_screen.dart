@@ -9,6 +9,7 @@ import 'package:open_chess/src/features/game/game_screen.dart';
 import 'package:open_chess/src/rust/api/game.dart';
 import 'package:open_chess/src/rust/api/net.dart';
 import 'package:open_chess/src/state/l10n_labels.dart';
+import 'package:open_chess/src/state/multicast_lock.dart';
 import 'package:open_chess/src/state/lan_controller.dart';
 import 'package:open_chess/src/state/settings.dart';
 import 'package:open_chess/src/state/time_control.dart';
@@ -38,6 +39,7 @@ class _LanSetupScreenState extends ConsumerState<LanSetupScreen> {
   void initState() {
     super.initState();
     _lan = ref.read(lanProvider.notifier);
+    acquireMulticast(); // browsing, and answering discovery while hosting
     _browseSub = netBrowse().listen((h) {
       if (!mounted) return;
       if (h.mode != 'two_player') return;
@@ -49,6 +51,7 @@ class _LanSetupScreenState extends ConsumerState<LanSetupScreen> {
   void dispose() {
     _browseSub?.cancel();
     netStopBrowse();
+    releaseMulticast();
     if (!_enteredGame && _sessionStarted) {
       _lan.leave();
     }
@@ -88,9 +91,13 @@ class _LanSetupScreenState extends ConsumerState<LanSetupScreen> {
         );
       }
       if (next.error != null && next.error != prev?.error) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(next.error!)));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              localizeLanError(AppLocalizations.of(context), next.error!),
+            ),
+          ),
+        );
       }
     });
 

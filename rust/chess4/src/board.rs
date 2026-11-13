@@ -105,12 +105,18 @@ impl Board {
 
     #[inline]
     pub fn put(&mut self, col: i8, row: i8, player: Player, piece: Piece) {
-        self.cells[idx(col, row)] = Some((player, piece));
+        // Off-board/corner cells are ignored (premove previews relocate
+        // pieces to arbitrary bridge-supplied cells).
+        if in_bounds(col, row) {
+            self.cells[idx(col, row)] = Some((player, piece));
+        }
     }
 
     #[inline]
     pub fn clear(&mut self, col: i8, row: i8) {
-        self.cells[idx(col, row)] = None;
+        if in_bounds(col, row) {
+            self.cells[idx(col, row)] = None;
+        }
     }
 
     pub fn king_of(&self, player: Player) -> Option<Coord> {

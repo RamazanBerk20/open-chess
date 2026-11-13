@@ -12,7 +12,9 @@ import 'package:open_chess/src/widgets/pgn_export.dart';
 import 'package:open_chess/src/state/ai_provider.dart';
 import 'package:open_chess/src/state/difficulty.dart';
 import 'package:open_chess/src/state/game_mode.dart';
+import 'package:open_chess/src/state/game_phase.dart';
 import 'package:open_chess/src/state/game_providers.dart';
+import 'package:open_chess/src/state/clock_provider.dart';
 import 'package:open_chess/src/state/l10n_labels.dart';
 import 'package:open_chess/src/state/lan_controller.dart';
 import 'package:open_chess/src/state/settings.dart';
@@ -35,27 +37,48 @@ class GameScreen extends ConsumerStatefulWidget {
 }
 
 class _GameScreenState extends ConsumerState<GameScreen> {
-  // Whether a promotion picker is currently on screen, so it can be dismissed
-  // if the game ends underneath it (e.g. a flag-fall while choosing a piece).
+  // Prompts that must close if the game ends underneath them (a flag-fall
+  // while choosing a promotion piece, a resignation while a draw offer is up).
   bool _promoOpen = false;
+  bool _drawOpen = false;
   late final LanController _lan;
   late final bool _ownsLanSession;
+  late final ProviderContainer _container;
+  late final AppLifecycleListener _lifecycle;
+  bool _disposed = false; // listeners can still fire while disposing
+  int _aiRetries = 0; // engine refusals retried since the last move
 
   @override
   void initState() {
     super.initState();
+    _container = ProviderScope.containerOf(context, listen: false);
     _lan = ref.read(lanProvider.notifier);
     _ownsLanSession = hasActiveLanSession(ref.read(lanProvider));
+    // Backgrounding (or minimising) holds a local timed game and saves it.
+    _lifecycle = AppLifecycleListener(onHide: _onBackground);
     // Kick off the engine's first reply when it is the side to move at the
-    // start (AI plays White). Later replies are driven by the listener in build,
-    // so there is no per-build trigger that would double-fire _maybeAiMove.
+    // start (AI plays White). Later replies are driven by the listeners in
+    // build (game state change, or the engine becoming idle).
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _maybeAiMove(ref);
     });
   }
 
+  void _onBackground() {
+    final c = ref.read(gameControllerProvider.notifier);
+    c.pause();
+    c.autosave(flush: true);
+  }
+
   @override
   void dispose() {
+    _disposed = true;
+    _lifecycle.dispose();
+    // Searches and the clock belong to this game; nothing may keep running
+    // (or land a move) after the screen is gone.
+    _container.read(gameControllerProvider.notifier).autosave(flush: false);
+    _container.read(aiControllerProvider.notifier).cancel();
+    _container.read(clockProvider.notifier).close();
     // The LAN provider is intentionally shared so setup can hand the active
     // stream to this route. Tear it down when this route leaves so events from
     // an old session cannot alter a later local game.
@@ -77,18 +100,67 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     );
   }
 
+  Future<void> _askDraw(AppLocalizations t) async {
+    _drawOpen = true;
+    final accept = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: Text(t.drawOfferTitle),
+        content: Text(t.drawOfferBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(c, false),
+            child: Text(t.decline),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(c, true),
+            child: Text(t.accept),
+          ),
+        ],
+      ),
+    );
+    final answered = _drawOpen; // false when closed by the game ending
+    _drawOpen = false;
+    if (!mounted || !answered) return;
+    ref.read(lanProvider.notifier).respondDraw(accept ?? false);
+  }
+
+  /// Close every open prompt (game over is terminal).
+  void _closePrompts() {
+    if (_promoOpen || _drawOpen) {
+      _promoOpen = false;
+      _drawOpen = false;
+      Navigator.of(context).maybePop();
+    }
+  }
+
+  Future<void> _save(AppLocalizations t) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final name = await _promptSaveName(context);
+    if (name == null || !mounted) return;
+    final stamp = DateTime.now().toString().split('.').first;
+    final ok = await ref
+        .read(gameControllerProvider.notifier)
+        .saveGame(name.trim().isEmpty ? t.savedGameDefaultName(stamp) : name);
+    messenger.showSnackBar(
+      SnackBar(content: Text(ok ? t.gameSaved : t.gameSaveFailed)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Surface the promotion picker when the engine asks for one, and dismiss it
-    // if the game ends while it is still open.
+    final t = AppLocalizations.of(context);
     ref.listen<GameUiState>(gameControllerProvider, (prev, next) {
+      if (_disposed) return;
+      // Surface the promotion picker when the engine asks for one.
       if (next.pendingPromotion != null && prev?.pendingPromotion == null) {
         final color = next.view.sideToMove;
         WidgetsBinding.instance.addPostFrameCallback((_) async {
           _promoOpen = true;
           final choice = await showPromotionDialog(context, color);
+          final answered = _promoOpen;
           _promoOpen = false;
-          if (!context.mounted) return;
+          if (!context.mounted || !answered) return;
           final c = ref.read(gameControllerProvider.notifier);
           if (choice == null) {
             c.cancelPromotion();
@@ -97,9 +169,66 @@ class _GameScreenState extends ConsumerState<GameScreen> {
           }
         });
       }
-      if (next.isOver && _promoOpen) {
-        _promoOpen = false;
-        Navigator.of(context).maybePop(); // close the stale promotion dialog
+      if (next.isOver) _closePrompts();
+      // Keep the unfinished game on disk after every move and at the end.
+      if (prev == null ||
+          prev.view.sanMoves.length != next.view.sanMoves.length ||
+          prev.isOver != next.isOver) {
+        ref.read(gameControllerProvider.notifier).autosave(flush: false);
+      }
+      if (prev?.view.sanMoves.length != next.view.sanMoves.length) {
+        _aiRetries = 0;
+      }
+      // In vs-AI mode, let the engine reply when it is its turn.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && !_disposed) _maybeAiMove(ref);
+      });
+    });
+    // An idle engine is a trigger too: a dropped or cancelled search must not
+    // leave the AI side without a move.
+    ref.listen<EngineState>(aiControllerProvider, (prev, next) {
+      if (next is EngineIdle && next.error != null && !_disposed) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(t.engineFailed(next.error!))));
+        // Not pinned forever: ask again once the refusal cooldown has passed
+        // (a few times at most; a new move resets the allowance).
+        if (_aiRetries++ < 3) {
+          Future.delayed(const Duration(seconds: 6), () {
+            if (mounted && !_disposed) _maybeAiMove(ref);
+          });
+        }
+      }
+      if (next is EngineIdle && !_disposed) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && !_disposed) _maybeAiMove(ref);
+        });
+      }
+    });
+    // Surface an incoming LAN draw offer; close it when the offer goes away.
+    ref.listen<LanGameState>(lanProvider, (prev, next) {
+      if (_disposed) return;
+      if (next.drawOfferIncoming && !(prev?.drawOfferIncoming ?? false)) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted &&
+              promptsAllowed(
+                ref
+                    .read(gameControllerProvider)
+                    .phase(ref.read(gameModeProvider)),
+              )) {
+            _askDraw(t);
+          }
+        });
+      }
+      // Non-fatal transport notices (e.g. a move the host refused).
+      if (next.error != null && next.error != prev?.error) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(localizeLanError(t, next.error!))),
+        );
+      }
+      if (!next.drawOfferIncoming && _drawOpen) {
+        _drawOpen = false;
+        Navigator.of(context).maybePop();
       }
     });
 
@@ -107,43 +236,12 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     final controller = ref.read(gameControllerProvider.notifier);
     final ai = ref.watch(aiControllerProvider);
     final mode = ref.watch(gameModeProvider);
-    final t = AppLocalizations.of(context);
+    final phase = s.phase(mode);
+    final timed = !s.view.clockInfinite;
     // Face-to-face table play (2P same-device on mobile) handles orientation by
     // rotating the far side's pieces, so per-turn auto-flip is pointless there.
     final faceToFace =
         !mode.vsAi && !mode.lan && (Platform.isAndroid || Platform.isIOS);
-
-    // In vs-AI mode, let the engine reply when it is its turn.
-    ref.listen<GameUiState>(gameControllerProvider, (_, _) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _maybeAiMove(ref));
-    });
-
-    // Surface an incoming LAN draw offer.
-    ref.listen<LanGameState>(lanProvider, (prev, next) {
-      if (next.drawOfferIncoming && !(prev?.drawOfferIncoming ?? false)) {
-        WidgetsBinding.instance.addPostFrameCallback((_) async {
-          final accept = await showDialog<bool>(
-            context: context,
-            builder: (c) => AlertDialog(
-              title: Text(t.drawOfferTitle),
-              content: Text(t.drawOfferBody),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(c, false),
-                  child: Text(t.decline),
-                ),
-                FilledButton(
-                  onPressed: () => Navigator.pop(c, true),
-                  child: Text(t.accept),
-                ),
-              ],
-            ),
-          );
-          if (!context.mounted) return;
-          ref.read(lanProvider.notifier).respondDraw(accept ?? false);
-        });
-      }
-    });
 
     return Scaffold(
       appBar: AppBar(
@@ -172,7 +270,19 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                   : () => ref.read(lanProvider.notifier).resign(),
             ),
           ],
-          if (!mode.lan)
+          if (!mode.lan && timed && !s.isOver)
+            IconButton(
+              tooltip: s.paused ? t.resumeGame : t.pauseGame,
+              icon: Icon(s.paused ? Icons.play_arrow : Icons.pause),
+              onPressed: s.paused
+                  ? controller.resume
+                  : (canPause(phase: phase, mode: mode, timed: timed)
+                        ? controller.pause
+                        : null),
+            ),
+          // The hot-seat "AI move" helper. In vs-AI the engine already owns
+          // one side, so a second search would only race the real reply.
+          if (!mode.lan && !mode.vsAi)
             IconButton(
               tooltip: t.aiMove,
               icon: ai.active
@@ -199,6 +309,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                               seed,
                               remainingClockMs: remaining,
                             ),
+                            purpose: SearchPurpose.hint,
                           );
                     },
             ),
@@ -206,16 +317,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
             IconButton(
               tooltip: t.saveGame,
               icon: const Icon(Icons.save_alt),
-              onPressed: () async {
-                final name = await _promptSaveName(context);
-                if (name == null) return;
-                controller.saveGame(name);
-                if (context.mounted) {
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(SnackBar(content: Text(t.gameSaved)));
-                }
-              },
+              onPressed: s.view.sanMoves.isEmpty ? null : () => _save(t),
             ),
           if (!mode.lan && !faceToFace)
             IconButton(
@@ -251,11 +353,15 @@ class _GameScreenState extends ConsumerState<GameScreen> {
             // Block input during a promotion choice. While the AI thinks in
             // vs-AI mode the board stays live for premoves; the 2P manual-AI
             // button still locks the board.
-            final boardArea = AbsorbPointer(
-              absorbing:
-                  mode.lanSpectator || s.isBusy || (ai.active && !mode.vsAi),
-              child: _BoardArea(state: s),
-            );
+            final Widget boardArea = s.paused
+                ? _PausedBoard(onResume: controller.resume)
+                : AbsorbPointer(
+                    absorbing:
+                        mode.lanSpectator ||
+                        s.isBusy ||
+                        (ai.active && !mode.vsAi),
+                    child: _BoardArea(state: s),
+                  );
             final panel = _SidePanel(state: s);
             if (wide) {
               return Row(
@@ -275,6 +381,36 @@ class _GameScreenState extends ConsumerState<GameScreen> {
               ),
             );
           },
+        ),
+      ),
+    );
+  }
+}
+
+/// The board is hidden while paused so the pause cannot be used to think.
+class _PausedBoard extends StatelessWidget {
+  final VoidCallback onResume;
+  const _PausedBoard({required this.onResume});
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
+    return AspectRatio(
+      aspectRatio: 1,
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.pause_circle_outline, size: 64),
+            const SizedBox(height: 12),
+            Text(t.gamePaused, style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 12),
+            FilledButton.icon(
+              onPressed: onResume,
+              icon: const Icon(Icons.play_arrow),
+              label: Text(t.resumeGame),
+            ),
+          ],
         ),
       ),
     );
@@ -308,23 +444,28 @@ Future<String?> _promptSaveName(BuildContext context) {
 /// Trigger an AI reply when it is the engine's turn in vs-AI mode.
 void _maybeAiMove(WidgetRef ref) {
   final mode = ref.read(gameModeProvider);
-  if (!mode.vsAi) return;
   final g = ref.read(gameControllerProvider);
-  final ai = ref.read(aiControllerProvider);
-  if (g.isOver || ai.active || g.isBusy) return;
-  if (g.view.sideToMove == mode.aiColor) {
-    final seed = DateTime.now().millisecondsSinceEpoch & 0x7fffffff;
-    final remaining = g.view.clockInfinite
-        ? null
-        : (mode.aiColor == PieceColor.white
-              ? g.view.clockWhiteMs.toInt()
-              : g.view.clockBlackMs.toInt());
-    ref
-        .read(aiControllerProvider.notifier)
-        .requestMove(
-          config: mode.difficulty.toConfig(seed, remainingClockMs: remaining),
-        );
+  if (!engineOwesReply(
+    mode: mode,
+    gameOver: g.isOver,
+    busy: g.isBusy,
+    paused: g.paused,
+    sideToMove: g.view.sideToMove,
+    engine: ref.read(aiControllerProvider),
+  )) {
+    return;
   }
+  final seed = DateTime.now().millisecondsSinceEpoch & 0x7fffffff;
+  final remaining = g.view.clockInfinite
+      ? null
+      : (mode.aiColor == PieceColor.white
+            ? g.view.clockWhiteMs.toInt()
+            : g.view.clockBlackMs.toInt());
+  ref
+      .read(aiControllerProvider.notifier)
+      .requestMove(
+        config: mode.difficulty.toConfig(seed, remainingClockMs: remaining),
+      );
 }
 
 class _BoardArea extends ConsumerWidget {
@@ -561,7 +702,17 @@ class _SidePanel extends StatelessWidget {
                           buildPgn(
                             sanMoves: state.view.sanMoves,
                             status: state.view.status,
+                            overlayResult: state.overlayResult,
+                            youAreWhite: ref.read(lanProvider).youAreWhite,
                             startFen: ctrl.startFen,
+                            variant: ctrl.variant,
+                            white: mode.lan
+                                ? ref.read(lanProvider).whiteProfile.username
+                                : 'White',
+                            black: mode.lan
+                                ? ref.read(lanProvider).blackProfile.username
+                                : 'Black',
+                            date: pgnDate(DateTime.now()),
                           ),
                         ),
                 );
@@ -612,8 +763,13 @@ class _ChatSheetState extends ConsumerState<_ChatSheet> {
   }
 
   void _send() {
-    ref.read(lanProvider.notifier).sendChat(_ctl.text);
-    _ctl.clear();
+    if (ref.read(lanProvider.notifier).sendChat(_ctl.text)) {
+      _ctl.clear();
+    } else if (_ctl.text.trim().isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AppLocalizations.of(context).chatTooLong)),
+      );
+    }
   }
 
   @override
@@ -727,7 +883,8 @@ class _AiBanner extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final ai = ref.watch(aiControllerProvider);
-    if (!ai.active) return const SizedBox.shrink();
+    if (ai is! EngineSearching) return const SizedBox.shrink();
+    final t = AppLocalizations.of(context);
     final eval = (ai.scoreCp / 100).toStringAsFixed(2);
     return Padding(
       padding: const EdgeInsets.only(top: 8),
@@ -748,8 +905,8 @@ class _AiBanner extends ConsumerWidget {
             Expanded(
               child: Text(
                 ai.depth == 0
-                    ? 'AI thinking…'
-                    : 'AI: depth ${ai.depth}, eval $eval'
+                    ? t.aiThinking
+                    : '${t.aiDepthEval(ai.depth, eval)}'
                           '${ai.pv.isNotEmpty ? '  ${ai.pv.take(4).join(' ')}' : ''}',
                 overflow: TextOverflow.ellipsis,
               ),

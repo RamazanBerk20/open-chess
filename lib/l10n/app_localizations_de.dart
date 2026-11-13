@@ -371,9 +371,6 @@ class AppLocalizationsDe extends AppLocalizations {
   String get hostGame => 'Partie hosten';
 
   @override
-  String get joinGame => 'Partie beitreten';
-
-  @override
   String get yourName => 'Dein Name';
 
   @override
@@ -416,19 +413,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get typeMessage => 'Nachricht eingeben…';
 
   @override
-  String get savedGames => 'Gespeicherte Partien';
-
-  @override
   String get noSavedGames => 'Noch keine gespeicherten Partien';
 
   @override
-  String get resume => 'Fortsetzen';
-
-  @override
   String get renameGameTitle => 'Partie umbenennen';
-
-  @override
-  String get playFromPosition => 'Aus Stellung spielen';
 
   @override
   String get pasteFen => 'FEN-Zeichenkette einfügen';
@@ -448,28 +436,16 @@ class AppLocalizationsDe extends AppLocalizations {
   String get loadPosition => 'Stellung laden';
 
   @override
-  String get sideToPlay => 'Die ziehende Seite wird durch die FEN bestimmt';
-
-  @override
   String get exportPgn => 'PGN exportieren';
 
   @override
   String get copyPgn => 'PGN kopieren';
 
   @override
-  String get copyMoves => 'Züge kopieren';
-
-  @override
   String get copiedToClipboard => 'In die Zwischenablage kopiert';
 
   @override
   String get game => 'Partie';
-
-  @override
-  String get singlePlayerTitle => 'Einzelspieler gegen KI';
-
-  @override
-  String get twoPlayerTitle => 'Zwei Spieler — gleiches Gerät';
 
   @override
   String get lanTitle => 'Zwei Spieler — LAN';
@@ -493,25 +469,16 @@ class AppLocalizationsDe extends AppLocalizations {
   String get tcInfinite => 'Unbegrenzt';
 
   @override
-  String get diffBeginner => 'Anfänger';
-
-  @override
   String get diffVeryEasy => 'Sehr leicht';
 
   @override
   String get diffEasy => 'Leicht';
 
   @override
-  String get diffMedium => 'Mittel';
-
-  @override
   String get diffNormal => 'Normal';
 
   @override
   String get diffHard => 'Schwer';
-
-  @override
-  String get diffExpert => 'Experte';
 
   @override
   String get diffVeryHard => 'Sehr schwer';
@@ -533,15 +500,6 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get timePerMove => 'Zeit/Zug (ms)';
-
-  @override
-  String get topNRandom => 'Top-N zufällig';
-
-  @override
-  String get blunderChance => 'Patzer-Wahrscheinlichkeit';
-
-  @override
-  String get evalNoise => 'Bewertungsrauschen (cp)';
 
   @override
   String get maxEvalLoss => 'Maximaler Bewertungsverlust (cp)';
@@ -598,15 +556,6 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get bugMode => 'Modus';
-
-  @override
-  String get bugHotSeat => 'Hot-Seat (4 Spieler)';
-
-  @override
-  String get bugVsAi => 'gegen Computer';
-
-  @override
-  String get bugYourSeat => 'Dein Platz';
 
   @override
   String get bugBoardA => 'Brett A';
@@ -720,14 +669,6 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String fogPassDevice(String color) {
-    return 'Gib das Gerät an $color weiter';
-  }
-
-  @override
-  String get fogTapReveal => 'Tippen, um deinen Zug aufzudecken';
-
-  @override
   String get checksLabel => 'Schachgebote';
 
   @override
@@ -763,4 +704,207 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get about => 'Über';
+
+  @override
+  String storeCorrupt(Object path) {
+    return 'Eine Datendatei konnte nicht gelesen werden. Eine Kopie wurde unter $path aufbewahrt.';
+  }
+
+  @override
+  String get settingsSaveFailed =>
+      'Eine Einstellung konnte nicht gespeichert werden. Sie gilt, bis die App geschlossen wird.';
+
+  @override
+  String get fenCastlingRemoved =>
+      'Rochaderechte, die nicht zur Stellung passten, wurden entfernt.';
+
+  @override
+  String get fenEnPassantRemoved =>
+      'Ein En-passant-Feld, das nicht zur Stellung passte, wurde entfernt.';
+
+  @override
+  String get fenOpenedAsChess960 =>
+      'Als Chess960 geöffnet: Diese Rochadeaufstellung ist im Standardschach nicht gültig.';
+
+  @override
+  String savedPartialReplay(int count) {
+    return 'Züge, die mit den aktuellen Regeln nicht nachgespielt werden konnten: $count. Die Partie wurde beim letzten spielbaren Zug geöffnet; Ihre gespeicherte Partie wurde nicht verändert.';
+  }
+
+  @override
+  String savedGameDefaultName(Object stamp) {
+    return 'Partie $stamp';
+  }
+
+  @override
+  String get gameSaveFailed => 'Die Partie konnte nicht gespeichert werden.';
+
+  @override
+  String get pauseGame => 'Pause';
+
+  @override
+  String get resumeGame => 'Fortsetzen';
+
+  @override
+  String get gamePaused => 'Partie pausiert';
+
+  @override
+  String get chatTooLong => 'Die Nachricht ist zu lang.';
+
+  @override
+  String get aiThinking => 'KI denkt nach…';
+
+  @override
+  String aiDepthEval(int depth, Object eval) {
+    return 'KI: Tiefe $depth, Bewertung $eval';
+  }
+
+  @override
+  String pliesCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Halbzüge',
+      one: '1 Halbzug',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get openLinkFailed => 'Der Link konnte nicht geöffnet werden.';
+
+  @override
+  String get boardGreen => 'Grün';
+
+  @override
+  String get boardBrown => 'Braun';
+
+  @override
+  String get boardBlue => 'Blau';
+
+  @override
+  String get boardGray => 'Grau';
+
+  @override
+  String get animationOff => 'Aus';
+
+  @override
+  String animationMs(int ms) {
+    return '$ms ms';
+  }
+
+  @override
+  String get checkUpdatesOnLaunch => 'Beim Start nach Updates suchen';
+
+  @override
+  String get gameOverGeneric => 'Partie beendet';
+
+  @override
+  String get lanIncompatibleVersion =>
+      'Das andere Gerät nutzt eine andere Version von Open Chess. Aktualisiere die App auf beiden Geräten.';
+
+  @override
+  String get tooManyPendingUpdates =>
+      'Zu viele ausstehende Spielaktualisierungen.';
+
+  @override
+  String get continueGame => 'Unbeendete Partie fortsetzen';
+
+  @override
+  String get discardGame => 'Verwerfen';
+
+  @override
+  String get noMovesYet => 'Noch keine Züge';
+
+  @override
+  String get promoteTo => 'Umwandeln in';
+
+  @override
+  String get piecePawn => 'Bauer';
+
+  @override
+  String get pieceKnight => 'Springer';
+
+  @override
+  String get pieceBishop => 'Läufer';
+
+  @override
+  String get pieceRook => 'Turm';
+
+  @override
+  String get pieceQueen => 'Dame';
+
+  @override
+  String get pieceKing => 'König';
+
+  @override
+  String squarePieceLabel(Object square, Object color, Object piece) {
+    return '$square, $color: $piece';
+  }
+
+  @override
+  String get staleCastlingTitle => 'Veraltete Rochaderechte';
+
+  @override
+  String get staleCastlingBody =>
+      'Diese gespeicherte Stellung erlaubt eine Rochade mit einem Turm, der nicht mehr da ist. Ohne diese Rochaderechte öffnen? Die gespeicherte Partie selbst bleibt unverändert.';
+
+  @override
+  String get openAnyway => 'Öffnen';
+
+  @override
+  String savedFenRejected(Object error) {
+    return 'Diese gespeicherte Partie kann nicht geöffnet werden: $error';
+  }
+
+  @override
+  String analysisFailed(Object error) {
+    return 'Analyse fehlgeschlagen. $error';
+  }
+
+  @override
+  String get importGame => 'PGN / FEN importieren';
+
+  @override
+  String get importFromClipboard => 'Einfügen';
+
+  @override
+  String get importFromFile => 'Datei öffnen';
+
+  @override
+  String get importHint => 'PGN-Partie oder FEN-Stellung einfügen';
+
+  @override
+  String get importEmpty => 'Nichts zu importieren.';
+
+  @override
+  String get importTooLarge => 'Der Text ist zu groß für den Import.';
+
+  @override
+  String importTooLong(int max) {
+    return 'Die Partie ist länger als $max Halbzüge.';
+  }
+
+  @override
+  String importBadFen(Object error) {
+    return 'Ungültige Stellung: $error';
+  }
+
+  @override
+  String importBadMove(Object move) {
+    return 'Ungültiger oder unlesbarer Zug: $move';
+  }
+
+  @override
+  String importUnsupported(Object variant) {
+    return 'Diese Variante kann nicht analysiert werden: $variant';
+  }
+
+  @override
+  String get importReadFailed => 'Die Datei konnte nicht gelesen werden.';
+
+  @override
+  String engineFailed(Object error) {
+    return 'Die Engine kann diese Stellung nicht berechnen: $error';
+  }
 }

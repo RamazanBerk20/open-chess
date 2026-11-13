@@ -1129,15 +1129,16 @@ fn wire__crate__api__game__ChessGame_visible_squares_impl(
     )
 }
 fn wire__crate__api__four__FourGame_bot_move_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
     data_len_: i32,
-) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
-    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
         flutter_rust_bridge::for_generated::TaskInfo {
             debug_name: "FourGame_bot_move",
-            port: None,
-            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
         },
         move || {
             let message = unsafe {
@@ -1155,28 +1156,30 @@ fn wire__crate__api__four__FourGame_bot_move_impl(
             let api_seed = <u64>::sse_decode(&mut deserializer);
             let api_difficulty_code = <i32>::sse_decode(&mut deserializer);
             deserializer.end();
-            transform_result_sse::<_, ()>((move || {
-                let mut api_that_guard = None;
-                let decode_indices_ =
-                    flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
-                        flutter_rust_bridge::for_generated::LockableOrderInfo::new(
-                            &api_that, 0, false,
-                        ),
-                    ]);
-                for i in decode_indices_ {
-                    match i {
-                        0 => api_that_guard = Some(api_that.lockable_decode_sync_ref()),
-                        _ => unreachable!(),
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let mut api_that_guard = None;
+                    let decode_indices_ =
+                        flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
+                            flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+                                &api_that, 0, false,
+                            ),
+                        ]);
+                    for i in decode_indices_ {
+                        match i {
+                            0 => api_that_guard = Some(api_that.lockable_decode_sync_ref()),
+                            _ => unreachable!(),
+                        }
                     }
-                }
-                let api_that_guard = api_that_guard.unwrap();
-                let output_ok = Result::<_, ()>::Ok(crate::api::four::FourGame::bot_move(
-                    &*api_that_guard,
-                    api_seed,
-                    api_difficulty_code,
-                ))?;
-                Ok(output_ok)
-            })())
+                    let api_that_guard = api_that_guard.unwrap();
+                    let output_ok = Result::<_, ()>::Ok(crate::api::four::FourGame::bot_move(
+                        &*api_that_guard,
+                        api_seed,
+                        api_difficulty_code,
+                    ))?;
+                    Ok(output_ok)
+                })())
+            }
         },
     )
 }
@@ -3678,6 +3681,7 @@ fn pde_ffi_dispatcher_primary_impl(
 ) {
     // Codec=Pde (Serialization + dispatch), see doc to use other codecs
     match func_id {
+        24 => wire__crate__api__four__FourGame_bot_move_impl(port, ptr, rust_vec_len, data_len),
         33 => wire__crate__api__ai__ai_search_impl(port, ptr, rust_vec_len, data_len),
         35 => wire__crate__api__analyze__analysis_summary_default_impl(
             port,
@@ -3746,7 +3750,6 @@ fn pde_ffi_dispatcher_sync_impl(
         21 => wire__crate__api__game__ChessGame_undo_impl(ptr, rust_vec_len, data_len),
         22 => wire__crate__api__game__ChessGame_view_impl(ptr, rust_vec_len, data_len),
         23 => wire__crate__api__game__ChessGame_visible_squares_impl(ptr, rust_vec_len, data_len),
-        24 => wire__crate__api__four__FourGame_bot_move_impl(ptr, rust_vec_len, data_len),
         25 => wire__crate__api__four__FourGame_legal_targets_impl(ptr, rust_vec_len, data_len),
         26 => wire__crate__api__four__FourGame_new_game_impl(ptr, rust_vec_len, data_len),
         27 => wire__crate__api__four__FourGame_play_impl(ptr, rust_vec_len, data_len),
@@ -5338,28 +5341,28 @@ mod io {
     flutter_rust_bridge::frb_generated_boilerplate_io!();
 
     #[unsafe(no_mangle)]
-    pub extern "C" fn frbgen_chess_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerChessGame(
+    pub extern "C" fn frbgen_open_chess_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerChessGame(
         ptr: *const std::ffi::c_void,
     ) {
         MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<ChessGame>>::increment_strong_count(ptr as _);
     }
 
     #[unsafe(no_mangle)]
-    pub extern "C" fn frbgen_chess_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerChessGame(
+    pub extern "C" fn frbgen_open_chess_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerChessGame(
         ptr: *const std::ffi::c_void,
     ) {
         MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<ChessGame>>::decrement_strong_count(ptr as _);
     }
 
     #[unsafe(no_mangle)]
-    pub extern "C" fn frbgen_chess_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFourGame(
+    pub extern "C" fn frbgen_open_chess_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFourGame(
         ptr: *const std::ffi::c_void,
     ) {
         MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<FourGame>>::increment_strong_count(ptr as _);
     }
 
     #[unsafe(no_mangle)]
-    pub extern "C" fn frbgen_chess_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFourGame(
+    pub extern "C" fn frbgen_open_chess_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFourGame(
         ptr: *const std::ffi::c_void,
     ) {
         MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<FourGame>>::decrement_strong_count(ptr as _);

@@ -816,12 +816,6 @@ abstract class AppLocalizations {
   /// **'Host game'**
   String get hostGame;
 
-  /// No description provided for @joinGame.
-  ///
-  /// In en, this message translates to:
-  /// **'Join game'**
-  String get joinGame;
-
   /// No description provided for @yourName.
   ///
   /// In en, this message translates to:
@@ -906,35 +900,17 @@ abstract class AppLocalizations {
   /// **'Type a message…'**
   String get typeMessage;
 
-  /// No description provided for @savedGames.
-  ///
-  /// In en, this message translates to:
-  /// **'Saved games'**
-  String get savedGames;
-
   /// No description provided for @noSavedGames.
   ///
   /// In en, this message translates to:
   /// **'No saved games yet'**
   String get noSavedGames;
 
-  /// No description provided for @resume.
-  ///
-  /// In en, this message translates to:
-  /// **'Resume'**
-  String get resume;
-
   /// No description provided for @renameGameTitle.
   ///
   /// In en, this message translates to:
   /// **'Rename game'**
   String get renameGameTitle;
-
-  /// No description provided for @playFromPosition.
-  ///
-  /// In en, this message translates to:
-  /// **'Play from Position'**
-  String get playFromPosition;
 
   /// No description provided for @pasteFen.
   ///
@@ -966,12 +942,6 @@ abstract class AppLocalizations {
   /// **'Load position'**
   String get loadPosition;
 
-  /// No description provided for @sideToPlay.
-  ///
-  /// In en, this message translates to:
-  /// **'Side to play is set by the FEN'**
-  String get sideToPlay;
-
   /// No description provided for @exportPgn.
   ///
   /// In en, this message translates to:
@@ -984,12 +954,6 @@ abstract class AppLocalizations {
   /// **'Copy PGN'**
   String get copyPgn;
 
-  /// No description provided for @copyMoves.
-  ///
-  /// In en, this message translates to:
-  /// **'Copy moves'**
-  String get copyMoves;
-
   /// No description provided for @copiedToClipboard.
   ///
   /// In en, this message translates to:
@@ -1001,18 +965,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Game'**
   String get game;
-
-  /// No description provided for @singlePlayerTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Single Player vs AI'**
-  String get singlePlayerTitle;
-
-  /// No description provided for @twoPlayerTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Two players — same device'**
-  String get twoPlayerTitle;
 
   /// No description provided for @lanTitle.
   ///
@@ -1056,12 +1008,6 @@ abstract class AppLocalizations {
   /// **'Infinite'**
   String get tcInfinite;
 
-  /// No description provided for @diffBeginner.
-  ///
-  /// In en, this message translates to:
-  /// **'Beginner'**
-  String get diffBeginner;
-
   /// No description provided for @diffVeryEasy.
   ///
   /// In en, this message translates to:
@@ -1074,12 +1020,6 @@ abstract class AppLocalizations {
   /// **'Easy'**
   String get diffEasy;
 
-  /// No description provided for @diffMedium.
-  ///
-  /// In en, this message translates to:
-  /// **'Medium'**
-  String get diffMedium;
-
   /// No description provided for @diffNormal.
   ///
   /// In en, this message translates to:
@@ -1091,12 +1031,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Hard'**
   String get diffHard;
-
-  /// No description provided for @diffExpert.
-  ///
-  /// In en, this message translates to:
-  /// **'Expert'**
-  String get diffExpert;
 
   /// No description provided for @diffVeryHard.
   ///
@@ -1139,24 +1073,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Time/move (ms)'**
   String get timePerMove;
-
-  /// No description provided for @topNRandom.
-  ///
-  /// In en, this message translates to:
-  /// **'Top-N random'**
-  String get topNRandom;
-
-  /// No description provided for @blunderChance.
-  ///
-  /// In en, this message translates to:
-  /// **'Blunder chance'**
-  String get blunderChance;
-
-  /// No description provided for @evalNoise.
-  ///
-  /// In en, this message translates to:
-  /// **'Eval noise (cp)'**
-  String get evalNoise;
 
   /// No description provided for @maxEvalLoss.
   ///
@@ -1253,24 +1169,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Mode'**
   String get bugMode;
-
-  /// No description provided for @bugHotSeat.
-  ///
-  /// In en, this message translates to:
-  /// **'Hot-seat (4 players)'**
-  String get bugHotSeat;
-
-  /// No description provided for @bugVsAi.
-  ///
-  /// In en, this message translates to:
-  /// **'vs Computer'**
-  String get bugVsAi;
-
-  /// No description provided for @bugYourSeat.
-  ///
-  /// In en, this message translates to:
-  /// **'Your seat'**
-  String get bugYourSeat;
 
   /// No description provided for @bugBoardA.
   ///
@@ -1482,18 +1380,6 @@ abstract class AppLocalizations {
   /// **'{player} wins'**
   String fourWins(String player);
 
-  /// No description provided for @fogPassDevice.
-  ///
-  /// In en, this message translates to:
-  /// **'Pass the device to {color}'**
-  String fogPassDevice(String color);
-
-  /// No description provided for @fogTapReveal.
-  ///
-  /// In en, this message translates to:
-  /// **'Tap to reveal your turn'**
-  String get fogTapReveal;
-
   /// No description provided for @checksLabel.
   ///
   /// In en, this message translates to:
@@ -1565,6 +1451,330 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'About'**
   String get about;
+
+  /// No description provided for @storeCorrupt.
+  ///
+  /// In en, this message translates to:
+  /// **'A data file could not be read. A copy was kept at {path}.'**
+  String storeCorrupt(Object path);
+
+  /// No description provided for @settingsSaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'A setting could not be saved. It will apply until you close the app.'**
+  String get settingsSaveFailed;
+
+  /// No description provided for @fenCastlingRemoved.
+  ///
+  /// In en, this message translates to:
+  /// **'Castling rights that did not match the position were removed.'**
+  String get fenCastlingRemoved;
+
+  /// No description provided for @fenEnPassantRemoved.
+  ///
+  /// In en, this message translates to:
+  /// **'An en passant square that did not match the position was removed.'**
+  String get fenEnPassantRemoved;
+
+  /// No description provided for @fenOpenedAsChess960.
+  ///
+  /// In en, this message translates to:
+  /// **'Opened as Chess960: this castling setup is not valid in standard chess.'**
+  String get fenOpenedAsChess960;
+
+  /// No description provided for @savedPartialReplay.
+  ///
+  /// In en, this message translates to:
+  /// **'Moves that could not be replayed under the current rules: {count}. The game was opened at the last playable move; your saved game was not changed.'**
+  String savedPartialReplay(int count);
+
+  /// No description provided for @savedGameDefaultName.
+  ///
+  /// In en, this message translates to:
+  /// **'Game {stamp}'**
+  String savedGameDefaultName(Object stamp);
+
+  /// No description provided for @gameSaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The game could not be saved.'**
+  String get gameSaveFailed;
+
+  /// No description provided for @pauseGame.
+  ///
+  /// In en, this message translates to:
+  /// **'Pause'**
+  String get pauseGame;
+
+  /// No description provided for @resumeGame.
+  ///
+  /// In en, this message translates to:
+  /// **'Resume'**
+  String get resumeGame;
+
+  /// No description provided for @gamePaused.
+  ///
+  /// In en, this message translates to:
+  /// **'Game paused'**
+  String get gamePaused;
+
+  /// No description provided for @chatTooLong.
+  ///
+  /// In en, this message translates to:
+  /// **'Message is too long.'**
+  String get chatTooLong;
+
+  /// No description provided for @aiThinking.
+  ///
+  /// In en, this message translates to:
+  /// **'AI thinking…'**
+  String get aiThinking;
+
+  /// No description provided for @aiDepthEval.
+  ///
+  /// In en, this message translates to:
+  /// **'AI: depth {depth}, eval {eval}'**
+  String aiDepthEval(int depth, Object eval);
+
+  /// No description provided for @pliesCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 ply} other{{count} plies}}'**
+  String pliesCount(int count);
+
+  /// No description provided for @openLinkFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open the link.'**
+  String get openLinkFailed;
+
+  /// No description provided for @boardGreen.
+  ///
+  /// In en, this message translates to:
+  /// **'Green'**
+  String get boardGreen;
+
+  /// No description provided for @boardBrown.
+  ///
+  /// In en, this message translates to:
+  /// **'Brown'**
+  String get boardBrown;
+
+  /// No description provided for @boardBlue.
+  ///
+  /// In en, this message translates to:
+  /// **'Blue'**
+  String get boardBlue;
+
+  /// No description provided for @boardGray.
+  ///
+  /// In en, this message translates to:
+  /// **'Gray'**
+  String get boardGray;
+
+  /// No description provided for @animationOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get animationOff;
+
+  /// No description provided for @animationMs.
+  ///
+  /// In en, this message translates to:
+  /// **'{ms} ms'**
+  String animationMs(int ms);
+
+  /// No description provided for @checkUpdatesOnLaunch.
+  ///
+  /// In en, this message translates to:
+  /// **'Check for updates on launch'**
+  String get checkUpdatesOnLaunch;
+
+  /// No description provided for @gameOverGeneric.
+  ///
+  /// In en, this message translates to:
+  /// **'Game over'**
+  String get gameOverGeneric;
+
+  /// No description provided for @lanIncompatibleVersion.
+  ///
+  /// In en, this message translates to:
+  /// **'The other device runs a different version of Open Chess. Update the app on both devices.'**
+  String get lanIncompatibleVersion;
+
+  /// No description provided for @tooManyPendingUpdates.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many pending match updates.'**
+  String get tooManyPendingUpdates;
+
+  /// No description provided for @continueGame.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue unfinished game'**
+  String get continueGame;
+
+  /// No description provided for @discardGame.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard'**
+  String get discardGame;
+
+  /// No description provided for @noMovesYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No moves yet'**
+  String get noMovesYet;
+
+  /// No description provided for @promoteTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Promote to'**
+  String get promoteTo;
+
+  /// No description provided for @piecePawn.
+  ///
+  /// In en, this message translates to:
+  /// **'pawn'**
+  String get piecePawn;
+
+  /// No description provided for @pieceKnight.
+  ///
+  /// In en, this message translates to:
+  /// **'knight'**
+  String get pieceKnight;
+
+  /// No description provided for @pieceBishop.
+  ///
+  /// In en, this message translates to:
+  /// **'bishop'**
+  String get pieceBishop;
+
+  /// No description provided for @pieceRook.
+  ///
+  /// In en, this message translates to:
+  /// **'rook'**
+  String get pieceRook;
+
+  /// No description provided for @pieceQueen.
+  ///
+  /// In en, this message translates to:
+  /// **'queen'**
+  String get pieceQueen;
+
+  /// No description provided for @pieceKing.
+  ///
+  /// In en, this message translates to:
+  /// **'king'**
+  String get pieceKing;
+
+  /// No description provided for @squarePieceLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'{square}, {color} {piece}'**
+  String squarePieceLabel(Object square, Object color, Object piece);
+
+  /// No description provided for @staleCastlingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Outdated castling rights'**
+  String get staleCastlingTitle;
+
+  /// No description provided for @staleCastlingBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This saved position allows castling with a rook that is no longer there. Open it without those castling rights? The saved game itself is not changed.'**
+  String get staleCastlingBody;
+
+  /// No description provided for @openAnyway.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get openAnyway;
+
+  /// No description provided for @savedFenRejected.
+  ///
+  /// In en, this message translates to:
+  /// **'This saved game cannot be opened: {error}'**
+  String savedFenRejected(Object error);
+
+  /// No description provided for @analysisFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Analysis failed. {error}'**
+  String analysisFailed(Object error);
+
+  /// No description provided for @importGame.
+  ///
+  /// In en, this message translates to:
+  /// **'Import PGN / FEN'**
+  String get importGame;
+
+  /// No description provided for @importFromClipboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste'**
+  String get importFromClipboard;
+
+  /// No description provided for @importFromFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Open file'**
+  String get importFromFile;
+
+  /// No description provided for @importHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste a PGN game or a FEN position'**
+  String get importHint;
+
+  /// No description provided for @importEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing to import.'**
+  String get importEmpty;
+
+  /// No description provided for @importTooLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'The text is too large to import.'**
+  String get importTooLarge;
+
+  /// No description provided for @importTooLong.
+  ///
+  /// In en, this message translates to:
+  /// **'The game is longer than {max} plies.'**
+  String importTooLong(int max);
+
+  /// No description provided for @importBadFen.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid position: {error}'**
+  String importBadFen(Object error);
+
+  /// No description provided for @importBadMove.
+  ///
+  /// In en, this message translates to:
+  /// **'Illegal or unreadable move: {move}'**
+  String importBadMove(Object move);
+
+  /// No description provided for @importUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'This variant cannot be analysed: {variant}'**
+  String importUnsupported(Object variant);
+
+  /// No description provided for @importReadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The file could not be read.'**
+  String get importReadFailed;
+
+  /// No description provided for @engineFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The engine could not search this position: {error}'**
+  String engineFailed(Object error);
 }
 
 class _AppLocalizationsDelegate

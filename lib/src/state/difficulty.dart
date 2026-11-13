@@ -58,6 +58,33 @@ class Difficulty {
     contempt: contempt ?? this.contempt,
   );
 
+  Map<String, Object?> toJson() => {
+    'name': name,
+    'targetElo': targetElo,
+    'maxDepth': maxDepth,
+    'moveTimeMs': moveTimeMs,
+    'maxEvalLossCp': maxEvalLossCp,
+    'randomMoveChance': randomMoveChance,
+    'candidateDepth': candidateDepth,
+    'contempt': contempt,
+  };
+
+  /// Rebuilds a saved profile (e.g. a Custom one). Values are clamped to sane
+  /// engine bounds because the file is user-editable.
+  factory Difficulty.fromJson(Map<String, dynamic> j) => Difficulty(
+    j['name'] as String? ?? 'Custom',
+    targetElo: (j['targetElo'] as num?)?.toInt(),
+    maxDepth: ((j['maxDepth'] as num?)?.toInt() ?? 4).clamp(1, 16),
+    moveTimeMs: ((j['moveTimeMs'] as num?)?.toInt() ?? 700).clamp(50, 10000),
+    maxEvalLossCp: ((j['maxEvalLossCp'] as num?)?.toInt() ?? 0).clamp(0, 2000),
+    randomMoveChance: ((j['randomMoveChance'] as num?)?.toDouble() ?? 0).clamp(
+      0.0,
+      1.0,
+    ),
+    candidateDepth: ((j['candidateDepth'] as num?)?.toInt() ?? 3).clamp(1, 8),
+    contempt: ((j['contempt'] as num?)?.toInt() ?? 0).clamp(-1000, 1000),
+  );
+
   static const veryEasy = Difficulty(
     'Very Easy',
     targetElo: 500,

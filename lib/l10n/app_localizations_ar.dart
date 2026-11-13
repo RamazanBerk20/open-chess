@@ -370,9 +370,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get hostGame => 'استضافة لعبة';
 
   @override
-  String get joinGame => 'الانضمام إلى لعبة';
-
-  @override
   String get yourName => 'اسمك';
 
   @override
@@ -415,19 +412,10 @@ class AppLocalizationsAr extends AppLocalizations {
   String get typeMessage => 'اكتب رسالة…';
 
   @override
-  String get savedGames => 'الألعاب المحفوظة';
-
-  @override
   String get noSavedGames => 'لا توجد ألعاب محفوظة بعد';
 
   @override
-  String get resume => 'استئناف';
-
-  @override
   String get renameGameTitle => 'إعادة تسمية اللعبة';
-
-  @override
-  String get playFromPosition => 'اللعب من وضعية';
 
   @override
   String get pasteFen => 'الصق سلسلة FEN';
@@ -446,28 +434,16 @@ class AppLocalizationsAr extends AppLocalizations {
   String get loadPosition => 'تحميل الوضعية';
 
   @override
-  String get sideToPlay => 'يُحدَّد الجانب صاحب الدور بواسطة سلسلة FEN';
-
-  @override
   String get exportPgn => 'تصدير PGN';
 
   @override
   String get copyPgn => 'نسخ PGN';
 
   @override
-  String get copyMoves => 'نسخ النقلات';
-
-  @override
   String get copiedToClipboard => 'تم النسخ إلى الحافظة';
 
   @override
   String get game => 'اللعبة';
-
-  @override
-  String get singlePlayerTitle => 'لاعب واحد ضد الذكاء الاصطناعي';
-
-  @override
-  String get twoPlayerTitle => 'لاعبان — الجهاز نفسه';
 
   @override
   String get lanTitle => 'لاعبان — الشبكة المحلية';
@@ -491,25 +467,16 @@ class AppLocalizationsAr extends AppLocalizations {
   String get tcInfinite => 'غير محدود';
 
   @override
-  String get diffBeginner => 'مبتدئ';
-
-  @override
   String get diffVeryEasy => 'سهل جدًا';
 
   @override
   String get diffEasy => 'سهل';
 
   @override
-  String get diffMedium => 'متوسط';
-
-  @override
   String get diffNormal => 'عادي';
 
   @override
   String get diffHard => 'صعب';
-
-  @override
-  String get diffExpert => 'خبير';
 
   @override
   String get diffVeryHard => 'صعب جدًا';
@@ -531,15 +498,6 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get timePerMove => 'الوقت/النقلة (مللي ثانية)';
-
-  @override
-  String get topNRandom => 'عشوائي من أفضل N';
-
-  @override
-  String get blunderChance => 'احتمال الخطأ الفادح';
-
-  @override
-  String get evalNoise => 'تشويش التقييم (سم)';
 
   @override
   String get maxEvalLoss => 'أقصى خسارة في التقييم (سم)';
@@ -595,15 +553,6 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get bugMode => 'الوضع';
-
-  @override
-  String get bugHotSeat => 'المقعد المشترك (٤ لاعبين)';
-
-  @override
-  String get bugVsAi => 'ضد الحاسوب';
-
-  @override
-  String get bugYourSeat => 'مقعدك';
 
   @override
   String get bugBoardA => 'الرقعة أ';
@@ -717,14 +666,6 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
-  String fogPassDevice(String color) {
-    return 'مرّر الجهاز إلى $color';
-  }
-
-  @override
-  String get fogTapReveal => 'انقر لكشف دورك';
-
-  @override
   String get checksLabel => 'الكشوف';
 
   @override
@@ -759,4 +700,201 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get about => 'حول';
+
+  @override
+  String storeCorrupt(Object path) {
+    return 'تعذّرت قراءة ملف بيانات. تم الاحتفاظ بنسخة في $path.';
+  }
+
+  @override
+  String get settingsSaveFailed =>
+      'تعذّر حفظ أحد الإعدادات. سيظل ساريًا حتى تغلق التطبيق.';
+
+  @override
+  String get fenCastlingRemoved =>
+      'تمت إزالة حقوق التبييت التي لا تطابق الوضع.';
+
+  @override
+  String get fenEnPassantRemoved =>
+      'تمت إزالة مربع الأخذ بالمرور الذي لا يطابق الوضع.';
+
+  @override
+  String get fenOpenedAsChess960 =>
+      'تم الفتح كـ Chess960: ترتيب التبييت هذا غير صالح في الشطرنج القياسي.';
+
+  @override
+  String savedPartialReplay(int count) {
+    return 'عدد النقلات التي تعذّرت إعادتها وفق القواعد الحالية: $count. فُتحت اللعبة عند آخر نقلة ممكنة؛ لم تتغير لعبتك المحفوظة.';
+  }
+
+  @override
+  String savedGameDefaultName(Object stamp) {
+    return 'مباراة $stamp';
+  }
+
+  @override
+  String get gameSaveFailed => 'تعذّر حفظ المباراة.';
+
+  @override
+  String get pauseGame => 'إيقاف مؤقت';
+
+  @override
+  String get resumeGame => 'استئناف';
+
+  @override
+  String get gamePaused => 'المباراة متوقفة مؤقتًا';
+
+  @override
+  String get chatTooLong => 'الرسالة طويلة جدًا.';
+
+  @override
+  String get aiThinking => 'الذكاء الاصطناعي يفكّر…';
+
+  @override
+  String aiDepthEval(int depth, Object eval) {
+    return 'الذكاء الاصطناعي: العمق $depth، التقييم $eval';
+  }
+
+  @override
+  String pliesCount(int count) {
+    return '$count نقلة';
+  }
+
+  @override
+  String get openLinkFailed => 'تعذّر فتح الرابط.';
+
+  @override
+  String get boardGreen => 'أخضر';
+
+  @override
+  String get boardBrown => 'بني';
+
+  @override
+  String get boardBlue => 'أزرق';
+
+  @override
+  String get boardGray => 'رمادي';
+
+  @override
+  String get animationOff => 'إيقاف';
+
+  @override
+  String animationMs(int ms) {
+    return '$ms مللي ثانية';
+  }
+
+  @override
+  String get checkUpdatesOnLaunch => 'التحقق من التحديثات عند التشغيل';
+
+  @override
+  String get gameOverGeneric => 'انتهت المباراة';
+
+  @override
+  String get lanIncompatibleVersion =>
+      'يعمل الجهاز الآخر بإصدار مختلف من Open Chess. حدّث التطبيق على كلا الجهازين.';
+
+  @override
+  String get tooManyPendingUpdates =>
+      'عدد كبير جدًا من تحديثات المباراة المعلّقة.';
+
+  @override
+  String get continueGame => 'متابعة المباراة غير المكتملة';
+
+  @override
+  String get discardGame => 'تجاهل';
+
+  @override
+  String get noMovesYet => 'لا توجد نقلات بعد';
+
+  @override
+  String get promoteTo => 'ترقية إلى';
+
+  @override
+  String get piecePawn => 'بيدق';
+
+  @override
+  String get pieceKnight => 'حصان';
+
+  @override
+  String get pieceBishop => 'فيل';
+
+  @override
+  String get pieceRook => 'قلعة';
+
+  @override
+  String get pieceQueen => 'وزير';
+
+  @override
+  String get pieceKing => 'ملك';
+
+  @override
+  String squarePieceLabel(Object square, Object color, Object piece) {
+    return '$square، $piece $color';
+  }
+
+  @override
+  String get staleCastlingTitle => 'حقوق تبييت قديمة';
+
+  @override
+  String get staleCastlingBody =>
+      'يسمح هذا الوضع المحفوظ بالتبييت بقلعة لم تعد موجودة. هل تريد فتحه دون حقوق التبييت هذه؟ لن تتغير المباراة المحفوظة نفسها.';
+
+  @override
+  String get openAnyway => 'فتح';
+
+  @override
+  String savedFenRejected(Object error) {
+    return 'لا يمكن فتح هذه المباراة المحفوظة: $error';
+  }
+
+  @override
+  String analysisFailed(Object error) {
+    return 'فشل التحليل. $error';
+  }
+
+  @override
+  String get importGame => 'استيراد PGN / FEN';
+
+  @override
+  String get importFromClipboard => 'لصق';
+
+  @override
+  String get importFromFile => 'فتح ملف';
+
+  @override
+  String get importHint => 'الصق مباراة PGN أو وضعية FEN';
+
+  @override
+  String get importEmpty => 'لا يوجد ما يُستورد.';
+
+  @override
+  String get importTooLarge => 'النص أكبر من أن يُستورد.';
+
+  @override
+  String importTooLong(int max) {
+    return 'المباراة أطول من $max نقلة.';
+  }
+
+  @override
+  String importBadFen(Object error) {
+    return 'وضعية غير صالحة: $error';
+  }
+
+  @override
+  String importBadMove(Object move) {
+    return 'نقلة غير قانونية أو غير مقروءة: $move';
+  }
+
+  @override
+  String importUnsupported(Object variant) {
+    return 'لا يمكن تحليل هذا النوع: $variant';
+  }
+
+  @override
+  String get importReadFailed => 'تعذّرت قراءة الملف.';
+
+  @override
+  String engineFailed(Object error) {
+    return 'تعذّر على المحرك تحليل هذه الوضعية: $error';
+  }
 }

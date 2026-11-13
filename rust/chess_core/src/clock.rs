@@ -63,8 +63,8 @@ impl Clock {
         if let TimeControl::Fischer { increment_ms, .. } = self.tc {
             let inc = increment_ms as i64;
             match mover {
-                Color::White => self.white_ms += inc,
-                Color::Black => self.black_ms += inc,
+                Color::White => self.white_ms = self.white_ms.saturating_add(inc),
+                Color::Black => self.black_ms = self.black_ms.saturating_add(inc),
             }
         }
         self.running = mover.opp();
@@ -103,7 +103,9 @@ impl Clock {
             TimeControl::Fischer {
                 base_ms,
                 increment_ms,
-            } => (base_ms + increment_ms.saturating_mul(1000)) as i64,
+            } => base_ms
+                .saturating_add(increment_ms.saturating_mul(1000))
+                .min(i64::MAX as u64) as i64,
         };
         self.white_ms = white_ms.clamp(0, max);
         self.black_ms = black_ms.clamp(0, max);

@@ -4,7 +4,9 @@ use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 use serde::{Deserialize, Serialize};
 
 /// Bumped on incompatible protocol changes; peers reject mismatches.
-pub const PROTOCOL_VERSION: u32 = 7;
+/// 8: a four-player resignation/disconnect is relayed as a `FourMove` whose
+/// `uci` is `resign:<colour>` instead of ending the whole match.
+pub const PROTOCOL_VERSION: u32 = 8;
 
 /// Profile limits are enforced on both sides of every handshake. The avatar
 /// limit applies before Base64 expansion so a profile cannot dominate a LAN

@@ -39,9 +39,14 @@ void main() {
   });
 
   test('keeps every non-idle LAN session eligible for explicit cleanup', () {
-    expect(hasActiveLanSession(const LanGameState(waiting: true)), isTrue);
-    expect(hasActiveLanSession(const LanGameState(connected: true)), isTrue);
-    expect(hasActiveLanSession(const LanGameState(ended: true)), isTrue);
+    for (final s in const <LanSession>[
+      LanConnecting(LanRole.host),
+      LanLive(spectator: false),
+      LanEnded(linkOpen: true),
+      LanFailed('x'),
+    ]) {
+      expect(hasActiveLanSession(LanGameState(session: s)), isTrue);
+    }
     expect(hasActiveLanSession(const LanGameState()), isFalse);
   });
 }

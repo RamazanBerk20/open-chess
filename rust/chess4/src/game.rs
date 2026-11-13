@@ -348,6 +348,22 @@ impl FourGame {
         }
     }
 
+    /// `player` resigns (or is removed after a disconnect): only that army
+    /// leaves the game. Its pieces stay on the board as inert dead pieces, the
+    /// result is re-evaluated, and the turn moves on if it was theirs.
+    /// Returns false if the game is over or the player is already out.
+    pub fn resign(&mut self, player: Player) -> bool {
+        if self.ended || !self.is_active(player) {
+            return false;
+        }
+        self.status[player.index()] = PlayerStatus::Resigned;
+        self.update_end();
+        if !self.ended && self.turn == player {
+            self.advance_turn();
+        }
+        true
+    }
+
     pub fn legal_moves(&self) -> Vec<Move4> {
         self.legal_moves_for(self.turn)
     }
@@ -360,6 +376,17 @@ impl FourGame {
         if !self.legal_moves().contains(&m) {
             return false;
         }
+        self.apply(m);
+        true
+    }
+
+    /// Apply a move the caller just took from `legal_moves()` (the bot's
+    /// search), skipping the legality re-check `make_move` performs.
+    pub(crate) fn make_generated_move(&mut self, m: Move4) -> bool {
+        if self.ended || !self.is_active(self.turn) {
+            return false;
+        }
+        debug_assert!(self.legal_moves().contains(&m));
         self.apply(m);
         true
     }

@@ -19,7 +19,17 @@ pub struct Zobrist {
     /// Crazyhouse/Bughouse squares occupied by promoted pawns. They must be
     /// distinct from native pieces because captures return them as pawns.
     promoted: [u64; 64],
+    /// Crazyhouse/Bughouse reserve: one independent key per exact count,
+    /// [colour][Pawn..Queen][count]. Count 0 is 0 so empty hands hash as before.
+    hand: [[[u64; HAND_KEYS]; 5]; 2],
+    /// Three-check delivered-check counters, [colour][count]; count 0 is 0.
+    checks: [[u64; CHECK_KEYS]; 2],
 }
+
+/// Counts at or above the last index share its key (validated positions keep
+/// every reserve count far below it; a shared key only costs a collision).
+pub const HAND_KEYS: usize = 65;
+pub const CHECK_KEYS: usize = 16;
 
 impl Zobrist {
     fn new() -> Zobrist {
@@ -45,12 +55,28 @@ impl Zobrist {
         for key in promoted.iter_mut() {
             *key = rng.next_u64();
         }
+        let mut hand = [[[0u64; HAND_KEYS]; 5]; 2];
+        for color in hand.iter_mut() {
+            for pc in color.iter_mut() {
+                for key in pc.iter_mut().skip(1) {
+                    *key = rng.next_u64();
+                }
+            }
+        }
+        let mut checks = [[0u64; CHECK_KEYS]; 2];
+        for color in checks.iter_mut() {
+            for key in color.iter_mut().skip(1) {
+                *key = rng.next_u64();
+            }
+        }
         Zobrist {
             piece,
             side,
             castle,
             ep_file,
             promoted,
+            hand,
+            checks,
         }
     }
 
@@ -73,6 +99,16 @@ impl Zobrist {
     #[inline]
     pub fn promoted(&self, sq: Square) -> u64 {
         self.promoted[sq as usize]
+    }
+    /// Key for colour `c` holding exactly `count` pieces of hand index `piece`.
+    #[inline]
+    pub fn hand(&self, c: usize, piece: usize, count: u8) -> u64 {
+        self.hand[c][piece][(count as usize).min(HAND_KEYS - 1)]
+    }
+    /// Key for colour `c` having delivered exactly `count` checks.
+    #[inline]
+    pub fn checks(&self, c: usize, count: u8) -> u64 {
+        self.checks[c][(count as usize).min(CHECK_KEYS - 1)]
     }
 }
 

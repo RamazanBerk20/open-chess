@@ -2,11 +2,11 @@
 //!
 //! Four-player chess has a different board and turn model from the 8x8 engine,
 //! so this module deliberately keeps its own compact, deterministic search.
-//! Every stronger level searches more opponent replies, but node/time budgets
-//! keep a host-authoritative LAN turn responsive.
+//! Every stronger level searches more opponent replies, but node budgets keep a
+//! host-authoritative LAN turn responsive. The budgets count nodes only (never
+//! wall-clock time), so a move is a pure function of position, level and seed.
 
 use std::cmp::Reverse;
-use std::time::{Duration, Instant};
 
 use crate::game::FourGame;
 use crate::movegen::Move4;
@@ -107,10 +107,10 @@ pub fn move_for_difficulty(game: &FourGame, difficulty: BotDifficulty, seed: u64
         // Normal and above evaluate the current position after a bounded
         // number of sequential four-player replies. More replies and a larger
         // search budget create visibly stronger, less tactical-blind play.
-        BotDifficulty::Normal => search_move(game, seed, 1, 5, 400, 18),
-        BotDifficulty::Hard => search_move(game, seed, 2, 6, 1_000, 50),
-        BotDifficulty::VeryHard => search_move(game, seed, 3, 6, 2_800, 110),
-        BotDifficulty::Impossible => search_move(game, seed, 4, 6, 6_000, 220),
+        BotDifficulty::Normal => search_move(game, seed, 1, 5, 400),
+        BotDifficulty::Hard => search_move(game, seed, 2, 6, 400),
+        BotDifficulty::VeryHard => search_move(game, seed, 3, 6, 900),
+        BotDifficulty::Impossible => search_move(game, seed, 4, 6, 1_700),
     }
 }
 
@@ -157,20 +157,18 @@ fn random_index(seed: u64, len: usize) -> usize {
 struct SearchBudget {
     nodes: usize,
     max_nodes: usize,
-    deadline: Instant,
 }
 
 impl SearchBudget {
-    fn new(max_nodes: usize, max_millis: u64) -> Self {
+    fn new(max_nodes: usize) -> Self {
         Self {
             nodes: 0,
             max_nodes,
-            deadline: Instant::now() + Duration::from_millis(max_millis),
         }
     }
 
     fn exhausted(&self) -> bool {
-        self.nodes >= self.max_nodes || Instant::now() >= self.deadline
+        self.nodes >= self.max_nodes
     }
 
     fn visit(&mut self) {
@@ -195,7 +193,7 @@ fn ordered_candidates(
     let mut evaluated = Vec::with_capacity(moves.len());
     for m in moves {
         let mut next = game.clone();
-        if next.make_move(m) {
+        if next.make_generated_move(m) {
             evaluated.push((evaluate(&next, root), m));
         }
     }
@@ -246,7 +244,7 @@ fn root_candidates(game: &FourGame, root: Player, budget: &mut SearchBudget) -> 
         }
         budget.visit();
         let mut next = game.clone();
-        if next.make_move(m) {
+        if next.make_generated_move(m) {
             evaluated.push((root_candidate_score(&next, root), m));
         }
     }
@@ -334,7 +332,7 @@ fn bounded_search(
             break;
         }
         let mut next = game.clone();
-        if !next.make_move(m) {
+        if !next.make_generated_move(m) {
             continue;
         }
         let score = bounded_search(&next, root, remaining_plies - 1, branch_limit, budget);
@@ -357,10 +355,9 @@ fn search_move(
     reply_plies: u8,
     branch_limit: usize,
     max_nodes: usize,
-    max_millis: u64,
 ) -> Option<Move4> {
     let root = game.turn;
-    let mut budget = SearchBudget::new(max_nodes, max_millis);
+    let mut budget = SearchBudget::new(max_nodes);
     let candidates = root_candidates(game, root, &mut budget);
     if candidates.is_empty() {
         return None;
@@ -372,7 +369,7 @@ fn search_move(
             break;
         }
         let mut next = game.clone();
-        if !next.make_move(m) {
+        if !next.make_generated_move(m) {
             continue;
         }
         let score = bounded_search(&next, root, reply_plies, branch_limit, &mut budget);
@@ -405,7 +402,7 @@ mod tests {
 
         let legal_count = game.legal_moves().len();
         assert!(legal_count > 32, "position must exceed the old root cap");
-        let mut budget = SearchBudget::new(10_000, 1_000);
+        let mut budget = SearchBudget::new(10_000);
         let candidates = root_candidates(&game, Player::Red, &mut budget);
         assert_eq!(candidates.len(), legal_count);
     }

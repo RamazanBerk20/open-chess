@@ -22,31 +22,135 @@ class ChatMessage {
   const ChatMessage(this.text, this.mine, {this.senderName});
 }
 
+/// Keep at most this many chat lines per list (a flooding peer cannot grow
+/// memory or per-message copy cost without bound).
+const maxChatLines = 200;
+
+List<ChatMessage> appendChat(List<ChatMessage> list, ChatMessage m) {
+  final next = [...list, m];
+  return next.length > maxChatLines
+      ? next.sublist(next.length - maxChatLines)
+      : next;
+}
+
+enum LanRole { host, join, spectate }
+
+/// Two-player LAN session lifecycle.
+sealed class LanSession {
+  const LanSession();
+}
+
+class LanIdle extends LanSession {
+  const LanIdle();
+}
+
+class LanConnecting extends LanSession {
+  final LanRole role;
+  const LanConnecting(this.role);
+}
+
+class LanLive extends LanSession {
+  final bool spectator;
+  final bool drawOfferIncoming;
+  const LanLive({required this.spectator, this.drawOfferIncoming = false});
+}
+
+/// The match result is final. [linkOpen] while the socket still carries chat.
+class LanEnded extends LanSession {
+  final bool linkOpen;
+  const LanEnded({required this.linkOpen});
+}
+
+class LanFailed extends LanSession {
+  final String error;
+  const LanFailed(this.error);
+}
+
+sealed class LanEvent {
+  const LanEvent();
+}
+
+class LanStart extends LanEvent {
+  final LanRole role;
+  const LanStart(this.role);
+}
+
+class LanConnected extends LanEvent {
+  final bool spectator;
+  const LanConnected({required this.spectator});
+}
+
+class LanDrawOffered extends LanEvent {
+  const LanDrawOffered();
+}
+
+class LanDrawAnswered extends LanEvent {
+  const LanDrawAnswered();
+}
+
+/// Resignation, agreed draw, timeout, or board result.
+class LanMatchEnded extends LanEvent {
+  const LanMatchEnded();
+}
+
+class LanLinkClosed extends LanEvent {
+  const LanLinkClosed();
+}
+
+class LanError extends LanEvent {
+  final String error;
+  const LanError(this.error);
+}
+
+class LanLeft extends LanEvent {
+  const LanLeft();
+}
+
+/// Pure transition. An ended match is terminal: offers and late events after
+/// it change nothing except closing the link.
+LanSession reduceLan(LanSession s, LanEvent e) => switch ((s, e)) {
+  (_, LanLeft()) => const LanIdle(),
+  (_, LanStart(:final role)) => LanConnecting(role),
+  (LanConnecting(), LanConnected(:final spectator)) => LanLive(
+    spectator: spectator,
+  ),
+  (LanConnecting(), LanError(:final error)) => LanFailed(error),
+  (LanConnecting(), LanLinkClosed()) => const LanFailed(''),
+  (LanLive(spectator: false), LanDrawOffered()) => const LanLive(
+    spectator: false,
+    drawOfferIncoming: true,
+  ),
+  (LanLive(:final spectator), LanDrawAnswered()) => LanLive(
+    spectator: spectator,
+  ),
+  (LanLive(), LanMatchEnded()) => const LanEnded(linkOpen: true),
+  (LanLive(), LanLinkClosed()) => const LanEnded(linkOpen: false),
+  (LanEnded(), LanLinkClosed()) => const LanEnded(linkOpen: false),
+  _ => s,
+};
+
 class LanGameState {
-  final bool waiting; // hosting/connecting, not yet connected
-  final bool connected;
-  final bool ended; // chess result resolved or the transport has ended
+  final LanSession session;
   final String myName;
   final String opponentName;
   final bool youAreWhite;
-  final bool isSpectator;
-  final bool drawOfferIncoming;
+  final bool isSpectator; // role, kept after the match ends (chat routing)
   final PlayerProfile whiteProfile;
   final PlayerProfile blackProfile;
   final int spectatorCount;
   final List<ChatMessage> chat;
   final List<ChatMessage> spectatorChat;
+
+  /// Last transport error to surface (a snackbar); does not change the phase
+  /// once live.
   final String? error;
 
   const LanGameState({
-    this.waiting = false,
-    this.connected = false,
-    this.ended = false,
+    this.session = const LanIdle(),
     this.myName = '',
     this.opponentName = '',
     this.youAreWhite = true,
     this.isSpectator = false,
-    this.drawOfferIncoming = false,
     this.whiteProfile = const PlayerProfile(),
     this.blackProfile = const PlayerProfile(),
     this.spectatorCount = 0,
@@ -55,15 +159,24 @@ class LanGameState {
     this.error,
   });
 
+  bool get waiting => session is LanConnecting;
+  bool get connected => switch (session) {
+    LanLive() => true,
+    LanEnded(:final linkOpen) => linkOpen,
+    _ => false,
+  };
+  bool get ended => session is LanEnded;
+  bool get drawOfferIncoming => switch (session) {
+    LanLive(:final drawOfferIncoming) => drawOfferIncoming,
+    _ => false,
+  };
+
   LanGameState copyWith({
-    bool? waiting,
-    bool? connected,
-    bool? ended,
+    LanSession? session,
     String? myName,
     String? opponentName,
     bool? youAreWhite,
     bool? isSpectator,
-    bool? drawOfferIncoming,
     PlayerProfile? whiteProfile,
     PlayerProfile? blackProfile,
     int? spectatorCount,
@@ -71,14 +184,11 @@ class LanGameState {
     List<ChatMessage>? spectatorChat,
     String? error,
   }) => LanGameState(
-    waiting: waiting ?? this.waiting,
-    connected: connected ?? this.connected,
-    ended: ended ?? this.ended,
+    session: session ?? this.session,
     myName: myName ?? this.myName,
     opponentName: opponentName ?? this.opponentName,
     youAreWhite: youAreWhite ?? this.youAreWhite,
     isSpectator: isSpectator ?? this.isSpectator,
-    drawOfferIncoming: drawOfferIncoming ?? this.drawOfferIncoming,
     whiteProfile: whiteProfile ?? this.whiteProfile,
     blackProfile: blackProfile ?? this.blackProfile,
     spectatorCount: spectatorCount ?? this.spectatorCount,
@@ -87,6 +197,17 @@ class LanGameState {
     error: error,
   );
 }
+
+/// The UCI of a local move the host refused (`rejected local move …: <uci>`),
+/// or null for any other error text.
+String? rejectedLocalMove(String error) {
+  final m = RegExp(r'^rejected local move [^:]*: (\S+)$').firstMatch(error);
+  return m?.group(1);
+}
+
+/// Chat limits shared with the Rust side (UTF-16 units and UTF-8 bytes).
+bool chatTextAllowed(String t) =>
+    t.isNotEmpty && t.length <= 512 && utf8.encode(t).length <= 2048;
 
 final lanProvider = NotifierProvider<LanController, LanGameState>(
   LanController.new,
@@ -103,8 +224,7 @@ bool shouldApplyLanDisconnect({
 
 /// Whether this provider still owns a pending, live, or just-finished LAN
 /// session that must be released before starting a local game.
-bool hasActiveLanSession(LanGameState state) =>
-    state.waiting || state.connected || state.ended;
+bool hasActiveLanSession(LanGameState state) => state.session is! LanIdle;
 
 class LanController extends Notifier<LanGameState> {
   StreamSubscription<NetEvent>? _sub;
@@ -145,31 +265,47 @@ class LanController extends Notifier<LanGameState> {
         allowSpectators: allowSpectators,
       ),
       profile,
+      LanRole.host,
     );
   }
 
   void join(String addr, PlayerProfile profile) {
-    _listen(netJoin(addr: addr, profile: lanProfileWire(profile)), profile);
+    _listen(
+      netJoin(addr: addr, profile: lanProfileWire(profile)),
+      profile,
+      LanRole.join,
+    );
   }
 
   void spectate(String addr, PlayerProfile profile) {
-    _listen(netSpectate(addr: addr, profile: lanProfileWire(profile)), profile);
+    _listen(
+      netSpectate(addr: addr, profile: lanProfileWire(profile)),
+      profile,
+      LanRole.spectate,
+    );
   }
 
-  void _listen(Stream<NetEvent> stream, PlayerProfile profile) {
+  void _dispatch(LanEvent e) =>
+      state = state.copyWith(session: reduceLan(state.session, e));
+
+  void _listen(Stream<NetEvent> stream, PlayerProfile profile, LanRole role) {
     // Invalidate any local engine request before this global game controller
     // becomes a network mirror.
     ref.read(aiControllerProvider.notifier).cancel();
     _invalidateEventStream();
     final epoch = _eventEpoch;
-    state = LanGameState(waiting: true, myName: profile.username);
+    state = LanGameState(
+      session: LanConnecting(role),
+      myName: profile.username,
+    );
     _sub = stream.listen(
       (event) {
         if (epoch == _eventEpoch) _onEvent(event);
       },
       onError: (e) {
         if (epoch == _eventEpoch) {
-          state = state.copyWith(error: '$e', waiting: false);
+          _dispatch(LanError('$e'));
+          state = state.copyWith(error: '$e');
         }
       },
     );
@@ -181,9 +317,7 @@ class LanController extends Notifier<LanGameState> {
     _sub = null;
   }
 
-  void _markMatchEnded() {
-    state = state.copyWith(ended: true, drawOfferIncoming: false);
-  }
+  void _markMatchEnded() => _dispatch(const LanMatchEnded());
 
   void _onEvent(NetEvent e) {
     final mode = ref.read(gameModeProvider);
@@ -236,9 +370,8 @@ class LanController extends Notifier<LanGameState> {
               );
         }
         ref.invalidate(clockProvider);
+        _dispatch(LanConnected(spectator: isSpectator));
         state = state.copyWith(
-          waiting: false,
-          connected: true,
           isSpectator: isSpectator,
           youAreWhite: e.youAreWhite,
           opponentName: isSpectator
@@ -269,9 +402,7 @@ class LanController extends Notifier<LanGameState> {
         }
         _markMatchEnded();
       case NetEventKind.drawOffer:
-        if (!state.isSpectator) {
-          state = state.copyWith(drawOfferIncoming: true);
-        }
+        _dispatch(const LanDrawOffered()); // ignored after the match ended
       case NetEventKind.drawResponse:
         if (e.drawAccepted) {
           game.lanSetResult(LanResultCode.drawAgreed);
@@ -280,16 +411,16 @@ class LanController extends Notifier<LanGameState> {
       case NetEventKind.chat:
         if (!state.isSpectator) {
           state = state.copyWith(
-            chat: [...state.chat, ChatMessage(e.text, false)],
+            chat: appendChat(state.chat, ChatMessage(e.text, false)),
           );
         }
       case NetEventKind.spectatorChat:
         if (state.isSpectator) {
           state = state.copyWith(
-            spectatorChat: [
-              ...state.spectatorChat,
+            spectatorChat: appendChat(
+              state.spectatorChat,
               ChatMessage(e.text, false, senderName: e.sender),
-            ],
+            ),
           );
         }
       case NetEventKind.disconnected:
@@ -302,16 +433,22 @@ class LanController extends Notifier<LanGameState> {
           activeLanGame: currentMode.lan,
         )) {
           game.lanSetResult(
-            e.text.isEmpty ? LanResultCode.opponentDisconnected : e.text,
+            isIncompatibleVersion(e.text)
+                ? LanResultCode.incompatibleVersion
+                : LanResultCode.opponentDisconnected,
           );
         }
-        state = state.copyWith(
-          ended: true,
-          connected: false,
-          waiting: false,
-          drawOfferIncoming: false,
-        );
+        _dispatch(const LanLinkClosed());
       case NetEventKind.error:
+        if (isVersionMismatchNotice(e.text)) {
+          state = state.copyWith(error: e.text); // lobby stays open
+          return;
+        }
+        // The host refused one of our moves (out of turn / after the end):
+        // non-fatal. Take the optimistic local ply back so both boards agree.
+        final rejected = rejectedLocalMove(e.text);
+        if (rejected != null) game.lanRevertLocal(rejected);
+        _dispatch(LanError(e.text));
         state = state.copyWith(error: e.text);
       case NetEventKind.spectatorJoined:
         state = state.copyWith(spectatorCount: state.spectatorCount + 1);
@@ -320,8 +457,10 @@ class LanController extends Notifier<LanGameState> {
     }
   }
 
+  bool get _live => state.session is LanLive;
+
   void resign() {
-    if (state.isSpectator) return;
+    if (state.isSpectator || !_live) return;
     netResign();
     ref
         .read(gameControllerProvider.notifier)
@@ -330,30 +469,40 @@ class LanController extends Notifier<LanGameState> {
   }
 
   void offerDraw() {
-    if (!state.isSpectator) netOfferDraw();
+    if (!state.isSpectator && _live) netOfferDraw();
   }
 
-  void sendChat(String text) {
+  /// Returns false (and sends nothing) when the message is empty or too long,
+  /// so the caller can keep the text in the input.
+  bool sendChat(String text) {
     final t = text.trim();
-    if (t.isEmpty || t.length > 512 || utf8.encode(t).length > 2048) return;
+    if (!chatTextAllowed(t)) return false;
     if (state.isSpectator) {
       netSendSpectatorChat(text: t);
       state = state.copyWith(
-        spectatorChat: [
-          ...state.spectatorChat,
+        spectatorChat: appendChat(
+          state.spectatorChat,
           ChatMessage(t, true, senderName: state.myName),
-        ],
+        ),
       );
     } else {
       netSendChat(text: t);
-      state = state.copyWith(chat: [...state.chat, ChatMessage(t, true)]);
+      state = state.copyWith(
+        chat: appendChat(state.chat, ChatMessage(t, true)),
+      );
     }
+    return true;
   }
 
   void respondDraw(bool accept) {
-    if (state.isSpectator) return;
+    // A late answer after the game ended must not overwrite the real result.
+    if (state.isSpectator ||
+        !state.drawOfferIncoming ||
+        ref.read(gameControllerProvider).isOver) {
+      return;
+    }
     netRespondDraw(accept: accept);
-    state = state.copyWith(drawOfferIncoming: false);
+    _dispatch(const LanDrawAnswered());
     if (accept) {
       ref
           .read(gameControllerProvider.notifier)
@@ -365,7 +514,7 @@ class LanController extends Notifier<LanGameState> {
   void leave() {
     final hadSession = _sub != null || hasActiveLanSession(state);
     _invalidateEventStream();
-    state = const LanGameState();
+    state = LanGameState(session: reduceLan(state.session, const LanLeft()));
     if (hadSession) netLeave();
   }
 }

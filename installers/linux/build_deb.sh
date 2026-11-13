@@ -20,7 +20,7 @@ exec /opt/open-chess/open-chess "$@"
 EOF
 chmod +x "$PKG/usr/bin/open-chess"
 
-cp installers/linux/open-chess.desktop "$PKG/usr/share/applications/open-chess.desktop"
+cp installers/linux/open-chess.desktop "$PKG/usr/share/applications/com.ramazan.openchess.desktop"
 cp assets/icon/open-chess.png "$PKG/usr/share/icons/hicolor/512x512/apps/open-chess.png"
 
 cat > "$PKG/DEBIAN/control" <<EOF
