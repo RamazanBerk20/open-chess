@@ -120,14 +120,10 @@ impl Board {
     }
 
     pub fn king_of(&self, player: Player) -> Option<Coord> {
-        for i in 0..N {
-            if let Some((p, Piece::King)) = self.cells[i] {
-                if p == player {
-                    return Some(coord(i));
-                }
-            }
-        }
-        None
+        self.cells
+            .iter()
+            .position(|&cell| cell == Some((player, Piece::King)))
+            .map(coord)
     }
 }
 
