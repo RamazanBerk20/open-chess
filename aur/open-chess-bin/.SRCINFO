@@ -19,8 +19,8 @@ pkgbase = open-chess-bin
 	source = open-chess-1.3.0-linux-x86_64.tar.gz::https://github.com/RamazanBerk20/open-chess/releases/download/v1.3.0/open-chess-1.3.0-linux-x86_64.tar.gz
 	source = open-chess-1.3.0.png::https://github.com/RamazanBerk20/open-chess/raw/v1.3.0/assets/icon/open-chess.png
 	source = LICENSE-1.3.0::https://github.com/RamazanBerk20/open-chess/raw/v1.3.0/LICENSE
-	sha256sums = SKIP
-	sha256sums = SKIP
-	sha256sums = SKIP
+	sha256sums = 415d2c1700c140e07582027296d26fca5c260a8308b9411f1e427b1913d70188
+	sha256sums = 9efa459a11c5871c9d7a93ae64ad27554003b1aff89697ef2bb15db49abfb2a2
+	sha256sums = 6eb2f4b140c36afd8d7ea0a4e96e96cfaaaa691e9ad7c291bcc3b64766f178c4
 
 pkgname = open-chess-bin
