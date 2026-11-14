@@ -1,6 +1,10 @@
 # Changelog
 
-## [Unreleased]
+## [1.3.0] - 2026-11-14
+
+### Compatibility notes (read first)
+- **Not tested on real hardware: the Windows build of the new window bar.** The Windows runner changes (`windows/runner/flutter_window.*`) were never compiled or run; the Windows installer and zip are built by CI only.
+- The LAN protocol is unchanged (still version 8).
 
 ### Changed
 - Desktop (Linux, Windows): the system title bar is gone. Each screen's own header is now the window bar, with minimise, maximise/restore and close buttons drawn by the app; during a game its middle shows the side to move, the move number and both clocks when the game is timed (four coloured seat markers in four-player games). Drag the bar to move the window, double-click it to maximise, and resize from any edge. Android is unchanged.

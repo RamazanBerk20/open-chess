@@ -35,7 +35,7 @@ cd ~/aur-open-chess
 cp ~/Belgeler/AI/Code/open-chess/aur/open-chess/{PKGBUILD,.SRCINFO} .
 updpkgsums; and makepkg --printsrcinfo > .SRCINFO
 makepkg -df --noconfirm
-git add -A; and git commit -m "open-chess 1.2.0"; and git branch -M master; and git push origin master
+git add -A; and git commit -m "open-chess 1.3.0"; and git branch -M master; and git push origin master
 ```
 
 ## New release
