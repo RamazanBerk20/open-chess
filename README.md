@@ -14,10 +14,13 @@ Grab the latest build from **[Releases](https://github.com/RamazanBerk20/open-ch
 | Windows  | `open-chess-<version>-windows-setup.exe` (installer) or the portable `.zip` |
 | Linux    | `.AppImage` (portable), `.deb` (Debian/Ubuntu), or the `.tar.gz` bundle |
 
-Arch Linux: install **`open-chess-bin`** from the AUR (e.g. `yay -S open-chess-bin`).
+Arch Linux: install **`open-chess-bin`** (prebuilt release) from the AUR, e.g. `yay -S open-chess-bin`.
+The source builds `open-chess` (tagged release) and `open-chess-git` (latest `main`) are also on the AUR;
+see [`aur/README.md`](aur/README.md).
 
 The app checks GitHub Releases on launch and offers an in-app update when a newer
-version is available (Settings → Support → Check for updates).
+version is available (Settings → Support → Check for updates). The launch check is
+one GitHub request and can be turned off in Settings ("Check for updates on launch").
 
 ## Structure
 
@@ -25,6 +28,7 @@ version is available (Settings → Support → Check for updates).
   clocks, termination rules (perft-verified).
 - `rust/chess_ai` — negamax + alpha-beta search, quiescence, transposition table,
   tapered PeSTO evaluation, configurable difficulty.
+- `rust/chess4` — separate engine and bots for 4-player chess (14x14 cross board).
 - `rust/chess_net` — LAN discovery (mDNS) + newline-JSON TCP protocol.
 - `rust/chess_api` — the flutter_rust_bridge boundary.
 - `rust/puzzle_prep` — dev tool that builds `assets/puzzles/puzzles.json`.
@@ -34,7 +38,7 @@ version is available (Settings → Support → Check for updates).
 
 Single player vs AI with calibrated presets from Very Easy (roughly 500 Elo) to
 Impossible, two-player same-device, and LAN play with auto-discovery,
-resign/draw/disconnect handling, profile names, custom avatars, and an
+resign/draw/disconnect handling, profile names, custom avatars, and a
 host-controlled spectator mode. Variants include Three-Check, King of the Hill,
 Chess960, Atomic, Crazyhouse, Fog of War, **Bughouse** (2-board), and
 **4-player** (14x14). Fog of War is LAN-only so neither player can see the
@@ -47,7 +51,9 @@ Post-game **analysis** provides accuracy, move classification, an evaluation
 graph, opening/ECO/gambit/variation identification, and an estimated player Elo
 based on the played game. The bundled CC0 Lichess opening corpus supplies 3,790
 opening positions. Other features include a 100-puzzle trainer (hints,
-persisted progress), saved/resumable offline games, 10 UI languages, and board,
+persisted progress), saved/resumable offline games (autosave of the game in
+progress, Resume Game on the main menu, pause), PGN and FEN import (main menu →
+Import PGN / FEN, paste or open a file), Play from Position, 10 UI languages, and board,
 accessibility, sound/haptics, hint, animation, and default settings.
 
 ### LAN firewall
@@ -108,13 +114,14 @@ flutter test                                  # widget/unit
 
 ## Releases (CI)
 
-Pushing a tag `v*` triggers `.github/workflows/release.yml`, which builds the
+Pushing a tag `v*` triggers `.github/workflows/release.yml`, which first runs
+analysis and tests, then builds the
 Android APK, the Windows installer (+ portable zip) and the Linux
 AppImage/`.deb`/`.tar.gz`, and attaches them all to a GitHub Release.
 
 ```sh
 # bump `version:` in pubspec.yaml first, then:
-git tag v1.2.0 && git push origin v1.2.0
+git tag vX.Y.Z && git push origin vX.Y.Z
 ```
 
 ## Support
