@@ -907,4 +907,23 @@ class AppLocalizationsFr extends AppLocalizations {
   String engineFailed(Object error) {
     return 'Le moteur n\'a pas pu analyser cette position : $error';
   }
+
+  @override
+  String get windowMinimize => 'Réduire';
+
+  @override
+  String get windowMaximize => 'Agrandir';
+
+  @override
+  String get windowRestore => 'Restaurer';
+
+  @override
+  String windowMoveNumber(int number) {
+    return 'Coup $number';
+  }
+
+  @override
+  String fourToMove(String player) {
+    return 'Au tour de $player';
+  }
 }

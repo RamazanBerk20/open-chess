@@ -275,5 +275,10 @@
   "importBadMove": "Coup illégal ou illisible : {move}",
   "importUnsupported": "Cette variante ne peut pas être analysée : {variant}",
   "importReadFailed": "Le fichier n'a pas pu être lu.",
-  "engineFailed": "Le moteur n'a pas pu analyser cette position : {error}"
+  "engineFailed": "Le moteur n'a pas pu analyser cette position : {error}",
+  "windowMinimize": "Réduire",
+  "windowMaximize": "Agrandir",
+  "windowRestore": "Restaurer",
+  "windowMoveNumber": "Coup {number}",
+  "fourToMove": "Au tour de {player}"
 }

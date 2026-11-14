@@ -275,5 +275,10 @@
   "importBadMove": "Недопустимый или нечитаемый ход: {move}",
   "importUnsupported": "Этот вариант нельзя проанализировать: {variant}",
   "importReadFailed": "Не удалось прочитать файл.",
-  "engineFailed": "Движок не смог рассчитать эту позицию: {error}"
+  "engineFailed": "Движок не смог рассчитать эту позицию: {error}",
+  "windowMinimize": "Свернуть",
+  "windowMaximize": "Развернуть",
+  "windowRestore": "Восстановить",
+  "windowMoveNumber": "Ход {number}",
+  "fourToMove": "Ход: {player}"
 }

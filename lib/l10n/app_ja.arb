@@ -275,5 +275,10 @@
   "importBadMove": "不正または読み取れない指し手: {move}",
   "importUnsupported": "このバリアントは解析できません: {variant}",
   "importReadFailed": "ファイルを読み込めませんでした。",
-  "engineFailed": "エンジンはこの局面を探索できませんでした: {error}"
+  "engineFailed": "エンジンはこの局面を探索できませんでした: {error}",
+  "windowMinimize": "最小化",
+  "windowMaximize": "最大化",
+  "windowRestore": "元のサイズに戻す",
+  "windowMoveNumber": "{number}手目",
+  "fourToMove": "{player}の手番"
 }

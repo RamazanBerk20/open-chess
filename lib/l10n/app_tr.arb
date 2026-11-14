@@ -275,5 +275,10 @@
   "importBadMove": "Geçersiz ya da okunamayan hamle: {move}",
   "importUnsupported": "Bu varyant analiz edilemez: {variant}",
   "importReadFailed": "Dosya okunamadı.",
-  "engineFailed": "Motor bu konumu hesaplayamadı: {error}"
+  "engineFailed": "Motor bu konumu hesaplayamadı: {error}",
+  "windowMinimize": "Küçült",
+  "windowMaximize": "Büyüt",
+  "windowRestore": "Önceki boyuta getir",
+  "windowMoveNumber": "{number}. hamle",
+  "fourToMove": "Sıra {player} tarafında"
 }

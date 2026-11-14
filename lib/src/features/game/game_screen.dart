@@ -18,6 +18,7 @@ import 'package:open_chess/src/state/clock_provider.dart';
 import 'package:open_chess/src/state/l10n_labels.dart';
 import 'package:open_chess/src/state/lan_controller.dart';
 import 'package:open_chess/src/state/settings.dart';
+import 'package:open_chess/src/widgets/bar_status.dart';
 import 'package:open_chess/src/widgets/board_widget.dart';
 import 'package:open_chess/src/widgets/hand_tray.dart';
 import 'package:open_chess/src/widgets/captured_tray.dart';
@@ -26,6 +27,7 @@ import 'package:open_chess/src/widgets/game_result_panel.dart';
 import 'package:open_chess/src/widgets/move_list.dart';
 import 'package:open_chess/src/widgets/player_avatar.dart';
 import 'package:open_chess/src/widgets/promotion_dialog.dart';
+import 'package:open_chess/src/widgets/window_chrome.dart';
 
 const _maxChatCharacters = 512;
 
@@ -244,8 +246,22 @@ class _GameScreenState extends ConsumerState<GameScreen> {
         !mode.vsAi && !mode.lan && (Platform.isAndroid || Platform.isIOS);
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: WindowAppBar(
         title: Text(mode.lan ? t.lanGame : t.game),
+        // Desktop only: the state of play (all of it public, LAN included).
+        center: Consumer(
+          builder: (context, ref, _) {
+            final clock = ref.watch(clockProvider);
+            final timed = clock != null && !clock.infinite;
+            return TwoPlayerBarStatus(
+              sideToMove: s.view.sideToMove,
+              moveNumber: s.view.fullmove,
+              over: s.isOver,
+              whiteMs: timed ? clock.whiteMs.toInt() : null,
+              blackMs: timed ? clock.blackMs.toInt() : null,
+            );
+          },
+        ),
         actions: [
           if (mode.lan)
             IconButton(

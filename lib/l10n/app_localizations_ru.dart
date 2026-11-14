@@ -905,4 +905,23 @@ class AppLocalizationsRu extends AppLocalizations {
   String engineFailed(Object error) {
     return 'Движок не смог рассчитать эту позицию: $error';
   }
+
+  @override
+  String get windowMinimize => 'Свернуть';
+
+  @override
+  String get windowMaximize => 'Развернуть';
+
+  @override
+  String get windowRestore => 'Восстановить';
+
+  @override
+  String windowMoveNumber(int number) {
+    return 'Ход $number';
+  }
+
+  @override
+  String fourToMove(String player) {
+    return 'Ход: $player';
+  }
 }

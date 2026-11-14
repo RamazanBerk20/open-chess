@@ -8,6 +8,7 @@ import 'package:open_chess/src/rust/api/net.dart';
 import 'package:open_chess/src/state/bughouse_controller.dart';
 import 'package:open_chess/src/state/bughouse_lan_controller.dart';
 import 'package:open_chess/src/state/time_control.dart';
+import 'package:open_chess/src/widgets/window_chrome.dart';
 
 /// Pre-match lobby for networked Bughouse: the host assigns the four seats and
 /// starts; a joiner waits. On start, both push into [BughouseScreen] (LAN mode).
@@ -78,7 +79,7 @@ class _BughouseLobbyScreenState extends ConsumerState<BughouseLobbyScreen> {
         distinctOwners.containsAll(const {-1, 0, 1, 2});
 
     return Scaffold(
-      appBar: AppBar(title: Text(t.menuBughouse)),
+      appBar: WindowAppBar(title: Text(t.menuBughouse)),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [

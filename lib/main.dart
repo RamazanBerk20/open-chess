@@ -9,11 +9,13 @@ import 'package:open_chess/src/state/json_store.dart';
 import 'package:open_chess/src/state/locale_resolution.dart';
 import 'package:open_chess/src/state/settings.dart';
 import 'package:open_chess/src/theme/app_theme.dart';
+import 'package:open_chess/src/widgets/window_chrome.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await RustLib.init();
   await preloadSettings(); // seed persisted settings before first frame
+  initWindowChrome();
   runApp(const ProviderScope(child: OpenChessApp()));
 }
 
@@ -98,15 +100,18 @@ class _OpenChessAppState extends ConsumerState<OpenChessApp> {
       ],
       supportedLocales: AppLocalizations.supportedLocales,
       // Apply an explicit text-size override (1.0 = follow the OS).
+      // Desktop: the app draws its own window bar ([WindowFrame]).
       builder: (context, child) {
         if (s.textScale == 1.0 || child == null) {
-          return child ?? const SizedBox();
+          return WindowFrame(child: child ?? const SizedBox());
         }
-        return MediaQuery(
-          data: MediaQuery.of(
-            context,
-          ).copyWith(textScaler: TextScaler.linear(s.textScale)),
-          child: child,
+        return WindowFrame(
+          child: MediaQuery(
+            data: MediaQuery.of(
+              context,
+            ).copyWith(textScaler: TextScaler.linear(s.textScale)),
+            child: child,
+          ),
         );
       },
       home: const MainMenu(),

@@ -9,6 +9,7 @@ import 'package:open_chess/src/state/difficulty.dart';
 import 'package:open_chess/src/state/four_lan_controller.dart';
 import 'package:open_chess/src/state/four_player_controller.dart';
 import 'package:open_chess/src/state/l10n_labels.dart';
+import 'package:open_chess/src/widgets/window_chrome.dart';
 
 /// Pre-match lobby for networked 4-player: the host assigns the four seats and
 /// starts; joiners wait. On start, both push into [FourPlayerScreen] (LAN).
@@ -131,7 +132,7 @@ class _FourLobbyScreenState extends ConsumerState<FourLobbyScreen> {
         isValidFourLanAiDifficulties(_owner, _aiDifficulty);
 
     return Scaffold(
-      appBar: AppBar(title: Text(t.menuFourPlayer)),
+      appBar: WindowAppBar(title: Text(t.menuFourPlayer)),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [

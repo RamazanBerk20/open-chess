@@ -15,6 +15,7 @@ import 'package:open_chess/src/state/l10n_labels.dart';
 import 'package:open_chess/src/state/multicast_lock.dart';
 import 'package:open_chess/src/state/settings.dart';
 import 'package:open_chess/src/widgets/player_avatar.dart';
+import 'package:open_chess/src/widgets/window_chrome.dart';
 
 class FourSetupScreen extends ConsumerStatefulWidget {
   const FourSetupScreen({super.key});
@@ -133,7 +134,7 @@ class _FourSetupScreenState extends ConsumerState<FourSetupScreen> {
     );
 
     return Scaffold(
-      appBar: AppBar(title: Text(t.menuFourPlayer)),
+      appBar: WindowAppBar(title: Text(t.menuFourPlayer)),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [

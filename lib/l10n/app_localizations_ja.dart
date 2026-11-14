@@ -892,4 +892,23 @@ class AppLocalizationsJa extends AppLocalizations {
   String engineFailed(Object error) {
     return 'エンジンはこの局面を探索できませんでした: $error';
   }
+
+  @override
+  String get windowMinimize => '最小化';
+
+  @override
+  String get windowMaximize => '最大化';
+
+  @override
+  String get windowRestore => '元のサイズに戻す';
+
+  @override
+  String windowMoveNumber(int number) {
+    return '$number手目';
+  }
+
+  @override
+  String fourToMove(String player) {
+    return '$playerの手番';
+  }
 }

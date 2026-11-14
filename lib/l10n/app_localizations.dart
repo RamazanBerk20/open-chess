@@ -1775,6 +1775,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The engine could not search this position: {error}'**
   String engineFailed(Object error);
+
+  /// No description provided for @windowMinimize.
+  ///
+  /// In en, this message translates to:
+  /// **'Minimise'**
+  String get windowMinimize;
+
+  /// No description provided for @windowMaximize.
+  ///
+  /// In en, this message translates to:
+  /// **'Maximise'**
+  String get windowMaximize;
+
+  /// No description provided for @windowRestore.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore'**
+  String get windowRestore;
+
+  /// No description provided for @windowMoveNumber.
+  ///
+  /// In en, this message translates to:
+  /// **'Move {number}'**
+  String windowMoveNumber(int number);
+
+  /// No description provided for @fourToMove.
+  ///
+  /// In en, this message translates to:
+  /// **'{player} to move'**
+  String fourToMove(String player);
 }
 
 class _AppLocalizationsDelegate

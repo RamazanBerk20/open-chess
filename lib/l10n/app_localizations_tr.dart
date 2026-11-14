@@ -896,4 +896,23 @@ class AppLocalizationsTr extends AppLocalizations {
   String engineFailed(Object error) {
     return 'Motor bu konumu hesaplayamadı: $error';
   }
+
+  @override
+  String get windowMinimize => 'Küçült';
+
+  @override
+  String get windowMaximize => 'Büyüt';
+
+  @override
+  String get windowRestore => 'Önceki boyuta getir';
+
+  @override
+  String windowMoveNumber(int number) {
+    return '$number. hamle';
+  }
+
+  @override
+  String fourToMove(String player) {
+    return 'Sıra $player tarafında';
+  }
 }

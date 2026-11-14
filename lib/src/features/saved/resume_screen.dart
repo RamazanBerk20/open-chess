@@ -13,6 +13,7 @@ import 'package:open_chess/src/state/lan_controller.dart';
 import 'package:open_chess/src/state/l10n_labels.dart';
 import 'package:open_chess/src/state/saved_games.dart';
 import 'package:open_chess/src/state/time_control.dart';
+import 'package:open_chess/src/widgets/window_chrome.dart';
 
 /// Continue [g] as a local game (same-device, or vs-AI with its original
 /// difficulty). A timed game can start paused, e.g. when offered on launch.
@@ -169,7 +170,7 @@ class ResumeScreen extends ConsumerWidget {
     final t = AppLocalizations.of(context);
     final async = ref.watch(savedGamesProvider);
     return Scaffold(
-      appBar: AppBar(title: Text(t.menuResume)),
+      appBar: WindowAppBar(title: Text(t.menuResume)),
       body: async.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('$e')),

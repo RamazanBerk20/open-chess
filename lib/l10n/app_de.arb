@@ -275,5 +275,10 @@
   "importBadMove": "Ungültiger oder unlesbarer Zug: {move}",
   "importUnsupported": "Diese Variante kann nicht analysiert werden: {variant}",
   "importReadFailed": "Die Datei konnte nicht gelesen werden.",
-  "engineFailed": "Die Engine kann diese Stellung nicht berechnen: {error}"
+  "engineFailed": "Die Engine kann diese Stellung nicht berechnen: {error}",
+  "windowMinimize": "Minimieren",
+  "windowMaximize": "Maximieren",
+  "windowRestore": "Wiederherstellen",
+  "windowMoveNumber": "Zug {number}",
+  "fourToMove": "{player} am Zug"
 }

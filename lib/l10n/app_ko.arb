@@ -275,5 +275,10 @@
   "importBadMove": "불법이거나 읽을 수 없는 수: {move}",
   "importUnsupported": "이 변형은 분석할 수 없습니다: {variant}",
   "importReadFailed": "파일을 읽을 수 없습니다.",
-  "engineFailed": "엔진이 이 국면을 탐색할 수 없습니다: {error}"
+  "engineFailed": "엔진이 이 국면을 탐색할 수 없습니다: {error}",
+  "windowMinimize": "최소화",
+  "windowMaximize": "최대화",
+  "windowRestore": "이전 크기로 복원",
+  "windowMoveNumber": "{number}수",
+  "fourToMove": "{player} 차례"
 }

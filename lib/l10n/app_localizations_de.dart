@@ -907,4 +907,23 @@ class AppLocalizationsDe extends AppLocalizations {
   String engineFailed(Object error) {
     return 'Die Engine kann diese Stellung nicht berechnen: $error';
   }
+
+  @override
+  String get windowMinimize => 'Minimieren';
+
+  @override
+  String get windowMaximize => 'Maximieren';
+
+  @override
+  String get windowRestore => 'Wiederherstellen';
+
+  @override
+  String windowMoveNumber(int number) {
+    return 'Zug $number';
+  }
+
+  @override
+  String fourToMove(String player) {
+    return '$player am Zug';
+  }
 }

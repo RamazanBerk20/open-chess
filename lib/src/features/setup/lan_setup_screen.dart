@@ -14,6 +14,7 @@ import 'package:open_chess/src/state/lan_controller.dart';
 import 'package:open_chess/src/state/settings.dart';
 import 'package:open_chess/src/state/time_control.dart';
 import 'package:open_chess/src/widgets/player_avatar.dart';
+import 'package:open_chess/src/widgets/window_chrome.dart';
 
 enum _HostColor { white, black, random }
 
@@ -106,7 +107,7 @@ class _LanSetupScreenState extends ConsumerState<LanSetupScreen> {
     final t = AppLocalizations.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: Text(t.lanTitle)),
+      appBar: WindowAppBar(title: Text(t.lanTitle)),
       body: lan.waiting
           ? _Waiting(onCancel: _cancelLan)
           : ListView(

@@ -902,4 +902,23 @@ class AppLocalizationsEn extends AppLocalizations {
   String engineFailed(Object error) {
     return 'The engine could not search this position: $error';
   }
+
+  @override
+  String get windowMinimize => 'Minimise';
+
+  @override
+  String get windowMaximize => 'Maximise';
+
+  @override
+  String get windowRestore => 'Restore';
+
+  @override
+  String windowMoveNumber(int number) {
+    return 'Move $number';
+  }
+
+  @override
+  String fourToMove(String player) {
+    return '$player to move';
+  }
 }

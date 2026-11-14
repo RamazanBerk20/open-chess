@@ -275,5 +275,10 @@
   "importBadMove": "نقلة غير قانونية أو غير مقروءة: {move}",
   "importUnsupported": "لا يمكن تحليل هذا النوع: {variant}",
   "importReadFailed": "تعذّرت قراءة الملف.",
-  "engineFailed": "تعذّر على المحرك تحليل هذه الوضعية: {error}"
+  "engineFailed": "تعذّر على المحرك تحليل هذه الوضعية: {error}",
+  "windowMinimize": "تصغير",
+  "windowMaximize": "تكبير",
+  "windowRestore": "استعادة",
+  "windowMoveNumber": "النقلة {number}",
+  "fourToMove": "دور {player}"
 }

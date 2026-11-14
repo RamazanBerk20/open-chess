@@ -14,6 +14,7 @@ import 'package:open_chess/src/widgets/captured_tray.dart';
 import 'package:open_chess/src/widgets/clock_widget.dart';
 import 'package:open_chess/src/widgets/hand_tray.dart';
 import 'package:open_chess/src/widgets/promotion_dialog.dart';
+import 'package:open_chess/src/widgets/window_chrome.dart';
 
 /// A two-board, host-authoritative LAN Bughouse match.
 class BughouseScreen extends ConsumerStatefulWidget {
@@ -72,7 +73,7 @@ class _BughouseScreenState extends ConsumerState<BughouseScreen> {
     final t = AppLocalizations.of(context);
     final settings = ref.watch(settingsProvider);
     return Scaffold(
-      appBar: AppBar(title: Text(t.menuBughouse)),
+      appBar: WindowAppBar(title: Text(t.menuBughouse)),
       body: AnimatedBuilder(
         animation: _ctl,
         builder: (context, _) {

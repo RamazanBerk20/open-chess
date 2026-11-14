@@ -8,6 +8,7 @@ import 'package:open_chess/l10n/app_localizations.dart';
 import 'package:open_chess/src/features/analysis/analysis_screen.dart';
 import 'package:open_chess/src/state/game_import.dart';
 import 'package:open_chess/src/state/l10n_labels.dart';
+import 'package:open_chess/src/widgets/window_chrome.dart';
 
 /// Paste or open a PGN/FEN and analyse it. The text is untrusted: bounded,
 /// parsed defensively, and every failure is shown, never thrown.
@@ -113,7 +114,7 @@ class _ImportScreenState extends State<ImportScreen> {
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
     return Scaffold(
-      appBar: AppBar(title: Text(t.importGame)),
+      appBar: WindowAppBar(title: Text(t.importGame)),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16),

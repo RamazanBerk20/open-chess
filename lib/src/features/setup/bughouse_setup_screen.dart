@@ -10,6 +10,7 @@ import 'package:open_chess/src/state/bughouse_lan_controller.dart';
 import 'package:open_chess/src/state/multicast_lock.dart';
 import 'package:open_chess/src/state/settings.dart';
 import 'package:open_chess/src/widgets/player_avatar.dart';
+import 'package:open_chess/src/widgets/window_chrome.dart';
 
 /// Bughouse needs four independently controlled seats, so it is available only
 /// as a LAN match. The lobby assigns one seat to each connected device.
@@ -96,7 +97,7 @@ class _BughouseSetupScreenState extends ConsumerState<BughouseSetupScreen> {
     final t = AppLocalizations.of(context);
     final profile = ref.watch(settingsProvider).playerProfile;
     return Scaffold(
-      appBar: AppBar(title: Text(t.menuBughouse)),
+      appBar: WindowAppBar(title: Text(t.menuBughouse)),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [

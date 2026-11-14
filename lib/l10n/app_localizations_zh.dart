@@ -891,4 +891,23 @@ class AppLocalizationsZh extends AppLocalizations {
   String engineFailed(Object error) {
     return '引擎无法搜索此局面：$error';
   }
+
+  @override
+  String get windowMinimize => '最小化';
+
+  @override
+  String get windowMaximize => '最大化';
+
+  @override
+  String get windowRestore => '还原';
+
+  @override
+  String windowMoveNumber(int number) {
+    return '第 $number 回合';
+  }
+
+  @override
+  String fourToMove(String player) {
+    return '轮到$player';
+  }
 }

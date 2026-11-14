@@ -25,6 +25,7 @@ import 'package:open_chess/src/widgets/setup/difficulty_picker.dart';
 import 'package:open_chess/src/widgets/setup/mode_card.dart';
 import 'package:open_chess/src/widgets/setup/setup_section.dart';
 import 'package:open_chess/src/widgets/setup/time_control_picker.dart';
+import 'package:open_chess/src/widgets/window_chrome.dart';
 
 const _standardFen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
@@ -164,7 +165,7 @@ class _NewGameHubScreenState extends ConsumerState<NewGameHubScreen> {
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
     return Scaffold(
-      appBar: AppBar(title: Text(t.newGame)),
+      appBar: WindowAppBar(title: Text(t.newGame)),
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, c) {

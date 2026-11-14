@@ -11,6 +11,7 @@ import 'package:open_chess/src/state/saved_games.dart';
 import 'package:open_chess/src/state/settings.dart';
 import 'package:open_chess/src/state/update_service.dart';
 import 'package:open_chess/src/widgets/update_dialog.dart';
+import 'package:open_chess/src/widgets/window_chrome.dart';
 
 class MainMenu extends ConsumerStatefulWidget {
   const MainMenu({super.key});
@@ -40,7 +41,21 @@ class _MainMenuState extends ConsumerState<MainMenu> {
     void go(Widget screen) =>
         Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
     return Scaffold(
-      appBar: AppBar(title: Text(t.appTitle)),
+      appBar: WindowAppBar(
+        // Desktop: the knight wordmark doubles as the window title.
+        title: desktopChrome
+            ? Row(
+                children: [
+                  const Text(
+                    '\u265E', // ♞
+                    style: TextStyle(fontFamily: 'ChessGlyphs', fontSize: 22),
+                  ),
+                  const SizedBox(width: 8),
+                  Flexible(child: Text(t.appTitle)),
+                ],
+              )
+            : Text(t.appTitle),
+      ),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 360),

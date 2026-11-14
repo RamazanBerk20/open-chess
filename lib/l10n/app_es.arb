@@ -275,5 +275,10 @@
   "importBadMove": "Jugada ilegal o ilegible: {move}",
   "importUnsupported": "Esta variante no se puede analizar: {variant}",
   "importReadFailed": "No se pudo leer el archivo.",
-  "engineFailed": "El motor no pudo analizar esta posición: {error}"
+  "engineFailed": "El motor no pudo analizar esta posición: {error}",
+  "windowMinimize": "Minimizar",
+  "windowMaximize": "Maximizar",
+  "windowRestore": "Restaurar",
+  "windowMoveNumber": "Jugada {number}",
+  "fourToMove": "Mueve {player}"
 }

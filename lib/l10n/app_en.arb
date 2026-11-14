@@ -420,5 +420,24 @@
     "placeholders": {
       "error": {}
     }
+  },
+  "windowMinimize": "Minimise",
+  "windowMaximize": "Maximise",
+  "windowRestore": "Restore",
+  "windowMoveNumber": "Move {number}",
+  "fourToMove": "{player} to move",
+  "@windowMoveNumber": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "@fourToMove": {
+    "placeholders": {
+      "player": {
+        "type": "String"
+      }
+    }
   }
 }

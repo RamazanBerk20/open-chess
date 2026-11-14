@@ -11,6 +11,7 @@ import 'package:open_chess/src/state/time_control.dart';
 import 'package:open_chess/src/state/update_service.dart';
 import 'package:open_chess/src/widgets/player_avatar.dart';
 import 'package:open_chess/src/widgets/update_dialog.dart';
+import 'package:open_chess/src/widgets/window_chrome.dart';
 
 /// Locale code → native display name (null = follow the system).
 const _localeNames = <String?, String>{
@@ -37,7 +38,7 @@ class SettingsScreen extends ConsumerWidget {
     final t = AppLocalizations.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: Text(t.settings)),
+      appBar: WindowAppBar(title: Text(t.settings)),
       body: ListView(
         children: [
           _Header(t.profile),

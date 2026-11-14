@@ -5,6 +5,7 @@ import 'package:open_chess/l10n/app_localizations.dart';
 import 'package:open_chess/src/state/puzzle_controller.dart';
 import 'package:open_chess/src/state/settings.dart';
 import 'package:open_chess/src/widgets/board_widget.dart';
+import 'package:open_chess/src/widgets/window_chrome.dart';
 
 class PuzzleScreen extends ConsumerWidget {
   const PuzzleScreen({super.key});
@@ -16,7 +17,7 @@ class PuzzleScreen extends ConsumerWidget {
     final t = AppLocalizations.of(context);
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: WindowAppBar(
         title: Text(t.menuPuzzles),
         actions: [
           async.maybeWhen(

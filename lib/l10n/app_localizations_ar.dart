@@ -897,4 +897,23 @@ class AppLocalizationsAr extends AppLocalizations {
   String engineFailed(Object error) {
     return 'تعذّر على المحرك تحليل هذه الوضعية: $error';
   }
+
+  @override
+  String get windowMinimize => 'تصغير';
+
+  @override
+  String get windowMaximize => 'تكبير';
+
+  @override
+  String get windowRestore => 'استعادة';
+
+  @override
+  String windowMoveNumber(int number) {
+    return 'النقلة $number';
+  }
+
+  @override
+  String fourToMove(String player) {
+    return 'دور $player';
+  }
 }

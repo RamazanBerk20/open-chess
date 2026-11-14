@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+- Desktop (Linux, Windows): the system title bar is gone. Each screen's own header is now the window bar, with minimise, maximise/restore and close buttons drawn by the app; during a game its middle shows the side to move, the move number and both clocks when the game is timed (four coloured seat markers in four-player games). Drag the bar to move the window, double-click it to maximise, and resize from any edge. Android is unchanged.
+
 ## [1.2.0] - 2026-11-13
 
 ### Compatibility notes (read first)

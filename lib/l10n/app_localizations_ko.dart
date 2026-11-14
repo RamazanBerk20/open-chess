@@ -893,4 +893,23 @@ class AppLocalizationsKo extends AppLocalizations {
   String engineFailed(Object error) {
     return '엔진이 이 국면을 탐색할 수 없습니다: $error';
   }
+
+  @override
+  String get windowMinimize => '최소화';
+
+  @override
+  String get windowMaximize => '최대화';
+
+  @override
+  String get windowRestore => '이전 크기로 복원';
+
+  @override
+  String windowMoveNumber(int number) {
+    return '$number수';
+  }
+
+  @override
+  String fourToMove(String player) {
+    return '$player 차례';
+  }
 }

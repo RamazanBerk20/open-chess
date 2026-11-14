@@ -13,6 +13,7 @@ import 'package:open_chess/src/widgets/board_widget.dart';
 import 'package:open_chess/src/widgets/eval_bar.dart';
 import 'package:open_chess/src/widgets/eval_graph.dart';
 import 'package:open_chess/src/widgets/move_class.dart';
+import 'package:open_chess/src/widgets/window_chrome.dart';
 
 class AnalysisScreen extends ConsumerStatefulWidget {
   final List<String> moves;
@@ -222,7 +223,7 @@ class _AnalysisScreenState extends ConsumerState<AnalysisScreen> {
     );
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: WindowAppBar(
         title: Text(t.analysis),
         actions: [
           IconButton(

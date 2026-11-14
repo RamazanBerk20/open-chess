@@ -5,8 +5,10 @@ import 'package:open_chess/l10n/app_localizations.dart';
 import 'package:open_chess/src/rust/api/four.dart';
 import 'package:open_chess/src/state/four_lan_controller.dart';
 import 'package:open_chess/src/state/four_player_controller.dart';
+import 'package:open_chess/src/widgets/bar_status.dart';
 import 'package:open_chess/src/widgets/four_board_widget.dart';
 import 'package:open_chess/src/widgets/four_pieces.dart';
+import 'package:open_chess/src/widgets/window_chrome.dart';
 
 String localizedFourColor(AppLocalizations t, FourPlayer p) => switch (p) {
   FourPlayer.red => t.fourRed,
@@ -111,8 +113,20 @@ class _FourPlayerScreenState extends ConsumerState<FourPlayerScreen> {
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
     return Scaffold(
-      appBar: AppBar(
+      appBar: WindowAppBar(
         title: Text(t.menuFourPlayer),
+        center: AnimatedBuilder(
+          animation: _ctl,
+          builder: (context, _) {
+            final v = _ctl.view();
+            return FourPlayerBarStatus(
+              players: v.players,
+              turn: v.turn,
+              over: _ctl.resultString() != 'ongoing',
+              semanticsLabel: t.fourToMove(localizedFourColor(t, v.turn)),
+            );
+          },
+        ),
         actions: [
           if (widget.config.isSpectator)
             PopupMenuButton<FourPlayer>(

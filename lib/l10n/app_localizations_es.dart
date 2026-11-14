@@ -905,4 +905,23 @@ class AppLocalizationsEs extends AppLocalizations {
   String engineFailed(Object error) {
     return 'El motor no pudo analizar esta posición: $error';
   }
+
+  @override
+  String get windowMinimize => 'Minimizar';
+
+  @override
+  String get windowMaximize => 'Maximizar';
+
+  @override
+  String get windowRestore => 'Restaurar';
+
+  @override
+  String windowMoveNumber(int number) {
+    return 'Jugada $number';
+  }
+
+  @override
+  String fourToMove(String player) {
+    return 'Mueve $player';
+  }
 }
